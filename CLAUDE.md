@@ -65,6 +65,8 @@ charts/auth-server/          Helm chart, one per app
 - `createAuth(deps)` in `auth-config.ts` is the whole Better Auth configuration, pure (env, database and email sender passed in). `getAuth()` in `auth.ts` builds it once, on first use: never at import, so `next build` needs no secrets. Route handlers that call it start with `await connection()` so they're never prerendered.
 - Server code reads the session with `getSession()` / `requireSession(returnTo)` / `requireAdmin()` from `session.ts`. Browser forms use `authClient` from `auth-client.ts` and post to `/api/auth/*`, so Better Auth's rate limiter, origin checks and the OIDC flow resume apply (its server API, `auth.api.*`, is not rate limited).
 - OIDC: the issuer is `BETTER_AUTH_URL` (bare origin). Discovery at `/.well-known/openid-configuration`, keys at `/jwks` (RS256), endpoints under `/api/auth/oauth2/*`. Code + PKCE (S256) and refresh only.
+- Signed-in pages live under `app/(app)/`: the layout renders `PageShell` and checks the session, and every page and server action checks again itself (`requireSession(path)` / `requireAdmin(path)`), because layouts don't re-run on every navigation. Each page renders its own `PageHeader`. Routes that read the session set `export const instant = false`: they block on the session check by design.
+- `proxy.ts` sends `/account/*` and `/admin/*` without a session cookie to `/login?returnTo=…` (convenience only), sets the nonce CSP (`shared/security/csp.ts`) on every document, and passes `x-pathname` for layouts. Every `returnTo` goes through `safeReturnPath`.
 - `auth-config.test.ts` drives the real configuration over HTTP against PGlite (`@repo/db/testing`). Change the config, change or extend those tests.
 
 ## Delivery
