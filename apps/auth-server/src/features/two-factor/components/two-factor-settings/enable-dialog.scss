@@ -1,0 +1,43 @@
+@use "abstracts" as a;
+
+.enable-dialog {
+  display: grid;
+  gap: a.space(5);
+
+  // The QR code, with the key to type in beside it, or under it on a phone.
+  &__key {
+    display: grid;
+    gap: a.space(4);
+    place-items: center;
+
+    @include a.breakpoint("sm") {
+      grid-template-columns: auto minmax(0, 1fr);
+      justify-items: start;
+    }
+  }
+
+  &__manual {
+    display: grid;
+    gap: a.space(1);
+  }
+
+  &__label {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+  }
+
+  &__secret {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    letter-spacing: 0.05em;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+}
