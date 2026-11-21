@@ -91,3 +91,20 @@ export function magicLinkTemplate({
     note: `The link works once, for ${minutes(expiresInMinutes)}.`,
   });
 }
+
+/** To the owner of an address someone tried to sign up with again. */
+export function existingAccountTemplate({
+  loginUrl,
+  resetUrl,
+}: {
+  loginUrl: string;
+  resetUrl: string;
+}): EmailContent {
+  return render({
+    subject: "You already have an account",
+    intro: `Someone tried to create a ${APP_NAME} account with this email address, which already has one. No new account was made.`,
+    action: "Sign in",
+    url: loginUrl,
+    note: `Forgot your password? Choose a new one at ${resetUrl}.`,
+  });
+}

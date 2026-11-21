@@ -3,6 +3,7 @@ import { createConsoleProvider } from "./console-provider";
 import { smtpTransportOptions } from "./smtp-provider";
 import {
   escapeHtml,
+  existingAccountTemplate,
   magicLinkTemplate,
   resetPasswordTemplate,
   verifyEmailTemplate,
@@ -26,6 +27,16 @@ describe("email templates", () => {
       expect(email.html).not.toContain("&callbackURL"); // the raw ampersand is escaped
     },
   );
+
+  it("existing-account notice links to sign-in and names the reset page", () => {
+    const email = existingAccountTemplate({
+      loginUrl: "https://auth.example.com/login",
+      resetUrl: "https://auth.example.com/forgot-password",
+    });
+    expect(email.subject).toContain("You already have an account");
+    expect(email.html).toContain('href="https://auth.example.com/login"');
+    expect(email.text).toContain("https://auth.example.com/forgot-password");
+  });
 
   it("escapes markup in values put into the HTML", () => {
     const email = magicLinkTemplate({

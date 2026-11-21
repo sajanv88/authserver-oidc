@@ -8,11 +8,18 @@ import { APP_NAME } from "@/shared/config/app";
 import type { ServerEnv } from "@/shared/config/env";
 import {
   type EmailMessage,
+  existingAccountTemplate,
   magicLinkTemplate,
   resetPasswordTemplate,
   verifyEmailTemplate,
 } from "@/shared/email";
-import { AUTH_COOKIE_PREFIX, LOGIN_PATH } from "./constants";
+import { AUTH_PAGES } from "./auth-pages";
+import {
+  AUTH_COOKIE_PREFIX,
+  LOGIN_PATH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from "./constants";
 
 // Lifetimes, in seconds. Short for anything that's a bearer credential in a URL or a header.
 export const LIFETIMES = {
@@ -28,7 +35,7 @@ export const LIFETIMES = {
 export const OIDC_SCOPES = ["openid", "profile", "email", "offline_access"];
 
 export const LOGIN_PAGE = LOGIN_PATH;
-export const CONSENT_PAGE = "/consent";
+export const CONSENT_PAGE = AUTH_PAGES.consent;
 
 // Tighter than the global limit (100 per minute per IP and path) on everything an attacker
 // would hammer: guessing passwords, enumerating accounts, flooding inboxes. Counted in the
@@ -85,10 +92,21 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       enabled: true,
       requireEmailVerification: true,
       autoSignIn: false,
-      minPasswordLength: 12,
-      maxPasswordLength: 128,
+      minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
       resetPasswordTokenExpiresIn: LIFETIMES.passwordReset,
       revokeSessionsOnPasswordReset: true,
+      // Sign-up answers an existing address exactly like a new one; the owner gets this
+      // instead, so "check your email" is true either way and they learn of the attempt.
+      onExistingUserSignUp: async ({ user }) => {
+        sendEmail({
+          to: user.email,
+          ...existingAccountTemplate({
+            loginUrl: `${env.betterAuthUrl}${AUTH_PAGES.login}`,
+            resetUrl: `${env.betterAuthUrl}${AUTH_PAGES.forgotPassword}`,
+          }),
+        });
+      },
       sendResetPassword: async ({ user, url }) => {
         sendEmail({
           to: user.email,
