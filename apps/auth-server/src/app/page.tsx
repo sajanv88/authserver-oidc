@@ -1,21 +1,13 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@nuvui/react";
+import { redirect } from "next/navigation";
+import { requireSession } from "@/shared/auth/session";
 
-export default function HomePage() {
-  return (
-    <main className="page">
-      <Card className="page__card">
-        <CardHeader>
-          <CardTitle>auth-server</CardTitle>
-          <CardDescription>
-            Next.js, nuvui, and a Docker → Helm → ArgoCD delivery path.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild intent="secondary">
-            <a href="https://nuvui.nuvraxis.com/docs">nuvui docs</a>
-          </Button>
-        </CardContent>
-      </Card>
-    </main>
-  );
+// Reads the session on the server before rendering anything, by design: protected UI never
+// streams ahead of the auth check. So navigations here block (Next's guide for authentication
+// with Cache Components); instant-navigation validation is off for this segment.
+export const instant = false;
+
+// The entry point: signed in → account security; otherwise → sign in, then account security.
+export default async function HomePage() {
+  await requireSession("/account/security");
+  redirect("/account/security");
 }

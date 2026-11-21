@@ -28,6 +28,9 @@ export function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  // For layouts, which can't see the URL: where to come back to after signing in. Always
+  // overwritten here, and validated where it's read (safeReturnPath).
+  requestHeaders.set("x-pathname", `${pathname}${search}`);
   requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });

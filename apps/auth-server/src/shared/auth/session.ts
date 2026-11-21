@@ -4,20 +4,20 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { getAuth } from "./auth";
+import { safeReturnPath } from "./return-path";
+
+export { safeReturnPath } from "./return-path";
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof readSession>>>;
 
 async function readSession() {
-  return getAuth().api.getSession({ headers: await headers() });
+  // Request headers first: that's what makes the page dynamic, before anything reads env.
+  const requestHeaders = await headers();
+  return getAuth().api.getSession({ headers: requestHeaders });
 }
 
 /** The signed-in session for this request, or null. Read once per request. */
 export const getSession = cache(readSession);
-
-/** A path that's safe to send someone back to after signing in: same site, no tricks. */
-export function safeReturnPath(value: unknown): string {
-  return typeof value === "string" && /^\/(?![/\\])/.test(value) ? value : "/";
-}
 
 /**
  * The session, or a redirect to the login page that comes back to `returnTo`. For pages and
