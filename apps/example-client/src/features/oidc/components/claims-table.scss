@@ -1,0 +1,10 @@
+.claims-table {
+  &__code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  &__value {
+    overflow-wrap: anywhere;
+  }
+}
