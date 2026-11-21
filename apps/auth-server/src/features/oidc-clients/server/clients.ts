@@ -13,7 +13,6 @@ import type { ClientCredentials, ClientProblem, ClientResult, ClientRow } from "
 
 export const CLIENTS_PATH = "/admin/clients";
 
-
 export function toClientRow(client: OAuthClientSummary): ClientRow {
   return {
     clientId: client.clientId,
