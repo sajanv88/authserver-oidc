@@ -82,7 +82,7 @@ COPY --from=builder /repo/packages/db/dist/migrate.mjs ./packages/db/dist/migrat
 COPY --from=builder /repo/packages/db/drizzle ./packages/db/drizzle
 RUN mkdir -p apps/auth-server/.next/cache && chown 1001:1001 apps/auth-server/.next/cache
 LABEL org.opencontainers.image.title="auth-server" \
-      org.opencontainers.image.licenses="UNLICENSED"
+      org.opencontainers.image.licenses="MIT"
 USER 1001:1001
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
