@@ -43,9 +43,13 @@ spec:
             {{- toYaml .Values.db.migrate.command | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          envFrom:
-            - secretRef:
-                name: {{ include "app.dbSecretName" . }}
+          # Only the key it needs, not the whole Secret.
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "app.dbSecretName" . }}
+                  key: DATABASE_URL
           resources:
             {{- toYaml .Values.db.migrate.resources | nindent 12 }}
 {{- end }}
