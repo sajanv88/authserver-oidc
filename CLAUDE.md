@@ -81,7 +81,9 @@ PostgreSQL through Drizzle ORM v1, in `packages/db` (`@repo/db`). Rules: the `nu
 
 - `packages/db` is the only package that imports `drizzle-orm` or `pg`. Apps import `db`, types and query functions from `@repo/db`.
 - Schema change: edit `packages/db/src/schema/`, then `pnpm db:generate`, read the SQL, commit it. Never edit a committed migration; add a new one. Never `drizzle-kit push` outside a throwaway local database.
-- Validate input with the valibot schemas from `@repo/db` before any insert; never pass `FormData` to a query.
+- Validate input with valibot before any insert; never pass `FormData` to a query.
+- Better Auth reaches the database only through `createAuthAdapter(db)` from `@repo/db`, and must run with `advanced.database.generateId: "uuid"` (the adapter refuses to start otherwise). The tables mirror Better Auth's `getAuthTables()` for our plugin set: adding or upgrading a Better Auth plugin means a schema change, a migration, and an updated `src/auth-adapter.test.ts`, which runs a real `betterAuth()` against the migrated schema.
+- `@better-auth/oauth-provider` needs `clientPrivileges` (admins only) to create clients, and `allowInsecureRedirectUri` to accept `http://` redirect URIs outside loopback (local `*.localtest.me` only, never in production).
 - Local database: `cp .env.example .env`, point `DATABASE_URL` at a Postgres database (or `docker compose up -d`), then `pnpm db:migrate`.
 - Never commit `.env` or any `DATABASE_URL` with real credentials. In Kubernetes it comes from an existing Secret, and the chart only references it by name.
 - Migrations reach production as an Argo CD PreSync Job running `node packages/db/dist/migrate.mjs` from the app image.
