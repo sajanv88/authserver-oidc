@@ -26,7 +26,11 @@ export const LIFETIMES = {
   emailVerification: 60 * 60,
   passwordReset: 15 * 60,
   magicLink: 5 * 60,
-  authorizationCode: 2 * 60,
+  // Also how long the signed authorization query on /login, /two-factor and /consent stays
+  // valid (Better Auth uses one setting for both): enough time to sign in, find an
+  // authenticator and decide. Codes are single-use and PKCE-bound, and RFC 6749 caps them at
+  // 10 minutes.
+  authorizationCode: 10 * 60,
   accessToken: 10 * 60,
   idToken: 10 * 60,
   refreshToken: 30 * 24 * 60 * 60,
