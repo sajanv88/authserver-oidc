@@ -1,0 +1,6 @@
+@use "abstracts" as a;
+
+.magic-link-screen {
+  display: grid;
+  gap: a.space(5);
+}
