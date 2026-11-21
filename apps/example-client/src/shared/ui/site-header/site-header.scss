@@ -1,0 +1,40 @@
+@use "abstracts" as a;
+
+.site-header {
+  border-block-end: var(--nuv-border-width) solid var(--color-border);
+  background-color: var(--color-surface);
+
+  &__inner {
+    display: flex;
+    gap: a.space(4);
+    align-items: center;
+    justify-content: space-between;
+    margin-inline: auto;
+    padding: a.space(3) a.space(4);
+    max-inline-size: var(--app-content-max-width);
+  }
+
+  &__brand {
+    color: var(--color-foreground);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+  }
+
+  &__nav {
+    display: flex;
+    gap: a.space(4);
+  }
+
+  &__link {
+    color: var(--color-muted-foreground);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-foreground);
+    }
+
+    &:focus-visible {
+      @include a.focus-ring;
+    }
+  }
+}
