@@ -1,0 +1,30 @@
+@use "abstracts" as a;
+
+.backup-codes-list {
+  display: grid;
+  gap: a.space(4);
+
+  &__codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: a.space(2) a.space(6);
+    margin: 0;
+    padding: a.space(4);
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-muted);
+    list-style: none;
+  }
+
+  &__code {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    letter-spacing: 0.05em;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2);
+  }
+}
