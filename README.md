@@ -100,3 +100,42 @@ The caveat: **every subdomain of `COOKIE_DOMAIN` receives the session cookie**. 
 - The same answer is given whether or not an email has an account (sign-up, reset, magic link).
 - Emailed links are single use and short-lived (confirmation 1 hour, reset 15 minutes, magic link 5 minutes). A password reset signs out every session.
 - Every page gets a nonce-based Content-Security-Policy; cookies are `HttpOnly`, `Secure` and `SameSite=Lax` in production (`__Secure-` prefixed).
+
+## Delivery
+
+| Event | Workflow | What happens |
+|---|---|---|
+| Pull request | `pr.yaml` | Biome, stylelint, typecheck and tests (`turbo --affected`), `pnpm audit`, build, Docker build and health check (read-only, no capabilities), `helm lint --strict` + kubeconform on both values files, and the migrator twice against Postgres 17. Publishes nothing. |
+| Merge to `main` | `main.yaml` | Builds the image once (amd64 + arm64) with provenance and SBOM, and pushes `ghcr.io/sajanv88/auth-server:sha-<short>` and `:main`. |
+| Tag `vX.Y.Z` | `release.yaml` | Checks the tag is on main, retags that commit's image as `:vX.Y.Z` and `:latest` without rebuilding, pushes the chart to `oci://ghcr.io/sajanv88/charts/auth-server` at `X.Y.Z`, and creates a GitHub Release with the chart, the image digest and the SBOM. |
+
+Every action is pinned to a commit SHA; Dependabot updates them weekly.
+
+### Releasing
+
+1. Merge to `main`.
+2. Wait for `main.yaml` to go green (the release needs that commit's image).
+3. `git tag vX.Y.Z && git push origin vX.Y.Z`
+
+Never edit `version` or `appVersion` in `Chart.yaml`: the release sets them. A bad release is fixed with a new patch tag, never by moving a tag.
+
+## Production
+
+The chart (`charts/auth-server`) runs the image with a read-only root filesystem as uid 1001, probes on `/api/health`, at least two replicas, spread across zones and nodes where the cluster allows, and an HPA and PDB. Layer the values: `-f values.yaml -f values-production.yaml`. In `values-production.yaml`, replace `example.com` with your domain and fill in `SMTP_HOST` and `SMTP_USER`: the app refuses to start without them.
+
+**Configuration** goes in the chart's ConfigMap (`config:` in values): `BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `TRUSTED_ORIGINS`, `TRUSTED_PROXIES`, `EMAIL_PROVIDER` (`smtp` in production), `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`. The app validates all of it at startup and logs which variable is wrong, never its value.
+
+**Secrets** go in one Secret that already exists in the namespace, named by `existingSecret` (default `auth-server-secrets`). The chart never creates it. Create it with External Secrets, Sealed Secrets or by hand, with three keys:
+
+```sh
+kubectl -n auth create secret generic auth-server-secrets \
+  --from-literal=BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
+  --from-literal=DATABASE_URL='postgres://…?sslmode=verify-full' \
+  --from-literal=SMTP_PASSWORD='…'
+```
+
+It must exist **before the first sync**: the migrations run first, and they need it.
+
+**Argo CD.** Sync the chart from `oci://ghcr.io/sajanv88/charts` (a released version) or from `charts/auth-server` in git (then set `image.tag: sha-<short-sha>`). If the GHCR packages are private, the cluster needs a pull secret (`imagePullSecrets`, `ghcr-pull` in production values) and Argo CD needs repository credentials for the chart.
+
+**Migrations** run as an Argo CD PreSync Job (`node packages/db/dist/migrate.mjs` from the same image) before the new pods roll out. If they fail, the sync fails and the old pods keep serving. They are **forward-only**: a bad migration is fixed by a new one, never by editing or reverting history. Keep each one compatible with the previous app version, which keeps serving during the rollout; destructive changes take two releases. The database itself (backups, point-in-time recovery, upgrades) is your provider's job: the chart never deploys Postgres.
