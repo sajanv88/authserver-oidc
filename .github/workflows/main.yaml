@@ -16,7 +16,7 @@ concurrency:
 
 env:
   APP: auth-server
-  IMAGE: ghcr.io/nuvraxis/auth-server
+  IMAGE: ghcr.io/sajanv88/auth-server
 
 jobs:
   image:

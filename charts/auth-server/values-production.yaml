@@ -26,24 +26,25 @@ ingress:
     nginx.ingress.kubernetes.io/limit-rps: "20"
     nginx.ingress.kubernetes.io/limit-connections: "20"
   hosts:
-    - host: auth.nuvraxis.com
+    - host: auth.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: auth-server-tls
       hosts:
-        - auth.nuvraxis.com
+        - auth.example.com
 
 # The whole map replaces values.yaml's config: every key the app reads is listed.
+# example.com stands for your production domain: replace it here and in the ingress above.
 config:
-  BETTER_AUTH_URL: https://auth.nuvraxis.com
-  COOKIE_DOMAIN: .nuvraxis.com
-  TRUSTED_ORIGINS: https://app.nuvraxis.com
+  BETTER_AUTH_URL: https://auth.example.com
+  COOKIE_DOMAIN: .example.com
+  TRUSTED_ORIGINS: https://app.example.com
   # The ingress controller's pod network: narrow it to your cluster's pod CIDR.
   TRUSTED_PROXIES: 10.0.0.0/8
   EMAIL_PROVIDER: smtp
-  EMAIL_FROM: "Auth <no-reply@nuvraxis.com>"
+  EMAIL_FROM: "Auth <no-reply@example.com>"
   # The SMTP relay (e.g. Cloudflare's): set host and user before the first sync. The app
   # refuses to start while they're empty.
   SMTP_HOST: ""
