@@ -1,7 +1,7 @@
 import "server-only";
 import { db, listOAuthClients, type OAuthClientSummary } from "@repo/db";
 import type { Auth } from "@/shared/auth/auth-config";
-import { OIDC_SCOPES } from "@/shared/auth/auth-config";
+import { oidcClientDefaults } from "@/shared/auth/oidc-client-defaults";
 import { requireAdmin } from "@/shared/auth/session";
 import type { CreateClientInput } from "../schemas/client";
 import type { ClientCredentials, ClientProblem, ClientResult, ClientRow } from "../types";
@@ -13,12 +13,6 @@ import type { ClientCredentials, ClientProblem, ClientResult, ClientRow } from "
 
 export const CLIENTS_PATH = "/admin/clients";
 
-/** Every client this server issues tokens to: the code flow with PKCE, and refresh tokens. */
-const CLIENT_DEFAULTS = {
-  grant_types: ["authorization_code", "refresh_token"],
-  response_types: ["code"],
-  require_pkce: true,
-} as const;
 
 export function toClientRow(client: OAuthClientSummary): ClientRow {
   return {
@@ -68,12 +62,9 @@ export function createClient(
     const client = await auth.api.adminCreateOAuthClient({
       headers,
       body: {
-        ...CLIENT_DEFAULTS,
-        grant_types: [...CLIENT_DEFAULTS.grant_types],
-        response_types: [...CLIENT_DEFAULTS.response_types],
+        ...oidcClientDefaults(),
         client_name: input.name,
         redirect_uris: input.redirectUris,
-        scope: OIDC_SCOPES.join(" "),
         token_endpoint_auth_method: input.kind === "public" ? "none" : "client_secret_basic",
       },
     });
