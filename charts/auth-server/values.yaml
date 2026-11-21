@@ -3,7 +3,7 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/nuvraxis/auth-server
+  repository: ghcr.io/sajanv88/auth-server
   # Empty means the chart's appVersion, which release.yaml sets to the git tag. When Argo CD
   # syncs the chart straight from the repo (appVersion 0.0.0), set this to sha-<short-sha>.
   tag: ""
@@ -52,14 +52,15 @@ ingress:
     # cert-manager.io/cluster-issuer: letsencrypt-prod
     # nginx.ingress.kubernetes.io/proxy-buffering: "off"   # streaming responses
     # nginx.ingress.kubernetes.io/limit-rps: "20"
+  # The auth server's host: BETTER_AUTH_URL below must be https://<this host>.
   hosts:
-    - host: auth-server.example.com
+    - host: auth.example.com
       paths:
         - path: /
           pathType: Prefix
   tls: []
   #  - secretName: auth-server-tls
-  #    hosts: [auth-server.example.com]
+  #    hosts: [auth.example.com]
 
 # No CPU limit: throttling a Node server under a burst hurts latency more than sharing a core.
 # The memory limit stays, because Node grows its heap to what it's given.
@@ -98,13 +99,37 @@ podDisruptionBudget:
   maxUnavailable: 1
 
 # Non-secret runtime configuration, rendered into a ConfigMap and loaded with envFrom.
-# A change rolls the pods (checksum annotation on the Deployment).
+# A change rolls the pods (checksum annotation on the Deployment). The app validates all of it
+# at startup (src/shared/config/env-schema.ts) and refuses to start on anything wrong; in
+# production (the image sets NODE_ENV=production) URLs must be https and email must be smtp.
 config:
+  # The public URL of the auth server, also the OIDC issuer. A bare https origin.
+  BETTER_AUTH_URL: https://auth.example.com
+  # Parent domain for the shared session cookie; empty turns cross-subdomain cookies off.
+  COOKIE_DOMAIN: .example.com
+  # Every app origin allowed to call the auth server, comma-separated, https, no wildcards.
+  TRUSTED_ORIGINS: https://app.example.com
+  # The ingress controller's pod addresses (IPs or CIDRs, comma-separated). The client IP for
+  # rate limiting is the rightmost X-Forwarded-For hop that isn't one of these. Empty trusts
+  # no proxy, so every request looks like it comes from the ingress: set it.
+  TRUSTED_PROXIES: ""
+  EMAIL_PROVIDER: smtp
+  EMAIL_FROM: "Auth <no-reply@example.com>"
+  # Port 465 = implicit TLS, 587 = STARTTLS (required).
+  SMTP_HOST: smtp.example.com
+  SMTP_PORT: "587"
+  SMTP_USER: ""
+  # Connections per pod; replicas × this must stay under the database's limit.
+  DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
 
 # Name of a Secret that already exists in the namespace (External Secrets, Sealed Secrets,
-# or created by hand). The chart only references it; secret values never go in values files.
-existingSecret: ""
+# or created by hand), loaded with envFrom. The chart only references it and never creates it:
+# secret values never go in values files. It must hold:
+#   BETTER_AUTH_SECRET  at least 32 random characters (openssl rand -base64 32)
+#   DATABASE_URL        postgres://… (TLS settings in the URL: sslmode=verify-full&…)
+#   SMTP_PASSWORD       the SMTP password or API token
+existingSecret: auth-server-secrets
 
 # Extra env entries, in the Kubernetes EnvVar shape.
 env: []
@@ -130,9 +155,8 @@ affinity: {}
 db:
   # Merged into values.yaml under `db:` by the fullstack scaffold. Frontend values are untouched.
 
-  # An existing Secret with a DATABASE_URL key, created outside the chart (External Secrets,
-  # Sealed Secrets, or by hand). Empty means "<release fullname>-db". The chart only references
-  # it: the Deployment and the migrate Job load it with envFrom. It must exist before the first
+  # The existing Secret with the DATABASE_URL key. Empty means existingSecret above (one Secret
+  # for everything). The migrate Job reads only that key from it. It must exist before the first
   # sync, or the migrate pod stays in CreateContainerConfigError and the sync never starts.
   externalSecret:
     name: ""
@@ -140,7 +164,7 @@ db:
   migrate:
     # Run committed migrations as an Argo CD PreSync Job on every sync.
     enabled: true
-    # The bundled runner in the app image (see Dockerfile.patch.md). It exits non-zero on failure,
+    # The bundled runner in the app image (apps/auth-server/Dockerfile). It exits non-zero on failure,
     # which fails the sync before the new Deployment is applied.
     command: ["node", "packages/db/dist/migrate.mjs"]
     resources:

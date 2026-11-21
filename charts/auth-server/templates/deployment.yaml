@@ -60,10 +60,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "app.fullname" . }}
-            {{- with .Values.existingSecret }}
+            # BETTER_AUTH_SECRET, DATABASE_URL, SMTP_PASSWORD: never created by this chart.
             - secretRef:
-                name: {{ . }}
-            {{- end }}
+                name: {{ required "existingSecret must name a Secret with BETTER_AUTH_SECRET, DATABASE_URL and SMTP_PASSWORD" .Values.existingSecret }}
             {{- if ne (include "app.dbSecretName" .) .Values.existingSecret }}
             - secretRef:
                 name: {{ include "app.dbSecretName" . }}

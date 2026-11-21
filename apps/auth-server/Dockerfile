@@ -2,7 +2,13 @@
 #
 # Next.js standalone image for apps/auth-server in a pnpm + Turborepo monorepo.
 # Build from the repo root:  docker build -f apps/auth-server/Dockerfile -t auth-server .
-# Run:                       docker run --rm -p 3000:3000 auth-server
+# Run as production does (read-only root, no capabilities; config from an env file holding
+# DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, EMAIL_* and SMTP_*):
+#   docker run --rm -p 3000:3000 --env-file prod.env --read-only \
+#     --tmpfs /app/apps/auth-server/.next/cache:uid=1001,gid=1001 \
+#     --cap-drop ALL --security-opt no-new-privileges auth-server
+# Migrations, as the Argo CD PreSync Job runs them:
+#   docker run --rm -e DATABASE_URL auth-server node packages/db/dist/migrate.mjs
 
 # Node: exact version (matches .node-version) pinned by multi-arch index digest.
 ARG NODE_IMAGE=node:26.12.0-alpine3.24@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
@@ -71,7 +77,7 @@ RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs -H -s /sbin/nolog
 COPY --from=builder /repo/apps/auth-server/.next/standalone ./
 COPY --from=builder /repo/apps/auth-server/.next/static ./apps/auth-server/.next/static
 COPY --from=builder /repo/apps/auth-server/public ./apps/auth-server/public
-# nuvraxis-fullstack: the migrate Job's runner (one bundled file) and the SQL migrations it applies.
+# The migrate Job's runner (one bundled file) and the SQL migrations it applies.
 COPY --from=builder /repo/packages/db/dist/migrate.mjs ./packages/db/dist/migrate.mjs
 COPY --from=builder /repo/packages/db/drizzle ./packages/db/drizzle
 RUN mkdir -p apps/auth-server/.next/cache && chown 1001:1001 apps/auth-server/.next/cache

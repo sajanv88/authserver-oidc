@@ -22,18 +22,35 @@ ingress:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    # Broad per-IP limits at the edge; the app's own limiter covers sign-in, codes and tokens.
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
   hosts:
-    - host: auth-server.nuvraxis.com
+    - host: auth.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: auth-server-tls
       hosts:
-        - auth-server.nuvraxis.com
+        - auth.example.com
 
+# The whole map replaces values.yaml's config: every key the app reads is listed.
+# example.com stands for your production domain: replace it here and in the ingress above.
 config:
+  BETTER_AUTH_URL: https://auth.example.com
+  COOKIE_DOMAIN: .example.com
+  TRUSTED_ORIGINS: https://app.example.com
+  # The ingress controller's pod network: narrow it to your cluster's pod CIDR.
+  TRUSTED_PROXIES: 10.0.0.0/8
+  EMAIL_PROVIDER: smtp
+  EMAIL_FROM: "Auth <no-reply@example.com>"
+  # The SMTP relay (e.g. Cloudflare's): set host and user before the first sync. The app
+  # refuses to start while they're empty.
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_USER: ""
+  DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
   OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production
 
