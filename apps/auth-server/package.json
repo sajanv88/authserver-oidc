@@ -24,6 +24,7 @@
     "@vercel/otel": "catalog:",
     "better-auth": "catalog:",
     "next": "catalog:",
+    "nodemailer": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "server-only": "catalog:",
