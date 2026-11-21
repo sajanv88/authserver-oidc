@@ -47,6 +47,7 @@ Run `pnpm typecheck && pnpm lint && pnpm build` before calling a change done.
 
 ```
 apps/auth-server/            Next.js app: src/app (routing only), src/features/<feature>/, src/shared/, src/proxy.ts
+apps/example-client/         demo relying party on :3001 (shared cookie + OIDC code/PKCE); not shipped as an image
 apps/auth-server/Dockerfile  standalone image; build context is the repo root
 packages/tsconfig/       shared tsconfig (base.json)
 charts/auth-server/          Helm chart, one per app
@@ -73,6 +74,7 @@ charts/auth-server/          Helm chart, one per app
 - Consent: `/consent` shows only what the signed query vouches for (`verifyOAuthQueryParams` with `BETTER_AUTH_SECRET`, in `readConsentRequest`); an altered or expired query offers "start again", no session starts the request again through sign-in. Allow/Deny go through `authClient.oauth2.consent`, which re-checks the signature and answers with the redirect back to the app.
 - OIDC clients (`/admin/clients`): server actions in `features/oidc-clients/actions/`, because `adminCreateOAuthClient` is server-only. Each action runs `requireAdmin`, valibot, then a function in `server/clients.ts` that calls the plugin with the request headers (the plugin checks the admin again). Every client gets code + refresh grants and `require_pkce`; public ones have no secret. Secrets are stored hashed and shown once. `clientReference` makes the admins as a group the owner (`ADMIN_CLIENT_OWNER`), so any admin can rotate or delete any client.
 - Account security (`/account/security`, `AccountSecurityScreen` with the two-factor card passed in by the page): changing the password is a browser form (`authClient.changePassword`, rate limited, signs out other devices). Sessions are listed from `@repo/db` (`listActiveSessions`, no tokens; Better Auth's list-sessions refuses sessions older than a day), and revoked through server actions that look up the token server-side (`getSessionToken`, scoped to the user) and call Better Auth. "Sign out everywhere" is `revokeSessions`, then `/login`.
+- Example client (`apps/example-client`, `http://app.localtest.me:3001`, `EXAMPLE_*` env): the shared-cookie card forwards only `nvx-auth.*` cookies to `/api/auth/get-session`; the OIDC flow is route handlers under `/oidc/*` (discovery, PKCE S256, state and nonce in one encrypted httpOnly cookie, ID token verified with `jose` against `/jwks`, refresh rotation, revocation on sign-out). Its POST routes check `Origin`. It talks to the auth server only through public endpoints, never `@repo/db`.
 - `auth-config.test.ts` drives the real configuration over HTTP against PGlite (`@repo/db/testing`). Change the config, change or extend those tests.
 
 ## Delivery
