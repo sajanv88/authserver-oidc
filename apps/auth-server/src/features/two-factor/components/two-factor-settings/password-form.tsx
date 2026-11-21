@@ -13,71 +13,54 @@ import {
   PasswordInput,
   Spinner,
 } from "@nuvui/react";
-import { type FormEvent, useState } from "react";
-import { type AuthClientError, authErrorMessage } from "@/shared/auth/auth-errors";
-import { parseForm } from "@/shared/validation/field-errors";
-import { PasswordConfirmSchema } from "../../schemas/two-factor";
+import Form from "next/form";
+import { useEffect, useRef } from "react";
+import type { PasswordAttempt } from "../../types";
 import "./password-form.scss";
 
 type PasswordFormProps = {
+  /** The dialog's server action, as `useActionState` hands it back. */
+  action: (formData: FormData) => void;
+  pending: boolean;
+  /** What the last attempt came to: a field error, or a message for the form. */
+  attempt: PasswordAttempt;
   /** What the button does: "Continue", "Turn off two-factor". */
   submitLabel: string;
   pendingLabel: string;
   intent?: "primary" | "danger";
-  /** Runs the change with the password; resolves to Better Auth's error, if any. */
-  onConfirm: (password: string) => Promise<AuthClientError | null | undefined>;
 };
 
 /**
- * Asks for the account password before a two-factor change, inside a Dialog. A wrong password
- * stays a field error; anything else is a message.
+ * Asks for the account password before a two-factor change, inside a Dialog. The server action
+ * checks it (through Better Auth); a wrong password stays a field error, anything else is a
+ * message. Key it by the attempt.
  */
 export function PasswordForm({
+  action,
+  pending,
+  attempt,
   submitLabel,
   pendingLabel,
   intent = "primary",
-  onConfirm,
 }: PasswordFormProps) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [formError, setFormError] = useState<string | undefined>();
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(PasswordConfirmSchema, Object.fromEntries(new FormData(form)));
-    setFormError(undefined);
-    if (!parsed.ok) {
-      setError(parsed.errors.password);
-      form.querySelector<HTMLInputElement>("input[name=password]")?.focus();
-      return;
-    }
-    setPending(true);
-    const failure = await onConfirm(parsed.value.password);
-    setPending(false);
-    if (!failure) return;
-    if (failure.code === "INVALID_PASSWORD") {
-      setError("That isn't your password.");
-      form.querySelector<HTMLInputElement>("input[name=password]")?.focus();
-      return;
-    }
-    setError(undefined);
-    setFormError(authErrorMessage(failure, "That didn't work. Try again in a moment."));
-  }
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (attempt.error) input.current?.focus();
+  }, [attempt.error]);
 
   return (
-    <form className="password-form" noValidate onSubmit={submit}>
-      {formError ? (
+    <Form action={action} className="password-form" noValidate>
+      {attempt.formError ? (
         <Alert intent="danger">
-          <AlertDescription>{formError}</AlertDescription>
+          <AlertDescription>{attempt.formError}</AlertDescription>
         </Alert>
       ) : null}
       <Field required>
         <FieldLabel>Your password</FieldLabel>
         <FieldControl>
-          <PasswordInput name="password" autoComplete="current-password" />
+          <PasswordInput ref={input} name="password" autoComplete="current-password" />
         </FieldControl>
-        <FieldError>{error}</FieldError>
+        <FieldError>{attempt.error}</FieldError>
       </Field>
       <DialogFooter>
         <DialogClose asChild>
@@ -96,6 +79,6 @@ export function PasswordForm({
           )}
         </Button>
       </DialogFooter>
-    </form>
+    </Form>
   );
 }

@@ -14,26 +14,17 @@ import {
   PasswordInput,
 } from "@nuvui/react";
 import type { Route } from "next";
-import { type FormEvent, useEffect, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import { useActionState, useEffect } from "react";
 import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { TextLink } from "@/shared/ui/text-link/text-link";
-import { firstInvalidField, parseForm } from "@/shared/validation/field-errors";
-import {
-  mismatchErrors,
-  RESET_PASSWORD_FIELDS,
-  type ResetPasswordField,
-  ResetPasswordSchema,
-} from "../../schemas/password-reset";
+import { firstInvalidField } from "@/shared/validation/field-errors";
+import { resetPasswordAction } from "../../actions/password-reset";
+import { RESET_PASSWORD_FIELDS } from "../../schemas/password-reset";
 import type { ResetPasswordState } from "../../types";
 
-function focusField(form: HTMLFormElement, field: ResetPasswordField | undefined) {
-  const element = field ? form.elements.namedItem(field) : null;
-  if (element instanceof HTMLElement) element.focus();
-}
+const INITIAL: ResetPasswordState = { status: "editing", attempt: 0, errors: {} };
 
 type ResetPasswordFormProps = {
   token: string;
@@ -47,7 +38,7 @@ type ResetPasswordFormProps = {
  * the account out everywhere (Better Auth config).
  */
 export function ResetPasswordForm({ token, next, forgotPasswordHref }: ResetPasswordFormProps) {
-  const [state, setState] = useState<ResetPasswordState>({ status: "editing", errors: {} });
+  const [state, action, pending] = useActionState(resetPasswordAction, INITIAL);
 
   // Keep the token out of the address bar, history and screenshots once the page has it.
   useEffect(() => {
@@ -57,45 +48,6 @@ export function ResetPasswordForm({ token, next, forgotPasswordHref }: ResetPass
       `${AUTH_PAGES.resetPassword}?${new URLSearchParams({ next })}`,
     );
   }, [next]);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(ResetPasswordSchema, Object.fromEntries(new FormData(form)));
-    const errors = parsed.ok ? mismatchErrors(parsed.value) : parsed.errors;
-    if (!parsed.ok || Object.keys(errors).length > 0) {
-      setState({ status: "editing", errors });
-      focusField(form, firstInvalidField(errors, RESET_PASSWORD_FIELDS));
-      return;
-    }
-
-    setState({ status: "submitting" });
-    const { error } = await authClient.resetPassword({ newPassword: parsed.value.password, token });
-    if (!error) {
-      setState({ status: "done" });
-      return;
-    }
-    if (error.code === "INVALID_TOKEN") {
-      setState({ status: "expired" });
-      return;
-    }
-    if (error.code === "PASSWORD_TOO_SHORT" || error.code === "PASSWORD_TOO_LONG") {
-      setState({
-        status: "editing",
-        errors: { password: `Use ${PASSWORD_MIN_LENGTH} to 128 characters.` },
-      });
-      focusField(form, "password");
-      return;
-    }
-    setState({
-      status: "editing",
-      errors: {},
-      formError: authErrorMessage(
-        error,
-        "We couldn't change your password. Try again in a moment.",
-      ),
-    });
-  }
 
   if (state.status === "done") {
     return (
@@ -126,10 +78,16 @@ export function ResetPasswordForm({ token, next, forgotPasswordHref }: ResetPass
     );
   }
 
-  const errors = state.status === "editing" ? state.errors : {};
+  const { errors } = state;
   return (
-    <AuthForm onSubmit={submit}>
-      {state.status === "editing" && state.formError ? (
+    <AuthForm
+      key={state.attempt}
+      action={action}
+      focus={firstInvalidField(errors, RESET_PASSWORD_FIELDS)}
+    >
+      {/* Out of the address bar, but still needed: the action sends it to Better Auth. */}
+      <input type="hidden" name="token" value={token} />
+      {state.formError ? (
         <Alert intent="danger">
           <AlertDescription>{state.formError}</AlertDescription>
         </Alert>
@@ -149,7 +107,7 @@ export function ResetPasswordForm({ token, next, forgotPasswordHref }: ResetPass
         </FieldControl>
         <FieldError>{errors.confirmPassword}</FieldError>
       </Field>
-      <SubmitButton pending={state.status === "submitting"} pendingLabel="Changing password…">
+      <SubmitButton pending={pending} pendingLabel="Changing password…">
         Change password
       </SubmitButton>
     </AuthForm>

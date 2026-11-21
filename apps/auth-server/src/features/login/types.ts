@@ -2,12 +2,18 @@ import type { Route } from "next";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import type { LoginField } from "./schemas/login";
 
-/** Where the sign-in form is. */
+/** What a sign-in attempt came to, as the form shows it. */
 export type LoginState =
-  | { status: "editing"; errors: FieldErrors<LoginField>; problem?: LoginProblem }
-  | { status: "submitting" }
-  /** Signed in: the browser is on its way (to consent, the client, /two-factor or returnTo). */
-  | { status: "leaving" };
+  | {
+      status: "editing";
+      /** Counts the answers, so the form remounts with `email` after each one. */
+      attempt: number;
+      email: string;
+      errors: FieldErrors<LoginField>;
+      problem?: LoginProblem | undefined;
+    }
+  /** Signed in, and the app's flow goes on at another site: its redirect URI. */
+  | { status: "leaving"; attempt: number; url: string };
 
 /** A failed sign-in that isn't about one field. */
 export type LoginProblem =
@@ -19,6 +25,8 @@ export type LoginProblem =
 
 /** What the login page hands its form and links: plain strings, so it crosses to the client. */
 export type LoginContext = {
+  /** Better Auth's signed authorization query, when an app sent the browser here. */
+  oidcQuery: string;
   /** Where to go after signing in, outside an OIDC flow (already made safe). */
   returnTo: string;
   /** A fresh authorization request, to start again when the signed one has expired. */

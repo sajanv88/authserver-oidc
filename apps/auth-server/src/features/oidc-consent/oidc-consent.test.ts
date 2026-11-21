@@ -6,6 +6,7 @@ import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn, testEnv } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ConsentDecisionSchema } from "./schemas/consent";
+import { decide } from "./server/consent";
 import { readConsentRequest } from "./server/pages";
 import { consentScopes } from "./server/scopes";
 
@@ -150,5 +151,72 @@ describe("deciding on consent", () => {
     expect(((await expired.json()) as { error?: string }).error).toBe("invalid_signature");
     const anonymous = await decide(h.browser("203.0.113.125"), true, query);
     expect(anonymous.status).toBe(401);
+  });
+});
+
+describe("the consent action's server side (decide)", () => {
+  let h: Harness;
+  let clientId = "";
+  beforeAll(async () => {
+    h = await createHarness();
+    const admin = h.browser("203.0.113.240");
+    await admin.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "admin@example.com", password, name: "Admin" },
+    });
+    await admin.request("GET", linkIn(h.emails.at(-1)));
+    await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
+    clientId = (
+      await h.auth.api.adminCreateOAuthClient({
+        body: { client_name: "Example app", redirect_uris: [redirectUri] },
+        headers: new Headers({
+          cookie: [...admin.jar].map(([name, value]) => `${name}=${value}`).join("; "),
+        }),
+      })
+    ).client_id;
+  });
+
+  async function consentQuery(email: string, ip: string): Promise<[Browser, string]> {
+    const browser = h.browser(ip);
+    await browser.request("POST", "/api/auth/sign-up/email", {
+      json: { email, password, name: "User" },
+    });
+    await browser.request("GET", linkIn(h.emails.at(-1)));
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "openid",
+      state: "st",
+      code_challenge: createHash("sha256").update(randomBytes(16)).digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    const authorize = await browser.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    return [browser, new URL(authorize.headers.get("location") ?? "", BASE_URL).search.slice(1)];
+  }
+
+  it("Allow comes back with a code for the app, Deny with access_denied", async () => {
+    const [ada, adaQuery] = await consentQuery("ada@example.com", "203.0.113.241");
+    const allowed = await decide(ada.caller(), true, adaQuery);
+    if (!allowed.ok) throw new Error("expected an answer");
+    expect(new URL(allowed.url).searchParams.get("code")).toBeTruthy();
+
+    const [alan, alanQuery] = await consentQuery("alan@example.com", "203.0.113.242");
+    const denied = await decide(alan.caller(), false, alanQuery);
+    if (!denied.ok) throw new Error("expected an answer");
+    expect(new URL(denied.url).searchParams.get("error")).toBe("access_denied");
+  });
+
+  it("an expired request, or no session, is 'expired'", async () => {
+    const [grace, query] = await consentQuery("grace@example.com", "203.0.113.243");
+    const late = new URLSearchParams(query);
+    late.set("exp", String(Math.floor(Date.now() / 1000) - 1));
+    expect(await decide(grace.caller(), true, late.toString())).toEqual({
+      ok: false,
+      problem: { kind: "expired" },
+    });
+    expect(await decide(h.browser("203.0.113.244").caller(), true, query)).toEqual({
+      ok: false,
+      problem: { kind: "expired" },
+    });
   });
 });

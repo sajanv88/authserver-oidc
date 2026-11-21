@@ -10,50 +10,22 @@ import {
   FieldLabel,
   Input,
 } from "@nuvui/react";
-import { type FormEvent, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
-import { AUTH_PAGES } from "@/shared/auth/auth-pages";
+import type { Route } from "next";
+import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
-import { TextButton } from "@/shared/ui/text-link/text-link";
-import { parseForm } from "@/shared/validation/field-errors";
-import { ForgotPasswordSchema } from "../../schemas/password-reset";
+import { TextLink } from "@/shared/ui/text-link/text-link";
+import { requestResetAction } from "../../actions/password-reset";
 import type { ForgotPasswordState, ResetDestination } from "../../types";
 import "./forgot-password-form.scss";
+
+const INITIAL: ForgotPasswordState = { status: "editing", attempt: 0, email: "" };
 
 /**
  * Asks for a reset link. The answer is the same whether or not the address has an account:
  * Better Auth answers alike, and so does this page.
  */
-export function ForgotPasswordForm({ next }: ResetDestination) {
-  const [state, setState] = useState<ForgotPasswordState>({ status: "editing" });
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(ForgotPasswordSchema, Object.fromEntries(new FormData(form)));
-    if (!parsed.ok) {
-      setState({ status: "editing", error: parsed.errors.email });
-      const input = form.elements.namedItem("email");
-      if (input instanceof HTMLElement) input.focus();
-      return;
-    }
-
-    setState({ status: "submitting" });
-    const { error } = await authClient.requestPasswordReset({
-      email: parsed.value.email,
-      // The emailed link lands here with ?token= added, keeping `next`.
-      redirectTo: `${AUTH_PAGES.resetPassword}?${new URLSearchParams({ next })}`,
-    });
-    if (error) {
-      setState({
-        status: "editing",
-        formError: authErrorMessage(error, "We couldn't send the link. Try again in a moment."),
-      });
-      return;
-    }
-    setState({ status: "sent", email: parsed.value.email });
-  }
+export function ForgotPasswordForm({ next, retryHref }: ResetDestination & { retryHref: Route }) {
+  const [state, action, pending] = useActionState(requestResetAction, INITIAL);
 
   if (state.status === "sent") {
     return (
@@ -66,16 +38,16 @@ export function ForgotPasswordForm({ next }: ResetDestination) {
           </AlertDescription>
         </Alert>
         <p className="forgot-password-form__note">
-          Nothing arrived?{" "}
-          <TextButton onClick={() => setState({ status: "editing" })}>Try again</TextButton>
+          Nothing arrived? <TextLink href={retryHref}>Try again</TextLink>
         </p>
       </div>
     );
   }
 
   return (
-    <AuthForm onSubmit={submit}>
-      {state.status === "editing" && state.formError ? (
+    <AuthForm key={state.attempt} action={action} focus={state.error ? "email" : undefined}>
+      <input type="hidden" name="next" value={next} />
+      {state.formError ? (
         <Alert intent="danger">
           <AlertDescription>{state.formError}</AlertDescription>
         </Alert>
@@ -83,11 +55,17 @@ export function ForgotPasswordForm({ next }: ResetDestination) {
       <Field required>
         <FieldLabel>Email</FieldLabel>
         <FieldControl>
-          <Input type="email" name="email" autoComplete="email" inputMode="email" />
+          <Input
+            type="email"
+            name="email"
+            autoComplete="email"
+            inputMode="email"
+            defaultValue={state.email}
+          />
         </FieldControl>
-        <FieldError>{state.status === "editing" ? state.error : undefined}</FieldError>
+        <FieldError>{state.error}</FieldError>
       </Field>
-      <SubmitButton pending={state.status === "submitting"} pendingLabel="Sending…">
+      <SubmitButton pending={pending} pendingLabel="Sending…">
         Send reset link
       </SubmitButton>
     </AuthForm>

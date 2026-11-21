@@ -7,6 +7,7 @@ import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-
 import { parseForm } from "@/shared/validation/field-errors";
 import { mismatchErrors, ResetPasswordSchema } from "./schemas/password-reset";
 import { forgotPasswordPageContext, resetPasswordPageContext } from "./server/pages";
+import { requestReset, resetPassword } from "./server/password-reset";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 
@@ -186,3 +187,34 @@ function authorizeQuery(clientId: string): URLSearchParams {
     code_challenge_method: "S256",
   });
 }
+
+describe("the password-reset actions' server side", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+    const browser = h.browser("203.0.113.220");
+    await browser.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "ada@example.com", password, name: "Ada" },
+    });
+    await browser.request("GET", linkIn(h.emails.at(-1)));
+  });
+
+  it("sends the link alike for any address, resets once with its token", async () => {
+    const call = h.browser("203.0.113.221").caller();
+    expect(await requestReset(call, "nobody@example.com", "/")).toEqual({ kind: "sent" });
+    expect(await requestReset(call, "ada@example.com", "/account/security")).toEqual({
+      kind: "sent",
+    });
+    const landed = new URL(
+      (await h.browser("203.0.113.222").request("GET", linkIn(h.emails.at(-1)))).headers.get(
+        "location",
+      ) ?? "",
+      BASE_URL,
+    );
+    const token = landed.searchParams.get("token") ?? "";
+    expect(await resetPassword(call, token, newPassword)).toEqual({ kind: "done" });
+    expect(await resetPassword(call, token, "yet another passphrase")).toEqual({
+      kind: "expired",
+    });
+  });
+});

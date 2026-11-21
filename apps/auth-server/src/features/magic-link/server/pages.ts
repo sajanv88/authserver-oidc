@@ -22,6 +22,7 @@ export function magicLinkTargets(searchParams: SearchParams): MagicLinkContext {
     errorCallbackURL: carry ? `${AUTH_PAGES.magicLink}?${carry}` : AUTH_PAGES.magicLink,
     linkFailed: Boolean(searchParams.error),
     loginHref: authPageHref("login", carry),
+    retryHref: authPageHref("magicLink", carry),
   };
 }
 

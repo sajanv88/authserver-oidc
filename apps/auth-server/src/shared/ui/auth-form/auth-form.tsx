@@ -1,22 +1,41 @@
+"use client";
+
 import { Button, Spinner } from "@nuvui/react";
-import type { FormEvent, ReactNode } from "react";
+import Form from "next/form";
+import { type ReactNode, useEffect, useRef } from "react";
 import "./auth-form.scss";
 
 type AuthFormProps = {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** The server action, as `useActionState` hands it back. */
+  action: (formData: FormData) => void;
+  /** The field to move focus to: the first one the server found wrong. */
+  focus?: string | undefined;
   children: ReactNode;
 };
 
 /**
- * The form of an auth page: fields stacked, browser validation off (each field shows its own
- * FieldError, from the same rules the server applies). Rendered inside the features' client
- * components.
+ * The form of an auth page: Next's `<Form>` posting to a server action, fields stacked, browser
+ * validation off (the server checks, and each field shows its own FieldError). Works before
+ * JavaScript loads: the browser posts the form, and the page comes back with the answer.
+ * Key it by the attempt, so a failed attempt remounts it with what was typed.
  */
-export function AuthForm({ onSubmit, children }: AuthFormProps) {
+export function AuthForm({ action, focus, children }: AuthFormProps) {
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (!focus) return;
+    const element = form.current?.elements.namedItem(focus);
+    // Some controls (OtpField) submit through a hidden input: focus what can be typed in.
+    const target =
+      element instanceof HTMLInputElement && element.type === "hidden"
+        ? form.current?.querySelector<HTMLElement>("input:not([type=hidden])")
+        : element;
+    if (target instanceof HTMLElement) target.focus();
+  }, [focus]);
+
   return (
-    <form className="auth-form" noValidate onSubmit={onSubmit}>
+    <Form ref={form} action={action} className="auth-form" noValidate>
       {children}
-    </form>
+    </Form>
   );
 }
 
@@ -24,13 +43,31 @@ type SubmitButtonProps = {
   pending: boolean;
   /** Said while pending: "Creating account…". */
   pendingLabel: string;
+  /** A second submit button in the same form sends its own value under this name. */
+  name?: string;
+  value?: string;
+  intent?: "primary" | "secondary" | "danger";
   children: ReactNode;
 };
 
 /** The one primary button of an auth form, full width, with a spinner while it's sending. */
-export function SubmitButton({ pending, pendingLabel, children }: SubmitButtonProps) {
+export function SubmitButton({
+  pending,
+  pendingLabel,
+  name,
+  value,
+  intent = "primary",
+  children,
+}: SubmitButtonProps) {
   return (
-    <Button type="submit" size="lg" className="auth-form__submit" disabled={pending}>
+    <Button
+      type="submit"
+      size="lg"
+      intent={intent}
+      className="auth-form__submit"
+      disabled={pending}
+      {...(name ? { name, value } : {})}
+    >
       {pending ? (
         <>
           <Spinner size="sm" label="" />

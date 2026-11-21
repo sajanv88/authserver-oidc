@@ -4,6 +4,7 @@ import { createTestDb } from "@repo/db/testing";
 import type { ServerEnv } from "@/shared/config/env";
 import type { EmailMessage } from "@/shared/email";
 import { createAuth } from "./auth-config";
+import { type AuthCaller, callEndpoint } from "./endpoint";
 
 export const BASE_URL = "http://auth.localtest.me:3000";
 export const APP_ORIGIN = "http://app.localtest.me:3001";
@@ -75,7 +76,33 @@ export async function createHarness() {
       return response;
     }
 
-    return { request, jar };
+    /**
+     * A server action's call on behalf of this browser (shared/auth/server-endpoint.ts): its
+     * cookies and X-Forwarded-For go along, and the cookies Better Auth sets come back to it.
+     * `forwardedFor` replaces what the ingress would send, to test forged headers.
+     */
+    function caller(options: { forwardedFor?: string } = {}): AuthCaller {
+      return async (call) => {
+        const cookie = [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+        const result = await callEndpoint(
+          auth,
+          BASE_URL,
+          { cookie, forwardedFor: options.forwardedFor ?? `${clientIp}, 10.0.0.2` },
+          call,
+        );
+        for (const header of result.setCookies) {
+          const [pair = ""] = header.split(";");
+          const index = pair.indexOf("=");
+          const name = pair.slice(0, index);
+          const value = pair.slice(index + 1);
+          if (value === "" || /max-age=0/i.test(header)) jar.delete(name);
+          else jar.set(name, value);
+        }
+        return result;
+      };
+    }
+
+    return { request, jar, caller };
   }
 
   /** Raw SQL against the test database, for setup the app itself never does (making an admin). */

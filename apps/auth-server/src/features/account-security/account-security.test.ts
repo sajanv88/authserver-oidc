@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ChangePasswordSchema, crossFieldErrors, SessionIdSchema } from "./schemas/account";
+import { changePassword } from "./server/password";
 import { revokeSession, signOutEverywhere, toSessionRow } from "./server/sessions";
 import { describeDevice } from "./server/user-agent";
 
@@ -194,5 +195,43 @@ describe("securing the account", () => {
     expect(await sessionOf(phone)).toBeNull();
     // Without a session there's nothing to sign out of.
     expect(await signOutEverywhere(h.auth, cookies(laptop))).toBe(false);
+  });
+});
+
+describe("the change-password action's server side", () => {
+  it("needs the current password; then this browser stays signed in with a new cookie", async () => {
+    const h = await createHarness();
+    const laptop = h.browser("203.0.113.250");
+    await laptop.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "ada@example.com", password, name: "Ada" },
+    });
+    await laptop.request("GET", linkIn(h.emails.at(-1)));
+    const before = laptop.jar.get("nvx-auth.session_token");
+
+    expect(
+      await changePassword(laptop.caller(), {
+        currentPassword: "not my password",
+        newPassword,
+        confirmPassword: newPassword,
+      }),
+    ).toEqual({
+      kind: "field",
+      field: "currentPassword",
+      message: "That isn't your current password.",
+    });
+    expect(
+      await changePassword(laptop.caller(), {
+        currentPassword: password,
+        newPassword,
+        confirmPassword: newPassword,
+      }),
+    ).toEqual({ kind: "changed" });
+    expect(laptop.jar.get("nvx-auth.session_token")).not.toBe(before);
+    const session = await h.auth.api.getSession({
+      headers: new Headers({
+        cookie: [...laptop.jar].map(([name, value]) => `${name}=${value}`).join("; "),
+      }),
+    });
+    expect(session?.user.email).toBe("ada@example.com");
   });
 });

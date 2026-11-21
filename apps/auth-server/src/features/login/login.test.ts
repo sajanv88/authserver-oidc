@@ -6,6 +6,7 @@ import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
 import { LoginSchema } from "./schemas/login";
+import { signIn } from "./server/sign-in";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 type Browser = ReturnType<Harness["browser"]>;
@@ -62,7 +63,7 @@ describe("signing in", () => {
     return login.search.slice(1);
   }
 
-  /** LoginForm's request, as the browser auth client sends it from /login?<signed query>. */
+  /** The sign-in request, as the login action sends it from /login?<signed query>. */
   function signIn(browser: Browser, email: string, oauthQuery?: string) {
     return browser.request("POST", "/api/auth/sign-in/email", {
       json: {
@@ -161,5 +162,91 @@ describe("signing in", () => {
     expect(((await response.json()) as { code?: string }).code).toBe("EMAIL_NOT_VERIFIED");
     expect(h.emails.length).toBe(before + 1);
     expect(h.emails.at(-1)?.to).toBe("pending@example.com");
+  });
+});
+
+describe("the sign-in action's outcomes (signIn, as signInAction calls it)", () => {
+  let h: Harness;
+  let clientId = "";
+
+  async function confirmed(email: string, ip: string): Promise<Browser> {
+    const browser = h.browser(ip);
+    await browser.request("POST", "/api/auth/sign-up/email", {
+      json: { email, password, name: "User" },
+    });
+    await browser.request("GET", linkIn(h.emails.at(-1)));
+    return browser;
+  }
+
+  beforeAll(async () => {
+    h = await createHarness();
+    const admin = await confirmed("admin@example.com", "203.0.113.190");
+    await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
+    clientId = (
+      await h.auth.api.adminCreateOAuthClient({
+        body: { client_name: "Example app", redirect_uris: [redirectUri] },
+        headers: new Headers({
+          cookie: [...admin.jar].map(([name, value]) => `${name}=${value}`).join("; "),
+        }),
+      })
+    ).client_id;
+    await confirmed("ada@example.com", "203.0.113.191");
+  });
+
+  const input = (email: string, pass = password) => ({
+    email,
+    password: pass,
+    rememberMe: undefined,
+  });
+
+  it("outside an app: signed in, with the session cookie set", async () => {
+    const browser = h.browser("203.0.113.192");
+    expect(await signIn(browser.caller(), input("ada@example.com"), "")).toEqual({
+      kind: "signed-in",
+    });
+    expect([...browser.jar.keys()]).toContain("nvx-auth.session_token");
+  });
+
+  it("inside an app's flow: continues to consent", async () => {
+    const browser = h.browser("203.0.113.193");
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "openid",
+      state: "st",
+      code_challenge: createHash("sha256").update(randomBytes(16)).digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    const authorize = await browser.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    const signed = new URL(authorize.headers.get("location") ?? "", BASE_URL).search.slice(1);
+    const outcome = await signIn(browser.caller(), input("ada@example.com"), signed);
+    if (outcome.kind !== "continue") throw new Error(`expected continue, got ${outcome.kind}`);
+    expect(new URL(outcome.url, BASE_URL).pathname).toBe(AUTH_PAGES.consent);
+  });
+
+  it("hands over to /two-factor with the pending cookie, and no session", async () => {
+    const guarded = await confirmed("guarded@example.com", "203.0.113.194");
+    await guarded.request("POST", "/api/auth/two-factor/enable", { json: { password } });
+    await h.sql("update users set two_factor_enabled = true where email = $1", [
+      "guarded@example.com",
+    ]);
+    const browser = h.browser("203.0.113.195");
+    expect(await signIn(browser.caller(), input("guarded@example.com"), "")).toEqual({
+      kind: "two-factor",
+    });
+    expect([...browser.jar.keys()]).toContain("nvx-auth.two_factor");
+    expect([...browser.jar.keys()]).not.toContain("nvx-auth.session_token");
+  });
+
+  it("says why it was refused, the same for a wrong password and an unknown email", async () => {
+    const browser = h.browser("203.0.113.196");
+    const wrong = await signIn(browser.caller(), input("ada@example.com", "not my password"), "");
+    const unknown = await signIn(browser.caller(), input("nobody@example.com"), "");
+    expect(wrong).toEqual({
+      kind: "problem",
+      problem: { kind: "message", text: "Email or password is incorrect." },
+    });
+    expect(unknown).toEqual(wrong);
   });
 });

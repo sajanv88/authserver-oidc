@@ -21,12 +21,13 @@ export type ConsentPageContext =
       email: string;
       /** For starting again if the request expires while the page is open. */
       restartUrl: string | undefined;
+      /** The signed request, sent back with the answer. */
+      oidcQuery: string;
     };
 
 export type ConsentState =
-  | { status: "deciding"; problem?: ConsentProblem | undefined }
-  | { status: "sending"; decision: "allow" | "deny" }
-  /** Answered: the browser is on its way back to the app. */
-  | { status: "leaving" };
+  | { status: "deciding"; attempt: number; problem?: ConsentProblem | undefined }
+  /** Answered: the browser is on its way back to the app, at its redirect URI. */
+  | { status: "leaving"; attempt: number; url: string };
 
 export type ConsentProblem = { kind: "message"; text: string } | { kind: "expired" };

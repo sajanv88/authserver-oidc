@@ -42,3 +42,6 @@ export const PasswordConfirmSchema = v.object({ password: CurrentPasswordSchema 
 
 /** Confirming a new authenticator during setup. */
 export const ConfirmTotpSchema = v.object({ code: TotpCodeSchema });
+
+/** Which form of the sign-in step was used: a hidden field, so checked like any other. */
+export const SecondFactorMethodSchema = v.picklist(["totp", "backup"]);

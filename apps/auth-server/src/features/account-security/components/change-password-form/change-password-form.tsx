@@ -3,102 +3,45 @@
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Field,
   FieldControl,
   FieldDescription,
   FieldError,
   FieldLabel,
   PasswordInput,
-  toast,
 } from "@nuvui/react";
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
+import { useActionState } from "react";
+import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
-import { firstInvalidField, parseForm } from "@/shared/validation/field-errors";
-import {
-  CHANGE_PASSWORD_FIELDS,
-  type ChangePasswordField,
-  ChangePasswordSchema,
-  crossFieldErrors,
-} from "../../schemas/account";
+import { firstInvalidField } from "@/shared/validation/field-errors";
+import { changePasswordAction } from "../../actions/password";
+import { CHANGE_PASSWORD_FIELDS } from "../../schemas/account";
 import type { ChangePasswordState } from "../../types";
 
-function focusField(form: HTMLFormElement, field: ChangePasswordField | undefined) {
-  const element = field ? form.elements.namedItem(field) : null;
-  if (element instanceof HTMLElement) element.focus();
-}
+const INITIAL: ChangePasswordState = { attempt: 0, errors: {} };
 
 /**
- * The current password, then the new one twice. Through the browser auth client, so the rate
- * limiter applies (5 tries in 5 minutes). Every other session is signed out; this one stays.
+ * The current password, then the new one twice, checked by the server action. Through Better
+ * Auth's handler, so the rate limiter applies (5 tries in 5 minutes). Every other session is
+ * signed out; this one stays.
  */
 export function ChangePasswordForm() {
-  const router = useRouter();
-  const [state, setState] = useState<ChangePasswordState>({ status: "editing", errors: {} });
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(ChangePasswordSchema, Object.fromEntries(new FormData(form)));
-    const errors = parsed.ok ? crossFieldErrors(parsed.value) : parsed.errors;
-    if (!parsed.ok || Object.keys(errors).length > 0) {
-      setState({ status: "editing", errors });
-      focusField(form, firstInvalidField(errors, CHANGE_PASSWORD_FIELDS));
-      return;
-    }
-
-    setState({ status: "submitting" });
-    const { error } = await authClient.changePassword({
-      currentPassword: parsed.value.currentPassword,
-      newPassword: parsed.value.newPassword,
-      revokeOtherSessions: true,
-    });
-    if (!error) {
-      form.reset();
-      setState({ status: "editing", errors: {} });
-      toast("Password changed", {
-        intent: "success",
-        description: "You've been signed out on every other device.",
-      });
-      // The session list below now has this session only.
-      router.refresh();
-      return;
-    }
-    if (error.code === "INVALID_PASSWORD") {
-      setState({
-        status: "editing",
-        errors: { currentPassword: "That isn't your current password." },
-      });
-      focusField(form, "currentPassword");
-      return;
-    }
-    if (error.code === "PASSWORD_TOO_SHORT" || error.code === "PASSWORD_TOO_LONG") {
-      setState({
-        status: "editing",
-        errors: {
-          newPassword: `Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`,
-        },
-      });
-      focusField(form, "newPassword");
-      return;
-    }
-    setState({
-      status: "editing",
-      errors: {},
-      formError: authErrorMessage(
-        error,
-        "We couldn't change your password. Try again in a moment.",
-      ),
-    });
-  }
-
-  const errors = state.status === "editing" ? state.errors : {};
+  const [state, action, pending] = useActionState(changePasswordAction, INITIAL);
+  const { errors } = state;
   return (
-    <AuthForm onSubmit={submit}>
-      {state.status === "editing" && state.formError ? (
+    <AuthForm
+      key={state.attempt}
+      action={action}
+      focus={firstInvalidField(errors, CHANGE_PASSWORD_FIELDS)}
+    >
+      {state.changed ? (
+        <Alert intent="success" role="status">
+          <AlertTitle>Password changed</AlertTitle>
+          <AlertDescription>You've been signed out on every other device.</AlertDescription>
+        </Alert>
+      ) : null}
+      {state.formError ? (
         <Alert intent="danger">
           <AlertDescription>{state.formError}</AlertDescription>
         </Alert>
@@ -125,7 +68,7 @@ export function ChangePasswordForm() {
         </FieldControl>
         <FieldError>{errors.confirmPassword}</FieldError>
       </Field>
-      <SubmitButton pending={state.status === "submitting"} pendingLabel="Changing…">
+      <SubmitButton pending={pending} pendingLabel="Changing…">
         Change password
       </SubmitButton>
     </AuthForm>

@@ -56,5 +56,6 @@ export async function consentPageContext(
     scopes: request.scopes,
     email: session.user.email,
     restartUrl: request.restartUrl,
+    oidcQuery: signedOidcQuery(searchParams),
   };
 }

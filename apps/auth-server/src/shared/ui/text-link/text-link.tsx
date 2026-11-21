@@ -36,3 +36,15 @@ export function TextButton({ onClick, children }: TextButtonProps) {
     </button>
   );
 }
+
+/**
+ * A form's submit button inside a line of text ("Use another account"), drawn like a TextLink.
+ * A form rather than a click handler, so it works before JavaScript loads.
+ */
+export function TextSubmit({ children }: { children: ReactNode }) {
+  return (
+    <button type="submit" className="text-link text-link--button">
+      {children}
+    </button>
+  );
+}

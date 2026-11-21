@@ -44,7 +44,11 @@ export function ConsentScreen(context: ConsentPageContext) {
           description={`${context.clientName} is asking for this from your ${APP_NAME} account:`}
         >
           <ScopeList scopes={context.scopes} />
-          <ConsentForm email={context.email} restartUrl={context.restartUrl} />
+          <ConsentForm
+            email={context.email}
+            oidcQuery={context.oidcQuery}
+            restartUrl={context.restartUrl}
+          />
         </AuthCard>
       );
   }
