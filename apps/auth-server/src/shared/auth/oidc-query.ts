@@ -59,13 +59,28 @@ export function signedOidcQuery(input: SearchParamsInput): string {
 /**
  * A fresh authorization request with the same parameters, for resuming once the signed query
  * has expired. Undefined when there's no authorization request to resume.
+ *
+ * `freshSignIn`: the link that leads here also signs the user in (email confirmation, magic
+ * link), so the app's demand for a fresh login is met by it. Drop `prompt=login` and `max_age`
+ * as Better Auth does after a password sign-in, or the user would be sent to log in again.
  */
-export function authorizeUrlFrom(input: SearchParamsInput): string | undefined {
+export function authorizeUrlFrom(
+  input: SearchParamsInput,
+  options: { freshSignIn?: boolean } = {},
+): string | undefined {
   const params = toParams(input);
   if (!params.get("client_id") || !params.get("response_type")) return undefined;
   const fresh = new URLSearchParams();
   for (const key of AUTHORIZE_PARAMS) {
     for (const value of params.getAll(key)) fresh.append(key, value);
+  }
+  if (options.freshSignIn) {
+    fresh.delete("max_age");
+    const prompt = (fresh.get("prompt") ?? "")
+      .split(" ")
+      .filter((value) => value !== "" && value !== "login");
+    if (prompt.length > 0) fresh.set("prompt", prompt.join(" "));
+    else fresh.delete("prompt");
   }
   return `${AUTHORIZE_PATH}?${fresh.toString()}`;
 }

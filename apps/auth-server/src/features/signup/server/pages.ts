@@ -16,7 +16,9 @@ const ACCOUNT_HOME = "/account/security";
 export async function signUpPageContext(searchParams: SearchParamsInput): Promise<SignUpContext> {
   const resume = authorizeUrlFrom(searchParams);
   if (await getSession()) redirectToSafePath(resume ?? ACCOUNT_HOME);
-  return { oidcQuery: signedOidcQuery(searchParams), next: resume ?? ACCOUNT_HOME };
+  // The confirmation link signs the user in, so the resumed request needs no new login.
+  const next = authorizeUrlFrom(searchParams, { freshSignIn: true }) ?? ACCOUNT_HOME;
+  return { oidcQuery: signedOidcQuery(searchParams), next };
 }
 
 /**
