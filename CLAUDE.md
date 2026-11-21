@@ -11,7 +11,7 @@ Next.js 16 app in a pnpm + Turborepo monorepo, built on nuvui, shipped as a Dock
 - **This app uses nuvui. Read it before writing any UI** (see below). Change a component's look by prop → `--nuv-*` variable → token. Blocks: `pnpm dlx shadcn@latest add https://nuvui.nuvraxis.com/r/<name>.json`.
 - **Server Components by default.** `"use client"` only on the leaf that needs state, effects or handlers.
 - **Every Server Action and route handler** authenticates, validates input with valibot, and authorises against the resource itself.
-- **Config:** `NEXT_PUBLIC_*` is baked in at build and identical in every environment. Everything per-environment is a runtime env var read on the server through `src/env.ts`.
+- **Config:** `NEXT_PUBLIC_*` is baked in at build and identical in every environment. Everything per-environment is a runtime env var read on the server through `env()` in `src/shared/config/env.ts` (schema: `env-schema.ts`).
 
 ## Before writing any UI: read nuvui first
 
@@ -44,12 +44,19 @@ Run `pnpm typecheck && pnpm lint && pnpm build` before calling a change done.
 ## Layout
 
 ```
-apps/auth-server/            Next.js app: src/app, src/components/<block>/, src/styles, src/proxy.ts
+apps/auth-server/            Next.js app: src/app (routing only), src/features/<feature>/, src/shared/, src/proxy.ts
 apps/auth-server/Dockerfile  standalone image; build context is the repo root
 packages/tsconfig/       shared tsconfig (base.json)
 charts/auth-server/          Helm chart, one per app
 .github/workflows/       pr.yaml, main.yaml, release.yaml
 ```
+
+## Feature structure (apps/auth-server/src)
+
+- `app/`: routing only. Thin `page.tsx` / `layout.tsx` / `route.ts` that import from features and shared; no business logic.
+- `features/<feature>/`: `components/` (nuvui UI + BEM `.scss`), `actions/` (server actions: session, origin and valibot checks in each), `schemas/` (valibot), `server/` (server-only logic), `hooks/` (only if needed), `types.ts`, `index.ts` (the feature's public API).
+- `shared/`: `config/` (env, app constants), `email/`, `ui/` (AuthCard, PageShell, TextLink, NonceProvider), `styles/`, and later `auth/`.
+- Boundaries, enforced by Biome (`noRestrictedImports` overrides in `biome.json`): other code imports a feature only as `@/features/<name>`; a feature never uses `../../` to leave its folder; `shared/` never imports from `features/`.
 
 ## Delivery
 

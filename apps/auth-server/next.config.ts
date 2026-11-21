@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Type-check with the project's own tsc: TypeScript 7, the native compiler.
     useTypeScriptCli: true,
+    // Prune @nuvui/icons to the icons a page imports, in development too.
+    optimizePackageImports: ["@nuvui/icons"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
