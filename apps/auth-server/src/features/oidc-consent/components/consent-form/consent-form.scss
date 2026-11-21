@@ -1,0 +1,19 @@
+@use "abstracts" as a;
+
+.consent-form {
+  display: grid;
+  gap: a.space(4);
+
+  &__buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: a.space(3);
+  }
+
+  &__account {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+}

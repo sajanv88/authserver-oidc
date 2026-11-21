@@ -1,5 +1,6 @@
 import "@nuvui/react/styles.css";
 import "@nuvui/barcodes/styles.css";
+import "@nuvui/table/styles.css";
 import "@/shared/styles/globals.scss";
 
 import { Toaster } from "@nuvui/react";

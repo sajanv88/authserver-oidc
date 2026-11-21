@@ -1,0 +1,22 @@
+@use "abstracts" as a;
+
+.clients-table {
+  &__name {
+    margin-inline-end: a.space(2);
+    font-weight: var(--font-weight-medium);
+  }
+
+  &__code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    overflow-wrap: anywhere;
+  }
+
+  &__uris {
+    display: grid;
+    gap: a.space(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}

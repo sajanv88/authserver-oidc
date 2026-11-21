@@ -41,6 +41,17 @@ export const OIDC_SCOPES = ["openid", "profile", "email", "offline_access"];
 export const LOGIN_PAGE = LOGIN_PATH;
 export const CONSENT_PAGE = AUTH_PAGES.consent;
 
+/**
+ * Who owns the OIDC clients: the admins together, not the admin who happened to create one.
+ * The plugin only lets a client's owner rotate or delete it, so without this a second admin
+ * couldn't manage a client the first one made.
+ */
+export const ADMIN_CLIENT_OWNER = "admins";
+
+function isAdmin(user: unknown): boolean {
+  return (user as { role?: unknown } | undefined)?.role === "admin";
+}
+
 // Tighter than the global limit (100 per minute per IP and path) on everything an attacker
 // would hammer: guessing passwords, enumerating accounts, flooding inboxes. Counted in the
 // rate_limits table, so every replica shares one count.
@@ -213,8 +224,9 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
             "none",
           ],
         },
-        // Only admins create, update, rotate and delete clients.
-        clientPrivileges: ({ user }) => (user as { role?: unknown }).role === "admin",
+        // Only admins create, update, rotate and delete clients, and they share them.
+        clientPrivileges: ({ user }) => isAdmin(user),
+        clientReference: ({ user }) => (isAdmin(user) ? ADMIN_CLIENT_OWNER : undefined),
         ...(insecureRedirects ? { allowInsecureRedirectUri: insecureRedirects } : {}),
       }),
 
