@@ -1,0 +1,14 @@
+@use "abstracts" as a;
+
+.client-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: a.space(2);
+  justify-content: flex-end;
+
+  &__problem {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+  }
+}
