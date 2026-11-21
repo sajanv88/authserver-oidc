@@ -32,8 +32,12 @@
     }
   },
   "css": {
-    "formatter": { "enabled": true },
-    "linter": { "enabled": true }
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": true
+    }
   },
   "linter": {
     "enabled": true,
@@ -42,7 +46,12 @@
       "a11y": "error",
       "nursery": "off",
       "suspicious": {
-        "noConsole": { "level": "warn", "options": { "allow": ["error", "warn"] } }
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["error", "warn"]
+          }
+        }
       }
     },
     "domains": {
@@ -52,12 +61,84 @@
   },
   "assist": {
     "enabled": true,
-    "actions": { "source": { "organizeImports": "on" } }
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "overrides": [
     {
       "includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.test-d.ts"],
-      "linter": { "domains": { "test": "recommended" } }
+      "linter": {
+        "domains": {
+          "test": "recommended"
+        }
+      }
+    },
+    {
+      "includes": ["apps/auth-server/src/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/features", "@/features/**", "**/features/**"],
+                    "message": "shared/ never imports from features/: move the code into shared, or pass it in from the caller."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/auth-server/src/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/features/*/**"],
+                    "message": "Import a feature only through its public API: @/features/<name> (its index.ts)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/auth-server/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/features/*/**"],
+                    "message": "Import a feature only through its public API: @/features/<name> (its index.ts). Inside a feature, use relative imports."
+                  },
+                  {
+                    "group": ["../../**"],
+                    "message": "A feature never reaches out of its own folder: other features through @/features/<name>, shared code through @/shared/..."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

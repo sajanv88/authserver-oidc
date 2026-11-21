@@ -24,11 +24,13 @@ const nextConfig: NextConfig = {
   // Skew protection across a rolling update: the Dockerfile passes the commit SHA.
   ...(deploymentId ? { deploymentId } : {}),
   sassOptions: {
-    loadPaths: ["src/styles"],
+    loadPaths: ["src/shared/styles"],
   },
   experimental: {
     // Type-check with the project's own tsc: TypeScript 7, the native compiler.
     useTypeScriptCli: true,
+    // Prune @nuvui/icons to the icons a page imports, in development too.
+    optimizePackageImports: ["@nuvui/icons"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

@@ -1,9 +1,9 @@
 import "@nuvui/react/styles.css";
-import "@/styles/globals.scss";
+import "@/shared/styles/globals.scss";
 
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { NonceProvider } from "@/components/nonce-provider/nonce-provider";
+import { NonceProvider } from "@/shared/ui/nonce-provider/nonce-provider";
 
 export const metadata: Metadata = {
   title: { default: "auth-server", template: "%s · auth-server" },
