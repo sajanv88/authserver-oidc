@@ -1,0 +1,14 @@
+@use "abstracts" as a;
+
+.magic-link-form {
+  &__sent {
+    display: grid;
+    gap: a.space(4);
+  }
+
+  &__note {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+}
