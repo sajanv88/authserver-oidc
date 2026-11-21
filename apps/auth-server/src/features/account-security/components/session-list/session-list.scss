@@ -1,0 +1,13 @@
+@use "abstracts" as a;
+
+.session-list {
+  &__badge {
+    margin-inline-start: a.space(2);
+  }
+
+  &__problem {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+  }
+}
