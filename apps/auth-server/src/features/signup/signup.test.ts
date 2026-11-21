@@ -8,6 +8,7 @@ import { safeReturnPath } from "@/shared/auth/return-path";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ResendVerificationSchema, SignUpSchema } from "./schemas/signup";
+import { resendVerification, signUp } from "./server/sign-up";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 
@@ -156,5 +157,27 @@ describe("sign-up inside an OIDC authorization request", () => {
     expect(bodies[2]).toEqual(bodies[0]);
     // Only the address that's waiting gets a link.
     expect(h.emails.slice(before).map((email) => email.to)).toEqual(["tamper@example.com"]);
+  });
+});
+
+describe("the sign-up actions' server side", () => {
+  let h: Harness;
+  beforeAll(async () => {
+    h = await createHarness();
+  });
+
+  it("sends the link for a new address and an existing one alike, and says a field's problem", async () => {
+    const call = h.browser("203.0.113.210").caller();
+    const input = { name: "Ada", email: "ada@example.com", password };
+    expect(await signUp(call, input, "/account/security")).toEqual({ kind: "sent" });
+    expect(await signUp(call, input, "/account/security")).toEqual({ kind: "sent" });
+    // The confirmation link goes on to /verify-email?next=… once Better Auth has checked it.
+    expect(decodeURIComponent(linkIn(h.emails.at(-2)))).toContain(
+      `${AUTH_PAGES.verifyEmail}?next=`,
+    );
+    expect(
+      await signUp(call, { ...input, email: "short@example.com", password: "short" }, "/"),
+    ).toEqual({ kind: "field", field: "password", message: "Use at least 12 characters." });
+    expect(await resendVerification(call, "ada@example.com", "/")).toEqual({ kind: "sent" });
   });
 });

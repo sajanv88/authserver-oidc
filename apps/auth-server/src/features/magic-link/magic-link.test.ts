@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
+import { requestMagicLink } from "./server/magic-link";
 import { magicLinkTargets } from "./server/pages";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
@@ -18,6 +19,7 @@ describe("magic-link page targets", () => {
       errorCallbackURL: "/magic-link?returnTo=%2Fadmin%2Fclients",
       linkFailed: false,
       loginHref: "/login?returnTo=%2Fadmin%2Fclients",
+      retryHref: "/magic-link?returnTo=%2Fadmin%2Fclients",
     });
     expect(magicLinkTargets({ returnTo: "//evil.example" }).callbackURL).toBe("/account/security");
     expect(magicLinkTargets({ error: "INVALID_TOKEN" }).linkFailed).toBe(true);
@@ -66,7 +68,7 @@ describe("signing in with a link inside an app's request for a fresh login", () 
     const targets = magicLinkTargets(Object.fromEntries(login.searchParams));
     expect(targets.callbackURL).not.toContain("prompt");
 
-    // MagicLinkForm's request, with the signed query the browser auth client attaches.
+    // The sign-in request with the signed query, as the login action sends it (oauth_query).
     const before = h.emails.length;
     const request = await browser.request("POST", "/api/auth/sign-in/magic-link", {
       json: {
@@ -104,5 +106,27 @@ describe("signing in with a link inside an app's request for a fresh login", () 
     expect(back.searchParams.get("returnTo")).toBe("/account/security");
     expect(back.searchParams.get("error")).toBe("INVALID_TOKEN");
     expect(magicLinkTargets(Object.fromEntries(back.searchParams)).linkFailed).toBe(true);
+  });
+});
+
+describe("the magic-link action's server side", () => {
+  it("answers alike for any address, and emails only an account that exists", async () => {
+    const h = await createHarness();
+    const browser = h.browser("203.0.113.230");
+    await browser.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "ada@example.com", password, name: "Ada" },
+    });
+    await browser.request("GET", linkIn(h.emails.at(-1)));
+    const before = h.emails.length;
+    const call = h.browser("203.0.113.231").caller();
+    const targets = { callbackURL: "/account/security", errorCallbackURL: AUTH_PAGES.magicLink };
+    expect(await requestMagicLink(call, { email: "nobody@example.com", ...targets })).toEqual({
+      kind: "sent",
+    });
+    expect(h.emails.length).toBe(before);
+    expect(await requestMagicLink(call, { email: "ada@example.com", ...targets })).toEqual({
+      kind: "sent",
+    });
+    expect(h.emails.length).toBe(before + 1);
   });
 });
