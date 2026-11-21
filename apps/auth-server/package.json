@@ -10,6 +10,7 @@
     "analyze": "next analyze"
   },
   "dependencies": {
+    "@better-auth/oauth-provider": "catalog:",
     "@nuvui/react": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/api-logs": "catalog:",
@@ -20,6 +21,7 @@
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@repo/db": "workspace:*",
     "@vercel/otel": "catalog:",
+    "better-auth": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

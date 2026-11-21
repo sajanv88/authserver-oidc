@@ -18,14 +18,16 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",
     "server-only": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
+    "@better-auth/oauth-provider": "catalog:",
     "@electric-sql/pglite": "catalog:",
+    "@repo/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "drizzle-kit": "catalog:",
