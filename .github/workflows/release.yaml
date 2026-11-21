@@ -40,7 +40,8 @@ jobs:
             echo "::error::Tag ${GITHUB_REF_NAME} isn't vMAJOR.MINOR.PATCH."
             exit 1
           fi
-          git fetch --no-tags origin main
+          # fetch-depth: 0 already brought origin/main; no second fetch (the checkout keeps no
+          # credentials, so one would fail on a private repo).
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
             echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which isn't on main. Tag a commit that has been merged to main."
             exit 1
