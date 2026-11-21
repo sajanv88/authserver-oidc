@@ -4,17 +4,6 @@
 
 export { type Db, db } from "./client";
 export type { Executor } from "./executor";
-export {
-  type CreateUserResult,
-  createUser,
-  getUserById,
-  listUsers,
-  type UserSummary,
-} from "./queries/users";
-export type { NewUser, User, UserRole } from "./schema/users";
-export {
-  NewUserInput,
-  UserLookupInput,
-  userInsertSchema,
-  userSelectSchema,
-} from "./validation/users";
+export type { OAuthClient } from "./schema/oauth-clients";
+export type { Session } from "./schema/sessions";
+export type { User, UserRole } from "./schema/users";

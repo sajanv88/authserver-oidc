@@ -17,7 +17,6 @@
     "db:generate": "pnpm --filter @repo/db db:generate",
     "db:check": "pnpm --filter @repo/db db:check",
     "db:migrate": "pnpm --filter @repo/db db:migrate",
-    "db:seed": "pnpm --filter @repo/db db:seed",
     "db:studio": "pnpm --filter @repo/db db:studio"
   },
   "devDependencies": {
