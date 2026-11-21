@@ -1,0 +1,14 @@
+@use "abstracts" as a;
+
+// Every page of the example: one column, centered.
+.page {
+  display: grid;
+  gap: a.space(6);
+  margin-inline: auto;
+  padding: a.space(4);
+  max-inline-size: var(--app-content-max-width);
+
+  @include a.breakpoint("md") {
+    padding: a.space(8);
+  }
+}
