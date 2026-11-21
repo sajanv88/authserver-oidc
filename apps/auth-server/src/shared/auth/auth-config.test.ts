@@ -58,12 +58,17 @@ describe("auth configuration", () => {
       expect(rows).toEqual([{ role: "user" }]);
     });
 
-    it("answers a sign-up for an existing email exactly like a new one", async () => {
+    it("answers a sign-up for an existing email exactly like a new one, and tells the owner", async () => {
+      const before = h.emails.length;
       const response = await h.browser(ip).request("POST", "/api/auth/sign-up/email", {
         json: { email: "new@example.com", password, name: "Someone else" },
       });
       expect(response.status).toBe(200);
       expect((await json(response)).token).toBeNull();
+      expect(h.emails.length).toBe(before + 1);
+      expect(h.emails.at(-1)?.to).toBe("new@example.com");
+      expect(h.emails.at(-1)?.subject).toContain("You already have an account");
+      expect(h.emails.at(-1)?.text).toContain("http://auth.localtest.me:3000/forgot-password");
     });
 
     it("refuses a password shorter than 12 characters", async () => {

@@ -1,0 +1,10 @@
+@use "abstracts" as a;
+
+.auth-form {
+  display: grid;
+  gap: a.space(5);
+
+  &__submit {
+    inline-size: 100%;
+  }
+}

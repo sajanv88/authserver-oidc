@@ -4,7 +4,12 @@ import { createConsoleProvider } from "./console-provider";
 import { createSmtpProvider } from "./smtp-provider";
 import type { EmailMessage, EmailProvider } from "./types";
 
-export { magicLinkTemplate, resetPasswordTemplate, verifyEmailTemplate } from "./templates";
+export {
+  existingAccountTemplate,
+  magicLinkTemplate,
+  resetPasswordTemplate,
+  verifyEmailTemplate,
+} from "./templates";
 export type { EmailContent, EmailMessage, EmailProvider } from "./types";
 
 let provider: EmailProvider | undefined;

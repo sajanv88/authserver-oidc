@@ -8,4 +8,14 @@
   text-underline-offset: 0.2em;
 
   @include a.focus-ring;
+
+  // A button that reads as a link: none of the button's own frame.
+  &--button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+  }
 }
