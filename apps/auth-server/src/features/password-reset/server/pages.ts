@@ -20,7 +20,11 @@ export function forgotPasswordPageContext(searchParams: SearchParams): ForgotPas
   const oidcQuery = signedOidcQuery(searchParams);
   const returnTo = safeReturnPath(searchParams.returnTo);
   const carry = oidcQuery || (returnTo === "/" ? "" : new URLSearchParams({ returnTo }).toString());
-  return { next: destination(searchParams), loginHref: authPageHref("login", carry) };
+  return {
+    next: destination(searchParams),
+    loginHref: authPageHref("login", carry),
+    retryHref: authPageHref("forgotPassword", carry),
+  };
 }
 
 /**

@@ -29,6 +29,7 @@ export function MagicLinkScreen(context: MagicLinkContext) {
         <MagicLinkForm
           callbackURL={context.callbackURL}
           errorCallbackURL={context.errorCallbackURL}
+          retryHref={context.retryHref}
         />
       </div>
     </AuthCard>

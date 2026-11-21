@@ -17,7 +17,7 @@ export function SignUpScreen({ oidcQuery, next }: SignUpContext) {
         </p>
       }
     >
-      <SignUpForm next={next} />
+      <SignUpForm next={next} retryHref={authPageHref("signup", oidcQuery)} />
     </AuthCard>
   );
 }

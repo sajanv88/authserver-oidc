@@ -11,52 +11,25 @@ import {
   FieldLabel,
   Input,
 } from "@nuvui/react";
-import { type FormEvent, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
-import { TextButton } from "@/shared/ui/text-link/text-link";
-import { parseForm } from "@/shared/validation/field-errors";
-import { MagicLinkSchema } from "../../schemas/magic-link";
+import { TextLink } from "@/shared/ui/text-link/text-link";
+import { requestMagicLinkAction } from "../../actions/magic-link";
 import type { MagicLinkContext, MagicLinkState } from "../../types";
 import "./magic-link-form.scss";
 
+const INITIAL: MagicLinkState = { status: "editing", attempt: 0, email: "" };
+
 /**
- * Asks for a sign-in link. Whatever the address, the answer is the same: Better Auth answers
- * alike, and the server sends nothing to unknown addresses or accounts with two-factor on.
+ * Asks for a sign-in link, through the server action. Whatever the address, the answer is the
+ * same: the server sends nothing to unknown addresses or accounts with two-factor on.
  */
 export function MagicLinkForm({
   callbackURL,
   errorCallbackURL,
-}: Pick<MagicLinkContext, "callbackURL" | "errorCallbackURL">) {
-  const [state, setState] = useState<MagicLinkState>({ status: "editing" });
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(MagicLinkSchema, Object.fromEntries(new FormData(form)));
-    if (!parsed.ok) {
-      setState({ status: "editing", error: parsed.errors.email });
-      const input = form.elements.namedItem("email");
-      if (input instanceof HTMLElement) input.focus();
-      return;
-    }
-
-    setState({ status: "submitting" });
-    const { error } = await authClient.signIn.magicLink({
-      email: parsed.value.email,
-      callbackURL,
-      errorCallbackURL,
-    });
-    if (error) {
-      setState({
-        status: "editing",
-        formError: authErrorMessage(error, "We couldn't send the link. Try again in a moment."),
-      });
-      return;
-    }
-    setState({ status: "sent", email: parsed.value.email });
-  }
+  retryHref,
+}: Pick<MagicLinkContext, "callbackURL" | "errorCallbackURL" | "retryHref">) {
+  const [state, action, pending] = useActionState(requestMagicLinkAction, INITIAL);
 
   if (state.status === "sent") {
     return (
@@ -69,16 +42,17 @@ export function MagicLinkForm({
           </AlertDescription>
         </Alert>
         <p className="magic-link-form__note">
-          Nothing arrived?{" "}
-          <TextButton onClick={() => setState({ status: "editing" })}>Try again</TextButton>
+          Nothing arrived? <TextLink href={retryHref}>Try again</TextLink>
         </p>
       </div>
     );
   }
 
   return (
-    <AuthForm onSubmit={submit}>
-      {state.status === "editing" && state.formError ? (
+    <AuthForm key={state.attempt} action={action} focus={state.error ? "email" : undefined}>
+      <input type="hidden" name="callbackURL" value={callbackURL} />
+      <input type="hidden" name="errorCallbackURL" value={errorCallbackURL} />
+      {state.formError ? (
         <Alert intent="danger">
           <AlertDescription>{state.formError}</AlertDescription>
         </Alert>
@@ -86,14 +60,20 @@ export function MagicLinkForm({
       <Field required>
         <FieldLabel>Email</FieldLabel>
         <FieldControl>
-          <Input type="email" name="email" autoComplete="email" inputMode="email" />
+          <Input
+            type="email"
+            name="email"
+            autoComplete="email"
+            inputMode="email"
+            defaultValue={state.email}
+          />
         </FieldControl>
         <FieldDescription>
           Accounts with two-factor authentication sign in with their password.
         </FieldDescription>
-        <FieldError>{state.status === "editing" ? state.error : undefined}</FieldError>
+        <FieldError>{state.error}</FieldError>
       </Field>
-      <SubmitButton pending={state.status === "submitting"} pendingLabel="Sending…">
+      <SubmitButton pending={pending} pendingLabel="Sending…">
         Email me a link
       </SubmitButton>
     </AuthForm>

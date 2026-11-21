@@ -5,7 +5,11 @@ import type { ResetPasswordField } from "./schemas/password-reset";
 /** Where to go once the password is reset: back into the app's flow, or the account. */
 export type ResetDestination = { next: string };
 
-export type ForgotPasswordContext = ResetDestination & { loginHref: Route };
+export type ForgotPasswordContext = ResetDestination & {
+  loginHref: Route;
+  /** This page again, with the same query: "Try again" after a link was sent. */
+  retryHref: Route;
+};
 
 /** /reset-password, after Better Auth has checked the link. */
 export type ResetPasswordContext = { forgotPasswordHref: Route } & (
@@ -14,13 +18,22 @@ export type ResetPasswordContext = { forgotPasswordHref: Route } & (
 );
 
 export type ForgotPasswordState =
-  | { status: "editing"; error?: string | undefined; formError?: string | undefined }
-  | { status: "submitting" }
-  | { status: "sent"; email: string };
+  | {
+      status: "editing";
+      attempt: number;
+      email: string;
+      error?: string | undefined;
+      formError?: string | undefined;
+    }
+  | { status: "sent"; attempt: number; email: string };
 
 export type ResetPasswordState =
-  | { status: "editing"; errors: FieldErrors<ResetPasswordField>; formError?: string | undefined }
-  | { status: "submitting" }
-  | { status: "done" }
+  | {
+      status: "editing";
+      attempt: number;
+      errors: FieldErrors<ResetPasswordField>;
+      formError?: string | undefined;
+    }
+  | { status: "done"; attempt: number }
   /** The token was refused when used: expired, or already used. */
-  | { status: "expired" };
+  | { status: "expired"; attempt: number };

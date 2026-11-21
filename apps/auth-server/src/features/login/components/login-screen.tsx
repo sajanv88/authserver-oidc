@@ -22,6 +22,7 @@ export function LoginScreen(context: LoginContext) {
       }
     >
       <LoginForm
+        oidcQuery={context.oidcQuery}
         returnTo={context.returnTo}
         restartUrl={context.restartUrl}
         forgotPasswordHref={context.forgotPasswordHref}

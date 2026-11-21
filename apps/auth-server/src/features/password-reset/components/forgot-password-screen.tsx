@@ -3,7 +3,7 @@ import { TextLink } from "@/shared/ui/text-link/text-link";
 import type { ForgotPasswordContext } from "../types";
 import { ForgotPasswordForm } from "./forgot-password-form/forgot-password-form";
 
-export function ForgotPasswordScreen({ next, loginHref }: ForgotPasswordContext) {
+export function ForgotPasswordScreen({ next, loginHref, retryHref }: ForgotPasswordContext) {
   return (
     <AuthCard
       title="Reset your password"
@@ -14,7 +14,7 @@ export function ForgotPasswordScreen({ next, loginHref }: ForgotPasswordContext)
         </p>
       }
     >
-      <ForgotPasswordForm next={next} />
+      <ForgotPasswordForm next={next} retryHref={retryHref} />
     </AuthCard>
   );
 }

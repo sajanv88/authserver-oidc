@@ -14,34 +14,15 @@ import {
   Input,
   PasswordInput,
 } from "@nuvui/react";
-import { type FormEvent, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { type AuthClientError, authErrorMessage } from "@/shared/auth/auth-errors";
+import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
+import { LeavingFor } from "@/shared/ui/leaving-for/leaving-for";
 import { TextLink } from "@/shared/ui/text-link/text-link";
-import { firstInvalidField, parseForm } from "@/shared/validation/field-errors";
-import { LOGIN_FIELDS, type LoginField, LoginSchema } from "../../schemas/login";
+import { firstInvalidField } from "@/shared/validation/field-errors";
+import { signInAction } from "../../actions/sign-in";
+import { LOGIN_FIELDS } from "../../schemas/login";
 import type { LoginContext, LoginProblem, LoginState } from "../../types";
 import "./login-form.scss";
-
-function focusField(form: HTMLFormElement, field: LoginField | undefined) {
-  const element = field ? form.elements.namedItem(field) : null;
-  if (element instanceof HTMLElement) element.focus();
-}
-
-/** What a failed sign-in means for the person in front of the form. */
-function problemFor(error: AuthClientError & { error?: unknown }, email: string): LoginProblem {
-  if (error.status === 403 && error.code === "EMAIL_NOT_VERIFIED")
-    return { kind: "unverified", email };
-  // The signed authorization query outlived its 10 minutes.
-  if (error.error === "invalid_signature") return { kind: "expired" };
-  // Wrong password and unknown email get the same words, as they get the same answer.
-  if (error.status === 401) return { kind: "message", text: "Email or password is incorrect." };
-  return {
-    kind: "message",
-    text: authErrorMessage(error, "We couldn't sign you in. Try again in a moment."),
-  };
-}
 
 function Problem({
   problem,
@@ -86,61 +67,44 @@ function Problem({
   }
 }
 
+const INITIAL: LoginState = { status: "editing", attempt: 0, email: "", errors: {} };
+
 /**
- * Email and password. Inside an OIDC flow the browser auth client sends the signed query along,
- * and Better Auth answers with where to go next (consent, or straight back to the app), which
- * its redirect plugin follows. A second factor sends the browser to /two-factor. Otherwise the
- * form goes to returnTo.
+ * Email and password, checked by the server action. Inside an OIDC flow the signed query goes
+ * along, and Better Auth answers with where to go next: consent (a page here) or straight back
+ * to the app (another site, so the form navigates there). A second factor goes on to
+ * /two-factor. Otherwise on to returnTo.
  */
 export function LoginForm({
+  oidcQuery,
   returnTo,
   restartUrl,
   forgotPasswordHref,
-}: Pick<LoginContext, "returnTo" | "restartUrl" | "forgotPasswordHref">) {
-  const [state, setState] = useState<LoginState>({ status: "editing", errors: {} });
+}: Pick<LoginContext, "oidcQuery" | "returnTo" | "restartUrl" | "forgotPasswordHref">) {
+  const [state, action, pending] = useActionState(signInAction, INITIAL);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const parsed = parseForm(LoginSchema, Object.fromEntries(new FormData(form)));
-    if (!parsed.ok) {
-      setState({ status: "editing", errors: parsed.errors });
-      focusField(form, firstInvalidField(parsed.errors, LOGIN_FIELDS));
-      return;
-    }
+  if (state.status === "leaving") return <LeavingFor url={state.url} />;
 
-    setState({ status: "submitting" });
-    const { email, password, rememberMe } = parsed.value;
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-      rememberMe: rememberMe ?? false,
-    });
-    if (error) {
-      const problem = problemFor(error, email);
-      setState({ status: "editing", errors: {}, problem });
-      if (problem.kind === "message") focusField(form, "password");
-      return;
-    }
-
-    setState({ status: "leaving" });
-    // Better Auth's client is already navigating: to /two-factor, or on with the OIDC flow.
-    if ("twoFactorRedirect" in data && data.twoFactorRedirect) return;
-    if ("redirect" in data && data.redirect) return;
-    window.location.assign(returnTo);
-  }
-
-  const busy = state.status !== "editing";
-  const errors = state.status === "editing" ? state.errors : {};
-  const problem = state.status === "editing" ? state.problem : undefined;
+  const { errors, problem } = state;
+  const focus =
+    firstInvalidField(errors, LOGIN_FIELDS) ??
+    (problem?.kind === "message" ? "password" : undefined);
 
   return (
-    <AuthForm onSubmit={submit}>
+    <AuthForm key={state.attempt} action={action} focus={focus}>
+      <input type="hidden" name="oidcQuery" value={oidcQuery} />
+      <input type="hidden" name="returnTo" value={returnTo} />
       {problem ? <Problem problem={problem} restartUrl={restartUrl} /> : null}
       <Field required>
         <FieldLabel>Email</FieldLabel>
         <FieldControl>
-          <Input type="email" name="email" autoComplete="username" inputMode="email" />
+          <Input
+            type="email"
+            name="email"
+            autoComplete="username"
+            inputMode="email"
+            defaultValue={state.email}
+          />
         </FieldControl>
         <FieldError>{errors.email}</FieldError>
       </Field>
@@ -160,7 +124,7 @@ export function LoginForm({
         </FieldControl>
         <FieldLabel>Keep me signed in on this device</FieldLabel>
       </Field>
-      <SubmitButton pending={busy} pendingLabel="Signing in…">
+      <SubmitButton pending={pending} pendingLabel="Signing in…">
         Sign in
       </SubmitButton>
     </AuthForm>

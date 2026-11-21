@@ -38,6 +38,7 @@ export async function loginPageContext(searchParams: SearchParams): Promise<Logi
   // What the sibling pages need to carry on from here.
   const carry = oidcQuery || (returnTo === "/" ? "" : new URLSearchParams({ returnTo }).toString());
   return {
+    oidcQuery,
     returnTo,
     restartUrl,
     signUpHref: authPageHref("signup", oidcQuery),

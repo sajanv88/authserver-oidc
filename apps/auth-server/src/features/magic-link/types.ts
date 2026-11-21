@@ -9,9 +9,16 @@ export type MagicLinkContext = {
   /** The page was opened from a link that didn't work (expired, used, or tampered with). */
   linkFailed: boolean;
   loginHref: Route;
+  /** This page again, with the same query: "Try again" after a link was sent. */
+  retryHref: Route;
 };
 
 export type MagicLinkState =
-  | { status: "editing"; error?: string | undefined; formError?: string | undefined }
-  | { status: "submitting" }
-  | { status: "sent"; email: string };
+  | {
+      status: "editing";
+      attempt: number;
+      email: string;
+      error?: string | undefined;
+      formError?: string | undefined;
+    }
+  | { status: "sent"; attempt: number; email: string };
