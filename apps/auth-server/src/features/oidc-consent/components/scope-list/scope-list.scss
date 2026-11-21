@@ -1,0 +1,35 @@
+@use "abstracts" as a;
+
+.scope-list {
+  display: grid;
+  gap: a.space(3);
+  margin: 0 0 a.space(6);
+  padding: 0;
+  list-style: none;
+
+  &__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(3);
+    align-items: start;
+  }
+
+  &__icon {
+    margin-block-start: a.space(0.5);
+    color: var(--color-success);
+  }
+
+  &__text {
+    display: grid;
+    gap: a.space(0.5);
+  }
+
+  &__title {
+    font-weight: var(--font-weight-medium);
+  }
+
+  &__description {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+}
