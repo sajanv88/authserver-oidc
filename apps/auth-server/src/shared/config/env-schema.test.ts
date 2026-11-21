@@ -1,0 +1,128 @@
+import { describe, expect, it } from "vitest";
+import { parseEnv } from "./env-schema";
+
+const secret = "q3J8v1Zx9LmT0pR7sW2yN5cB4dF6gH8k";
+
+const valid = {
+  NODE_ENV: "development",
+  DATABASE_URL: "postgres://app:app@127.0.0.1:5432/auth_server",
+  BETTER_AUTH_SECRET: secret,
+  BETTER_AUTH_URL: "http://auth.localtest.me:3000",
+  COOKIE_DOMAIN: ".localtest.me",
+  TRUSTED_ORIGINS: "http://app.localtest.me:3001, http://other.localtest.me:3002",
+  EMAIL_PROVIDER: "console",
+  EMAIL_FROM: "Auth <no-reply@localtest.me>",
+};
+
+const production = {
+  ...valid,
+  NODE_ENV: "production",
+  BETTER_AUTH_URL: "https://auth.example.com",
+  COOKIE_DOMAIN: ".example.com",
+  TRUSTED_ORIGINS: "https://app.example.com",
+  TRUSTED_PROXIES: "10.0.0.0/8, 192.168.1.10, fd00::/8",
+  EMAIL_PROVIDER: "smtp",
+  SMTP_HOST: "smtp.example.com",
+  SMTP_PORT: "465",
+  SMTP_USER: "user",
+  SMTP_PASSWORD: "app-password",
+};
+
+function errorsFor(source: Record<string, string | undefined>): string[] {
+  const result = parseEnv(source);
+  return result.ok ? [] : result.errors;
+}
+
+describe("parseEnv", () => {
+  it("parses a local development environment", () => {
+    const result = parseEnv(valid);
+    expect(result).toEqual({
+      ok: true,
+      env: expect.objectContaining({
+        isProduction: false,
+        betterAuthUrl: "http://auth.localtest.me:3000",
+        cookieDomain: ".localtest.me",
+        trustedOrigins: ["http://app.localtest.me:3001", "http://other.localtest.me:3002"],
+        trustedProxies: [],
+        email: { provider: "console", from: "Auth <no-reply@localtest.me>" },
+      }),
+    });
+  });
+
+  it("parses a production environment with SMTP", () => {
+    const result = parseEnv(production);
+    if (!result.ok) throw new Error(result.errors.join("; "));
+    expect(result.env.trustedProxies).toEqual(["10.0.0.0/8", "192.168.1.10", "fd00::/8"]);
+    expect(result.env.email).toEqual({
+      provider: "smtp",
+      from: "Auth <no-reply@localtest.me>",
+      host: "smtp.example.com",
+      port: 465,
+      user: "user",
+      password: "app-password",
+    });
+  });
+
+  it("turns cross-subdomain cookies off when COOKIE_DOMAIN is empty", () => {
+    const result = parseEnv({ ...valid, COOKIE_DOMAIN: "" });
+    expect(result.ok && result.env.cookieDomain).toBeUndefined();
+  });
+
+  it.each([
+    ["short", "too-short", "at least 32"],
+    ["Better Auth's default", "better-auth-secret-12345678901234567890", "published default"],
+    ["a repeated pattern", "a".repeat(40), "random"],
+  ])("rejects a %s secret", (_, value, message) => {
+    expect(errorsFor({ ...valid, BETTER_AUTH_SECRET: value }).join()).toContain(message);
+  });
+
+  it.each([
+    "https://*.example.com",
+    "https://app.example.com/path",
+    "app.example.com",
+    "ftp://app.example.com",
+  ])("rejects %s as a trusted origin", (origin) => {
+    expect(errorsFor({ ...valid, TRUSTED_ORIGINS: origin }).join()).toContain("TRUSTED_ORIGINS");
+  });
+
+  it("rejects a cookie domain that isn't a parent of the auth server's host", () => {
+    expect(errorsFor({ ...valid, COOKIE_DOMAIN: ".example.com" }).join()).toContain(
+      "COOKIE_DOMAIN must be a parent domain",
+    );
+  });
+
+  it.each(["10.0.0.0/33", "not-an-ip", "10.0.0.0/8/1"])(
+    "rejects %s as a trusted proxy",
+    (proxy) => {
+      expect(errorsFor({ ...valid, TRUSTED_PROXIES: proxy }).join()).toContain("TRUSTED_PROXIES");
+    },
+  );
+
+  it("requires the SMTP settings when the provider is smtp", () => {
+    const errors = errorsFor({ ...valid, EMAIL_PROVIDER: "smtp" });
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        "SMTP_HOST is required when EMAIL_PROVIDER is smtp",
+        "SMTP_USER is required when EMAIL_PROVIDER is smtp",
+        "SMTP_PASSWORD is required when EMAIL_PROVIDER is smtp",
+      ]),
+    );
+  });
+
+  it("refuses console email, http URLs and http origins in production", () => {
+    const errors = errorsFor({
+      ...production,
+      EMAIL_PROVIDER: "console",
+      BETTER_AUTH_URL: "http://auth.example.com",
+      TRUSTED_ORIGINS: "http://app.example.com",
+    }).join();
+    expect(errors).toContain("EMAIL_PROVIDER must be smtp in production");
+    expect(errors).toContain("BETTER_AUTH_URL must be https in production");
+    expect(errors).toContain("TRUSTED_ORIGINS must all be https in production");
+  });
+
+  it("never puts a value in an error message", () => {
+    const errors = errorsFor({ ...valid, BETTER_AUTH_SECRET: "leaky-secret-value" }).join();
+    expect(errors).not.toContain("leaky-secret-value");
+  });
+});
