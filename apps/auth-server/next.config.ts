@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
   // Skew protection across a rolling update: the Dockerfile passes the commit SHA.
   ...(deploymentId ? { deploymentId } : {}),
   sassOptions: {
-    loadPaths: ["src/styles"],
+    loadPaths: ["src/shared/styles"],
   },
   experimental: {
     // Type-check with the project's own tsc: TypeScript 7, the native compiler.
