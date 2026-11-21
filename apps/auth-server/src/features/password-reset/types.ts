@@ -8,9 +8,10 @@ export type ResetDestination = { next: string };
 export type ForgotPasswordContext = ResetDestination & { loginHref: Route };
 
 /** /reset-password, after Better Auth has checked the link. */
-export type ResetPasswordContext =
+export type ResetPasswordContext = { forgotPasswordHref: Route } & (
   | ({ status: "ready"; token: string } & ResetDestination)
-  | { status: "invalid"; forgotPasswordHref: Route };
+  | { status: "invalid" }
+);
 
 export type ForgotPasswordState =
   | { status: "editing"; error?: string | undefined; formError?: string | undefined }
