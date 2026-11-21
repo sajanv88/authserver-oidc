@@ -1,27 +1,30 @@
+import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
+import { AUTH_COOKIE_PREFIX, isProtectedPath, LOGIN_PATH } from "@/shared/auth/constants";
+import { buildContentSecurityPolicy, createNonce } from "@/shared/security/csp";
 
-// A fresh nonce per request, sent as the Content-Security-Policy. Next reads the nonce from
-// the request's CSP header and puts it on its own scripts; the root layout reads x-nonce for
-// anything else that needs it (nuvui's ScrollArea, next/script).
+// Runs before every document request.
+//
+// 1. A protected page without a session cookie goes straight to the login page, coming back
+//    afterwards. Only a convenience: the cookie isn't verified here, and every protected page
+//    and action checks the real session itself (shared/auth/session.ts).
+// 2. Everything else gets a fresh nonce and the Content-Security-Policy (shared/security/csp.ts).
+//    Next reads the nonce from the request's CSP header and puts it on its own scripts; the
+//    root layout reads x-nonce for anything else that needs it.
 export function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const isDev = process.env.NODE_ENV === "development";
+  const { pathname, search } = request.nextUrl;
 
-  const csp = [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
-    // nuvui: ScrollArea's one <style> element takes the nonce; components set style attributes.
-    `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
-    "style-src-attr 'unsafe-inline'",
-    "img-src 'self' blob: data:",
-    "font-src 'self'",
-    "connect-src 'self'",
-    "worker-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-  ].join("; ");
+  if (
+    isProtectedPath(pathname) &&
+    !getSessionCookie(request, { cookiePrefix: AUTH_COOKIE_PREFIX })
+  ) {
+    const login = new URL(LOGIN_PATH, request.nextUrl);
+    login.search = new URLSearchParams({ returnTo: `${pathname}${search}` }).toString();
+    return NextResponse.redirect(login);
+  }
+
+  const nonce = createNonce();
+  const csp = buildContentSecurityPolicy({ nonce, isDev: process.env.NODE_ENV === "development" });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
@@ -35,8 +38,8 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      // Documents only: not route handlers (/api/health included), static files, image
-      // optimisation, or prefetches.
+      // Documents only: not route handlers (/api/auth and /api/health included), static
+      // files, image optimisation, or prefetches.
       source: "/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },

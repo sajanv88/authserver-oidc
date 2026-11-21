@@ -12,6 +12,7 @@ import {
   resetPasswordTemplate,
   verifyEmailTemplate,
 } from "@/shared/email";
+import { AUTH_COOKIE_PREFIX, LOGIN_PATH } from "./constants";
 
 // Lifetimes, in seconds. Short for anything that's a bearer credential in a URL or a header.
 export const LIFETIMES = {
@@ -26,7 +27,7 @@ export const LIFETIMES = {
 
 export const OIDC_SCOPES = ["openid", "profile", "email", "offline_access"];
 
-export const LOGIN_PAGE = "/login";
+export const LOGIN_PAGE = LOGIN_PATH;
 export const CONSENT_PAGE = "/consent";
 
 // Tighter than the global limit (100 per minute per IP and path) on everything an attacker
@@ -125,7 +126,7 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
 
     advanced: {
       database: { generateId: "uuid" },
-      cookiePrefix: "nvx-auth",
+      cookiePrefix: AUTH_COOKIE_PREFIX,
       useSecureCookies: env.isProduction,
       ...(env.cookieDomain
         ? { crossSubDomainCookies: { enabled: true, domain: env.cookieDomain } }
