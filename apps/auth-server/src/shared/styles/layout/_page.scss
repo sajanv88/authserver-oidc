@@ -1,5 +1,6 @@
 @use "abstracts" as a;
 
+// A plain page outside the signed-in frame: error and not-found.
 .page {
   display: grid;
   gap: a.space(4);
@@ -11,19 +12,10 @@
     padding: a.space(8);
   }
 
-  &__title {
-    margin: 0;
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-semibold);
-  }
-
-  &__meta {
-    margin: 0;
-    color: var(--color-muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  &__card {
-    max-inline-size: 32rem;
+  // The message in the middle of the screen.
+  &--centered {
+    align-content: center;
+    min-block-size: 100svh;
+    max-inline-size: 36rem;
   }
 }
