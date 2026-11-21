@@ -50,4 +50,18 @@ describe("authorizeUrlFrom", () => {
     expect(authorizeUrlFrom("")).toBeUndefined();
     expect(authorizeUrlFrom({ client_id: "a" })).toBeUndefined();
   });
+
+  it("for a fresh sign-in, drops prompt=login and max_age but keeps other prompts", () => {
+    const query = "response_type=code&client_id=a&prompt=login+consent&max_age=0";
+    const url = new URL(authorizeUrlFrom(query, { freshSignIn: true }) ?? "", "https://x.example");
+    expect(url.searchParams.get("prompt")).toBe("consent");
+    expect(url.searchParams.has("max_age")).toBe(false);
+
+    const onlyLogin = authorizeUrlFrom("response_type=code&client_id=a&prompt=login", {
+      freshSignIn: true,
+    });
+    expect(onlyLogin).not.toContain("prompt");
+    // Without the option, the app's demand stands (a restart must still ask to log in).
+    expect(authorizeUrlFrom(query)).toContain("prompt=login");
+  });
 });
