@@ -1,0 +1,11 @@
+@use "abstracts" as a;
+
+.account-security-screen {
+  display: grid;
+  gap: a.space(6);
+
+  // A form a few fields long reads better narrower than the card.
+  &__password {
+    max-inline-size: 28rem;
+  }
+}

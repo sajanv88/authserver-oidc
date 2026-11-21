@@ -11,6 +11,7 @@ export {
   type OAuthClientPublicInfo,
   type OAuthClientSummary,
 } from "./queries/oauth-clients";
+export { getSessionToken, listActiveSessions, type SessionSummary } from "./queries/sessions";
 export { getUserSecurityByEmail, type UserSecurity } from "./queries/users";
 export type { OAuthClient } from "./schema/oauth-clients";
 export type { Session } from "./schema/sessions";
