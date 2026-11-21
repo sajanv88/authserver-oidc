@@ -9,21 +9,21 @@ import "./page-shell.scss";
 export type { ShellLink } from "./page-shell-links";
 
 type PageShellProps = {
-  /** The page's h1. */
-  title: string;
-  description?: ReactNode;
   /** The signed-in user's places: account security, and client admin for admins. */
   links: ShellLink[];
   /** At the far end of the bar at every width, such as a sign-out button. */
   actions?: ReactNode;
+  /** The page, starting with its PageHeader. */
   children: ReactNode;
 };
 
 /**
- * The frame of the signed-in pages: a skip link, nuvui's Navbar, and the page's main landmark
- * with its heading. A server component; only the links' `current` state runs on the client.
+ * The frame of the signed-in pages, rendered by their layout so it stays put while pages
+ * change: a skip link, nuvui's Navbar, and the main landmark. Each page renders its own
+ * heading with PageHeader. A server component; only the links' `current` state runs on the
+ * client.
  */
-export function PageShell({ title, description, links, actions, children }: PageShellProps) {
+export function PageShell({ links, actions, children }: PageShellProps) {
   return (
     <div className="page-shell">
       <a className="page-shell__skip" href="#content">
@@ -49,10 +49,6 @@ export function PageShell({ title, description, links, actions, children }: Page
         </NavbarActions>
       </Navbar>
       <main className="page-shell__main" id="content">
-        <header className="page-shell__header">
-          <h1 className="page-shell__title">{title}</h1>
-          {description ? <p className="page-shell__description">{description}</p> : null}
-        </header>
         {children}
       </main>
     </div>
