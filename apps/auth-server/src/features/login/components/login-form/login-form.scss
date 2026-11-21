@@ -1,0 +1,13 @@
+@use "abstracts" as a;
+
+.login-form {
+  // The label, with the way out for someone who has forgotten.
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2);
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+  }
+}
