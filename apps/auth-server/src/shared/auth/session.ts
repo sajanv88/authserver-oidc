@@ -2,6 +2,7 @@ import "server-only";
 import type { Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import { getAuth } from "./auth";
 import { safeReturnPath } from "./return-path";
@@ -11,7 +12,9 @@ export { safeReturnPath } from "./return-path";
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof readSession>>>;
 
 async function readSession() {
-  // Request headers first: that's what makes the page dynamic, before anything reads env.
+  // Per request, before anything reads env or the clock (Better Auth checks expiry with
+  // new Date()): without it, dev's prerender check flags the session read.
+  await connection();
   const requestHeaders = await headers();
   return getAuth().api.getSession({ headers: requestHeaders });
 }

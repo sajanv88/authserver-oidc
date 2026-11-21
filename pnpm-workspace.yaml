@@ -62,3 +62,5 @@ audit:
 permissions:
   drizzle-kit:
     skills: false
+  "@tanstack/react-table":
+    skills: false
