@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
     // The auth tests start an in-memory Postgres (PGlite, WASM) per file, migrate it, and drive
     // Better Auth over it: about a second locally, over 10 seconds on a busy shared CI runner
     // (vitest's default limit).

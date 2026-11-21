@@ -110,7 +110,7 @@ PostgreSQL through Drizzle ORM v1, in `packages/db` (`@repo/db`). Rules: the `nu
 - Validate input with valibot before any insert; never pass `FormData` to a query.
 - Better Auth reaches the database only through `createAuthAdapter(db)` from `@repo/db`, and must run with `advanced.database.generateId: "uuid"` (the adapter refuses to start otherwise). The tables mirror Better Auth's `getAuthTables()` for our plugin set: adding or upgrading a Better Auth plugin means a schema change, a migration, and an updated `src/auth-adapter.test.ts`, which runs a real `betterAuth()` against the migrated schema.
 - `@better-auth/oauth-provider` needs `clientPrivileges` (admins only) to create clients, `clientReference` so admins share them, and `allowInsecureRedirectUri` to accept `http://` redirect URIs outside loopback (local `*.localtest.me` only, never in production).
-- Local database: `cp .env.example .env`, point `DATABASE_URL` at a Postgres database (or `docker compose up -d`), then `pnpm db:migrate`.
+- Local database: `cp .env.example .env`, point `DATABASE_URL` at a Postgres database (or `docker compose up -d`), then `pnpm db:migrate`, and `pnpm db:seed` (needs `SEED_ADMIN_PASSWORD`) for an admin and the example client's registration. The seed (`apps/auth-server/scripts/seed.ts`, bundled by esbuild) goes through Better Auth like the app, sets only the admin role and confirmed email directly, is safe to run twice, and refuses `NODE_ENV=production`.
 - Never commit `.env` or any `DATABASE_URL` with real credentials. In Kubernetes it comes from an existing Secret, and the chart only references it by name.
 - Migrations reach production as an Argo CD PreSync Job running `node packages/db/dist/migrate.mjs` from the app image.
 - The drizzle-kit MCP server is in `.mcp.json` but disabled in `.claude/settings.json`: it can `push` and `pull` against whatever `DATABASE_URL` is set. Enable it only while that points at a local database.
@@ -119,5 +119,6 @@ PostgreSQL through Drizzle ORM v1, in `packages/db` (`@repo/db`). Rules: the `nu
 pnpm db:generate   # new migration from the schema diff
 pnpm db:check      # migration conflicts across branches
 pnpm db:migrate    # build + apply with the bundled runner
+pnpm db:seed       # local admin + the example client (SEED_ADMIN_PASSWORD in .env)
 pnpm db:studio     # local inspection only
 ```
