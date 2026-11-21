@@ -6,7 +6,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/migrate.ts", "src/seed.ts"],
+      "includes": ["src/migrate.ts"],
       "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
     }
   ]

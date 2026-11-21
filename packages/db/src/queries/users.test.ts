@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { users } from "../schema/users";
 import { createTestDb } from "../testing/pglite";
-import { createUser, getUserById, listUsers } from "./users";
+import { getUserSecurityByEmail } from "./users";
 
 type TestDb = Awaited<ReturnType<typeof createTestDb>>;
 
@@ -9,38 +10,31 @@ describe("users queries", () => {
 
   beforeAll(async () => {
     db = await createTestDb();
+    await db.insert(users).values([
+      { email: "ada@example.com", name: "Ada", emailVerified: true, twoFactorEnabled: true },
+      { email: "grace@example.com", name: "Grace", role: "admin" },
+    ]);
   });
 
-  it("createUser inserts once and reports a taken email", async () => {
-    const first = await createUser(db, { email: "ada@example.com", name: "Ada" });
-    expect(first.ok).toBe(true);
-
-    const second = await createUser(db, { email: "ada@example.com", name: "Ada again" });
-    expect(second).toEqual({ ok: false, error: "email-taken" });
+  it("getUserSecurityByEmail returns only the security flags", async () => {
+    const ada = await getUserSecurityByEmail(db, "ada@example.com");
+    expect(ada).toMatchObject({ emailVerified: true, twoFactorEnabled: true, role: "user" });
+    expect(Object.keys(ada ?? {}).sort()).toEqual([
+      "emailVerified",
+      "id",
+      "role",
+      "twoFactorEnabled",
+    ]);
   });
 
-  it("getUserById returns the user, or undefined", async () => {
-    const created = await createUser(db, { email: "grace@example.com", name: "Grace" });
-    if (!created.ok) throw new Error("setup failed");
-
-    expect(await getUserById(db, created.user.id)).toMatchObject({ email: "grace@example.com" });
-    expect(await getUserById(db, "00000000-0000-4000-8000-000000000000")).toBeUndefined();
+  it("matches the email the way Better Auth stores it (trimmed, lowercased)", async () => {
+    expect(await getUserSecurityByEmail(db, "  Grace@Example.COM ")).toMatchObject({
+      role: "admin",
+      twoFactorEnabled: false,
+    });
   });
 
-  it("listUsers is newest first and honours the limit", async () => {
-    const page = await listUsers(db, { limit: 1 });
-    expect(page).toHaveLength(1);
-    expect(Object.keys(page[0] ?? {}).sort()).toEqual(["createdAt", "email", "id", "name", "role"]);
-  });
-
-  it("works inside a transaction (the executor can be tx)", async () => {
-    await expect(
-      db.transaction(async (tx) => {
-        await createUser(tx, { email: "rollback@example.com", name: "Temp" });
-        tx.rollback();
-      }),
-    ).rejects.toThrow();
-    const all = await listUsers(db, { limit: 100 });
-    expect(all.some((user) => user.email === "rollback@example.com")).toBe(false);
+  it("returns undefined for an unknown email", async () => {
+    expect(await getUserSecurityByEmail(db, "nobody@example.com")).toBeUndefined();
   });
 });
