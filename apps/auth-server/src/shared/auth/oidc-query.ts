@@ -5,7 +5,8 @@
 // `ba_iat`, `ba_param`). Two ways to get back into the flow:
 //
 // 1. Right away (sign-in, 2FA, consent): keep the signed query on the URL of every auth page.
-//    The browser auth client sends it along with sign-in, and Better Auth continues the flow.
+//    The forms post it back (a hidden field) and the server actions pass it to Better Auth as
+//    `oauth_query`, which continues the flow.
 // 2. Later (after an email round trip, when the signature has expired): start a fresh
 //    authorization request with the same parameters. The server checks the client, the
 //    redirect URI, PKCE and scopes again from scratch, so nothing is trusted from the link.
