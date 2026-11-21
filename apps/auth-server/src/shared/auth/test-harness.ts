@@ -1,0 +1,94 @@
+// Test-only helpers: a real createAuth() over a migrated PGlite database, driven through
+// Better Auth's HTTP handler the way browsers and OIDC clients drive it.
+import { createTestDb } from "@repo/db/testing";
+import type { ServerEnv } from "@/shared/config/env";
+import type { EmailMessage } from "@/shared/email";
+import { createAuth } from "./auth-config";
+
+export const BASE_URL = "http://auth.localtest.me:3000";
+export const APP_ORIGIN = "http://app.localtest.me:3001";
+
+export const testEnv: ServerEnv = {
+  nodeEnv: "test",
+  isProduction: false,
+  databaseUrl: "postgres://unused",
+  betterAuthSecret: "q3J8v1Zx9LmT0pR7sW2yN5cB4dF6gH8kTest",
+  betterAuthUrl: BASE_URL,
+  cookieDomain: ".localtest.me",
+  trustedOrigins: [APP_ORIGIN],
+  trustedProxies: ["10.0.0.0/8"],
+  email: { provider: "console", from: "Auth <no-reply@localtest.me>" },
+};
+
+export async function createHarness() {
+  const database = await createTestDb();
+  const emails: EmailMessage[] = [];
+  const auth = createAuth({ env: testEnv, database, sendEmail: (m) => emails.push(m) });
+
+  /** A browser: keeps cookies between requests, and always comes from the same client IP. */
+  function browser(clientIp = "203.0.113.10") {
+    const jar = new Map<string, string>();
+
+    async function request(
+      method: "GET" | "POST",
+      path: string,
+      options: {
+        json?: unknown;
+        form?: Record<string, string>;
+        headers?: Record<string, string>;
+      } = {},
+    ): Promise<Response> {
+      const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
+      const headers = new Headers({
+        origin: BASE_URL,
+        // The client, then the ingress (a trusted proxy).
+        "x-forwarded-for": `${clientIp}, 10.0.0.2`,
+        ...options.headers,
+      });
+      if (jar.size > 0) {
+        headers.set("cookie", [...jar].map(([name, value]) => `${name}=${value}`).join("; "));
+      }
+      let body: string | undefined;
+      if (options.json !== undefined) {
+        headers.set("content-type", "application/json");
+        body = JSON.stringify(options.json);
+      } else if (options.form) {
+        headers.set("content-type", "application/x-www-form-urlencoded");
+        body = new URLSearchParams(options.form).toString();
+      }
+      const response = await auth.handler(
+        new Request(url, {
+          method,
+          headers,
+          ...(body === undefined ? {} : { body }),
+          redirect: "manual",
+        }),
+      );
+      for (const cookie of response.headers.getSetCookie()) {
+        const [pair = ""] = cookie.split(";");
+        const index = pair.indexOf("=");
+        const name = pair.slice(0, index);
+        const value = pair.slice(index + 1);
+        if (value === "" || /max-age=0/i.test(cookie)) jar.delete(name);
+        else jar.set(name, value);
+      }
+      return response;
+    }
+
+    return { request, jar };
+  }
+
+  /** Raw SQL against the test database, for setup the app itself never does (making an admin). */
+  async function sql(query: string, params: unknown[] = []) {
+    return database.$client.query(query, params);
+  }
+
+  return { auth, database, emails, browser, sql };
+}
+
+/** The first URL in an email's text. */
+export function linkIn(email: EmailMessage | undefined): string {
+  const match = email?.text.match(/https?:\/\/\S+/);
+  if (!match) throw new Error("no link in the email");
+  return match[0];
+}

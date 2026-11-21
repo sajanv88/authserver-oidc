@@ -27,6 +27,8 @@ Never write nuvui code from memory. Before the first line of a page, component o
 
 If the MCP isn't connected, read the same from the `nuvraxis-frontend:nuvui` skill and say so.
 
+Next.js 16 differs from older versions you may know: its own guides ship in `apps/auth-server/node_modules/next/dist/docs/`. Read the relevant one before using a Next API you're unsure of.
+
 ## Commands
 
 ```sh
@@ -55,8 +57,15 @@ charts/auth-server/          Helm chart, one per app
 
 - `app/`: routing only. Thin `page.tsx` / `layout.tsx` / `route.ts` that import from features and shared; no business logic.
 - `features/<feature>/`: `components/` (nuvui UI + BEM `.scss`), `actions/` (server actions: session, origin and valibot checks in each), `schemas/` (valibot), `server/` (server-only logic), `hooks/` (only if needed), `types.ts`, `index.ts` (the feature's public API).
-- `shared/`: `config/` (env, app constants), `email/`, `ui/` (AuthCard, PageShell, TextLink, NonceProvider), `styles/`, and later `auth/`.
+- `shared/`: `config/` (env, app constants), `email/`, `ui/` (AuthCard, PageShell, TextLink, NonceProvider), `styles/`, `auth/`.
 - Boundaries, enforced by Biome (`noRestrictedImports` overrides in `biome.json`): other code imports a feature only as `@/features/<name>`; a feature never uses `../../` to leave its folder; `shared/` never imports from `features/`.
+
+## Auth (apps/auth-server/src/shared/auth)
+
+- `createAuth(deps)` in `auth-config.ts` is the whole Better Auth configuration, pure (env, database and email sender passed in). `getAuth()` in `auth.ts` builds it once, on first use: never at import, so `next build` needs no secrets. Route handlers that call it start with `await connection()` so they're never prerendered.
+- Server code reads the session with `getSession()` / `requireSession(returnTo)` / `requireAdmin()` from `session.ts`. Browser forms use `authClient` from `auth-client.ts` and post to `/api/auth/*`, so Better Auth's rate limiter, origin checks and the OIDC flow resume apply (its server API, `auth.api.*`, is not rate limited).
+- OIDC: the issuer is `BETTER_AUTH_URL` (bare origin). Discovery at `/.well-known/openid-configuration`, keys at `/jwks` (RS256), endpoints under `/api/auth/oauth2/*`. Code + PKCE (S256) and refresh only.
+- `auth-config.test.ts` drives the real configuration over HTTP against PGlite (`@repo/db/testing`). Change the config, change or extend those tests.
 
 ## Delivery
 

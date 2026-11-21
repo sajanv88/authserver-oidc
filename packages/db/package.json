@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./testing": "./src/testing/pglite.ts"
   },
   "scripts": {
     "build": "esbuild src/migrate.ts --bundle --platform=node --format=esm --target=node26 --outdir=dist --out-extension:.js=.mjs --external:pg-native --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",

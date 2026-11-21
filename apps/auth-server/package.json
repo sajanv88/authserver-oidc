@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3000",
     "typecheck": "next typegen && tsc --noEmit",
     "analyze": "next analyze",
     "test": "vitest run"
@@ -36,6 +36,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "jose": "catalog:",
     "sass": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
