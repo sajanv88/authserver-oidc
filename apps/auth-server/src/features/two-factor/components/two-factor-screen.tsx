@@ -5,7 +5,7 @@ import type { TwoFactorPageContext } from "../types";
 import { VerifyForm } from "./verify-form/verify-form";
 
 /** /two-factor: the second step of a password sign-in, by app code or backup code. */
-export function TwoFactorScreen({ returnTo, loginHref }: TwoFactorPageContext) {
+export function TwoFactorScreen({ oidcQuery, returnTo, loginHref }: TwoFactorPageContext) {
   return (
     <AuthCard
       title="Two-factor authentication"
@@ -22,10 +22,20 @@ export function TwoFactorScreen({ returnTo, loginHref }: TwoFactorPageContext) {
           <TabsTrigger value="backup">Backup code</TabsTrigger>
         </TabsList>
         <TabsContent value="totp">
-          <VerifyForm method="totp" returnTo={returnTo} loginHref={loginHref} />
+          <VerifyForm
+            method="totp"
+            oidcQuery={oidcQuery}
+            returnTo={returnTo}
+            loginHref={loginHref}
+          />
         </TabsContent>
         <TabsContent value="backup">
-          <VerifyForm method="backup" returnTo={returnTo} loginHref={loginHref} />
+          <VerifyForm
+            method="backup"
+            oidcQuery={oidcQuery}
+            returnTo={returnTo}
+            loginHref={loginHref}
+          />
         </TabsContent>
       </Tabs>
     </AuthCard>

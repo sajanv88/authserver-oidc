@@ -20,18 +20,126 @@ import {
   Spinner,
   toast,
 } from "@nuvui/react";
+import Form from "next/form";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
-import { authClient } from "@/shared/auth/auth-client";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/shared/config/app";
-import { parseForm } from "@/shared/validation/field-errors";
-import { ConfirmTotpSchema } from "../../schemas/two-factor";
+import { setupAction } from "../../actions/settings";
 import type { SetupStep } from "../../types";
 import { BackupCodesList } from "./backup-codes-list";
 import "./enable-dialog.scss";
 import { PasswordForm } from "./password-form";
 import { setupKeyFrom } from "./setup-key";
+
+const INITIAL: SetupStep = { step: "password", attempt: 0 };
+
+/** The dialog's content, one step per server action answer. Mounted only while it's open. */
+function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: () => void }) {
+  const [setup, action, pending] = useActionState(setupAction, INITIAL);
+  const codeField = useRef<HTMLFormElement>(null);
+  // Two-factor is on from the moment the code is accepted, however the dialog is then closed.
+  useEffect(() => {
+    if (setup.step === "backup-codes") onEnabled();
+  }, [setup.step, onEnabled]);
+  useEffect(() => {
+    if (setup.step === "scan" && setup.error) {
+      codeField.current?.querySelector<HTMLInputElement>("input:not([type=hidden])")?.focus();
+    }
+  }, [setup]);
+
+  if (setup.step === "password") {
+    return (
+      <>
+        <DialogTitle>Set up two-factor authentication</DialogTitle>
+        <DialogDescription>
+          You'll need an authenticator app, such as 1Password, Google Authenticator or Authy. First,
+          confirm your password.
+        </DialogDescription>
+        <PasswordForm
+          key={setup.attempt}
+          action={action}
+          pending={pending}
+          attempt={setup}
+          submitLabel="Continue"
+          pendingLabel="Checking…"
+        />
+      </>
+    );
+  }
+
+  if (setup.step === "scan") {
+    return (
+      <>
+        <DialogTitle>Add this account to your app</DialogTitle>
+        <DialogDescription>
+          Scan the code with your authenticator app, or type the setup key into it. Then enter the
+          6-digit code it shows.
+        </DialogDescription>
+        <Form
+          key={setup.attempt}
+          ref={codeField}
+          action={action}
+          className="enable-dialog"
+          noValidate
+        >
+          <div className="enable-dialog__key">
+            <QRCode
+              value={setup.totpURI}
+              size={176}
+              aria-label={`Add ${APP_NAME} to your authenticator app`}
+            />
+            <div className="enable-dialog__manual">
+              <p className="enable-dialog__label">Setup key</p>
+              <code className="enable-dialog__secret">{setupKeyFrom(setup.totpURI)}</code>
+              <p className="enable-dialog__hint">Time-based, 6 digits, every 30 seconds.</p>
+            </div>
+          </div>
+          <Field required>
+            <FieldLabel asChild>
+              <span>Code from the app</span>
+            </FieldLabel>
+            <FieldControl>
+              <OtpField name="code" groupSize={3} autoComplete="one-time-code" />
+            </FieldControl>
+            <FieldDescription>Two-factor turns on once this code is accepted.</FieldDescription>
+            <FieldError>{setup.error}</FieldError>
+          </Field>
+          <DialogFooter>
+            <Button type="submit" disabled={pending}>
+              {pending ? (
+                <>
+                  <Spinner size="sm" label="" />
+                  Checking…
+                </>
+              ) : (
+                "Turn on two-factor"
+              )}
+            </Button>
+          </DialogFooter>
+        </Form>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <DialogTitle>Save your backup codes</DialogTitle>
+      <DialogDescription>
+        If you lose your phone, each of these signs you in once instead of an app code. They won't
+        be shown again.
+      </DialogDescription>
+      <Alert intent="success" role="status">
+        <AlertDescription>Two-factor authentication is on.</AlertDescription>
+      </Alert>
+      <BackupCodesList codes={setup.backupCodes} />
+      <DialogFooter>
+        <Button type="button" onClick={onFinish}>
+          I've saved them
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
 
 /**
  * Turning two-factor on: the password, then the authenticator (QR code, or the setup key typed
@@ -41,44 +149,19 @@ import { setupKeyFrom } from "./setup-key";
 export function EnableDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [setup, setSetup] = useState<SetupStep>({ step: "password" });
-  const [confirming, setConfirming] = useState(false);
+  const finished = useRef(false);
 
   function changeOpen(next: boolean) {
     setOpen(next);
-    if (next) return;
+    if (next) {
+      finished.current = false;
+      return;
+    }
     // Closing after the codes were shown: the account has two-factor now.
-    if (setup.step === "backup-codes") {
+    if (finished.current) {
       toast("Two-factor authentication is on", { intent: "success" });
       router.refresh();
     }
-    setSetup({ step: "password" });
-  }
-
-  async function confirmCode(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (setup.step !== "scan") return;
-    const form = event.currentTarget;
-    const parsed = parseForm(ConfirmTotpSchema, Object.fromEntries(new FormData(form)));
-    if (!parsed.ok) {
-      setSetup({ ...setup, error: parsed.errors.code });
-      form.querySelector<HTMLInputElement>("input:not([type=hidden])")?.focus();
-      return;
-    }
-    setConfirming(true);
-    const { error } = await authClient.twoFactor.verifyTotp({ code: parsed.value.code });
-    setConfirming(false);
-    if (error) {
-      setSetup({
-        ...setup,
-        error:
-          error.code === "INVALID_CODE"
-            ? "That code didn't match. Check the app added this account, and enter its current code."
-            : authErrorMessage(error, "We couldn't check the code. Try again in a moment."),
-      });
-      return;
-    }
-    setSetup({ step: "backup-codes", backupCodes: setup.backupCodes });
   }
 
   return (
@@ -87,92 +170,12 @@ export function EnableDialog() {
         <Button>Set up two-factor</Button>
       </DialogTrigger>
       <DialogContent>
-        {setup.step === "password" ? (
-          <>
-            <DialogTitle>Set up two-factor authentication</DialogTitle>
-            <DialogDescription>
-              You'll need an authenticator app, such as 1Password, Google Authenticator or Authy.
-              First, confirm your password.
-            </DialogDescription>
-            <PasswordForm
-              submitLabel="Continue"
-              pendingLabel="Checking…"
-              onConfirm={async (password) => {
-                const { data, error } = await authClient.twoFactor.enable({ password });
-                if (error) return error;
-                if (data && "totpURI" in data) {
-                  setSetup({ step: "scan", totpURI: data.totpURI, backupCodes: data.backupCodes });
-                }
-                return null;
-              }}
-            />
-          </>
-        ) : null}
-
-        {setup.step === "scan" ? (
-          <>
-            <DialogTitle>Add this account to your app</DialogTitle>
-            <DialogDescription>
-              Scan the code with your authenticator app, or type the setup key into it. Then enter
-              the 6-digit code it shows.
-            </DialogDescription>
-            <form className="enable-dialog" noValidate onSubmit={confirmCode}>
-              <div className="enable-dialog__key">
-                <QRCode
-                  value={setup.totpURI}
-                  size={176}
-                  aria-label={`Add ${APP_NAME} to your authenticator app`}
-                />
-                <div className="enable-dialog__manual">
-                  <p className="enable-dialog__label">Setup key</p>
-                  <code className="enable-dialog__secret">{setupKeyFrom(setup.totpURI)}</code>
-                  <p className="enable-dialog__hint">Time-based, 6 digits, every 30 seconds.</p>
-                </div>
-              </div>
-              <Field required>
-                <FieldLabel asChild>
-                  <span>Code from the app</span>
-                </FieldLabel>
-                <FieldControl>
-                  <OtpField name="code" groupSize={3} autoComplete="one-time-code" />
-                </FieldControl>
-                <FieldDescription>Two-factor turns on once this code is accepted.</FieldDescription>
-                <FieldError>{setup.error}</FieldError>
-              </Field>
-              <DialogFooter>
-                <Button type="submit" disabled={confirming}>
-                  {confirming ? (
-                    <>
-                      <Spinner size="sm" label="" />
-                      Checking…
-                    </>
-                  ) : (
-                    "Turn on two-factor"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </>
-        ) : null}
-
-        {setup.step === "backup-codes" ? (
-          <>
-            <DialogTitle>Save your backup codes</DialogTitle>
-            <DialogDescription>
-              If you lose your phone, each of these signs you in once instead of an app code. They
-              won't be shown again.
-            </DialogDescription>
-            <Alert intent="success" role="status">
-              <AlertDescription>Two-factor authentication is on.</AlertDescription>
-            </Alert>
-            <BackupCodesList codes={setup.backupCodes} />
-            <DialogFooter>
-              <Button type="button" onClick={() => changeOpen(false)}>
-                I've saved them
-              </Button>
-            </DialogFooter>
-          </>
-        ) : null}
+        <SetupPanel
+          onEnabled={() => {
+            finished.current = true;
+          }}
+          onFinish={() => changeOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -19,5 +19,5 @@ export async function twoFactorPageContext(
   const returnTo = safeReturnPath(searchParams.returnTo);
   if (await getSession()) redirectToSafePath(authorizeUrlFrom(searchParams) ?? returnTo);
   const carry = oidcQuery || (returnTo === "/" ? "" : new URLSearchParams({ returnTo }).toString());
-  return { returnTo, loginHref: authPageHref("login", carry) };
+  return { oidcQuery, returnTo, loginHref: authPageHref("login", carry) };
 }
