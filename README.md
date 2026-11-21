@@ -47,3 +47,56 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
 The tests drive the real Better Auth configuration over HTTP against an in-memory Postgres (PGlite): no database or network needed.
+
+## Connecting an app with OIDC
+
+Register the app in **/admin/clients** (admins only). Choose:
+
+- **Public** for anything that runs in a browser or on a phone: no secret, PKCE proves the app.
+- **Confidential** for an app with a server that can keep a secret. The secret is shown once and stored hashed; "Rotate secret" replaces it, and the old one stops working at once.
+
+Then configure the app with:
+
+| Setting | Value |
+|---|---|
+| Issuer | `https://auth.example.com` (exactly `BETTER_AUTH_URL`) |
+| Discovery | `https://auth.example.com/.well-known/openid-configuration` |
+| Keys (JWKS) | `https://auth.example.com/jwks` (RS256) |
+| Authorization, token, userinfo | from discovery (under `/api/auth/oauth2/`) |
+| Flow | authorization code with **PKCE S256**, required for every client |
+| Grants | `authorization_code`, `refresh_token` |
+| Client authentication | `none` (public) or `client_secret_basic` / `client_secret_post` |
+| Scopes | `openid`, `profile`, `email`, `offline_access` (for a refresh token) |
+| Redirect URIs | exact matches of what's registered; https (http only on loopback, or `*.localtest.me` in development) |
+
+Token lifetimes:
+
+| Token | Lifetime |
+|---|---|
+| Authorization code | 10 minutes, single use (a replayed code revokes what was issued with it) |
+| Access token | 10 minutes |
+| ID token | 10 minutes |
+| Refresh token | 30 days, rotated on every use; reusing an old one is treated as theft and revokes the newer one too |
+
+What your app must check, as `apps/example-client` does:
+
+- the `state` it sent comes back unchanged;
+- the ID token's signature against `/jwks`, and its `iss`, `aud` (your client ID), `exp` and `nonce`;
+- email and profile claims come from **userinfo** (`/api/auth/oauth2/userinfo` with the access token), not from the ID token.
+
+The first time someone signs in to an app they see a consent screen listing what it asked for; they can allow or deny (`error=access_denied` comes back to the app). Consent is remembered for the next time.
+
+## Shared cookie or OIDC?
+
+**The shared session cookie.** When `COOKIE_DOMAIN` is set, the auth server's session cookie is set on that parent domain, so every subdomain receives it. An app's server can forward it to `GET /api/auth/get-session` and learn who's signed in, with no redirects. Use it for your own first-party apps on the same parent domain that need to know "is this person signed in here?"
+
+The caveat: **every subdomain of `COOKIE_DOMAIN` receives the session cookie**. Anything that can run code on any subdomain (a user-content host, a third-party service on a CNAME, a staging environment of lower trust) can read it and act as the user. Only put apps you fully trust under that domain, or leave `COOKIE_DOMAIN` empty to turn sharing off.
+
+**OIDC.** The app gets its own tokens for exactly the scopes the person allowed, and keeps its own session. Use it for apps on other domains, third-party or less trusted apps, mobile and single-page apps, and anything that should be able to be revoked on its own. When in doubt, use OIDC.
+
+## Security notes
+
+- Sign-in, sign-up, resets, magic links, two-factor codes, password changes and the token endpoint are rate limited per client IP, with counts in the database so every replica shares them. Behind an ingress, set `TRUSTED_PROXIES` to the ingress pods so the real client IP is used.
+- The same answer is given whether or not an email has an account (sign-up, reset, magic link).
+- Emailed links are single use and short-lived (confirmation 1 hour, reset 15 minutes, magic link 5 minutes). A password reset signs out every session.
+- Every page gets a nonce-based Content-Security-Policy; cookies are `HttpOnly`, `Secure` and `SameSite=Lax` in production (`__Secure-` prefixed).
