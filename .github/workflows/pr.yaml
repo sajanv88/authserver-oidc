@@ -60,6 +60,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec turbo run build --affected
+      # The local seed (`pnpm db:seed`) is a separate esbuild bundle no build task makes.
+      - run: pnpm --filter auth-server seed:build
 
   docker:
     if: ${{ !github.event.pull_request.draft }}
