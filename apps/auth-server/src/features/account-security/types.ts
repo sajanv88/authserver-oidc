@@ -18,6 +18,11 @@ export type SessionRow = {
 
 export type SessionProblem = "current" | "not-found" | "failed";
 
-export type ChangePasswordState =
-  | { status: "editing"; errors: FieldErrors<ChangePasswordField>; formError?: string }
-  | { status: "submitting" };
+export type ChangePasswordState = {
+  /** Counts the answers, so the form remounts (empty) after each one. */
+  attempt: number;
+  errors: FieldErrors<ChangePasswordField>;
+  formError?: string | undefined;
+  /** The last attempt changed it. */
+  changed?: boolean | undefined;
+};
