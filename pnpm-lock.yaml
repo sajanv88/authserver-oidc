@@ -227,6 +227,9 @@ catalogs:
     esbuild:
       specifier: 0.28.2
       version: 0.28.2
+    jose:
+      specifier: 6.2.18
+      version: 6.2.18
     next:
       specifier: 16.4.6
       version: 16.4.6
@@ -359,6 +362,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      jose:
+        specifier: 'catalog:'
+        version: 6.2.18
       sass:
         specifier: 'catalog:'
         version: 1.105.2
