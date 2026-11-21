@@ -53,21 +53,4 @@
       padding: a.space(10) a.space(8);
     }
   }
-
-  &__header {
-    display: grid;
-    gap: a.space(1);
-  }
-
-  &__title {
-    margin: 0;
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  &__description {
-    margin: 0;
-    color: var(--color-muted-foreground);
-  }
 }
