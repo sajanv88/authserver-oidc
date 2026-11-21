@@ -38,3 +38,11 @@ export async function requireAdmin(returnTo = "/"): Promise<AuthSession> {
   if (session.user.role !== "admin") notFound();
   return session;
 }
+
+/**
+ * Redirects to a path taken from a query string or a header, after making it safe: anything
+ * that isn't a same-site path becomes "/". The one place such a string is cast to a route.
+ */
+export function redirectToSafePath(value: unknown): never {
+  redirect(safeReturnPath(value) as Route);
+}
