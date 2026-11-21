@@ -1,0 +1,6 @@
+@use "abstracts" as a;
+
+.verify-email-failed {
+  display: grid;
+  gap: a.space(5);
+}

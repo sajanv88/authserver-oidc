@@ -19,3 +19,20 @@ export function TextLink({ href, children }: TextLinkProps) {
     </Link>
   );
 }
+
+type TextButtonProps = {
+  onClick: () => void;
+  children: ReactNode;
+};
+
+/**
+ * Something done on this page, inside a line of text ("Use a different email"): a button,
+ * because it doesn't navigate, drawn like a TextLink.
+ */
+export function TextButton({ onClick, children }: TextButtonProps) {
+  return (
+    <button type="button" className="text-link text-link--button" onClick={onClick}>
+      {children}
+    </button>
+  );
+}
