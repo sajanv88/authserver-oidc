@@ -84,6 +84,8 @@ Merge to `main` → `main.yaml` builds the image once (amd64 + arm64) and pushes
 Tag `vX.Y.Z` → `release.yaml` retags that commit's image as `:vX.Y.Z` and `:latest` (no rebuild), pushes the chart to `oci://ghcr.io/nuvraxis/charts/auth-server` at `X.Y.Z`, and creates the GitHub Release.
 Argo CD syncs the chart from the OCI registry (production) or from `charts/auth-server` in git.
 
+Deploying: the chart's ConfigMap carries every non-secret setting the app validates at startup (`BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `TRUSTED_ORIGINS`, `TRUSTED_PROXIES` = the ingress pods, `EMAIL_*`, `SMTP_HOST/PORT/USER`); one existing Secret named by `existingSecret` holds `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD` (the chart never creates it; rendering fails without the name). The migrate Job reads only `DATABASE_URL` from it.
+
 Release ritual: merge to main → wait for `main.yaml` to go green → `git tag vX.Y.Z && git push origin vX.Y.Z`. Never edit `version`/`appVersion` in `Chart.yaml`; the release sets them.
 
 ## Which skill applies
