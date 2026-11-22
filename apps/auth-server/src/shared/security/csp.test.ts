@@ -38,6 +38,19 @@ describe("content security policy", () => {
     expect(development.get("frame-ancestors")).toBe("'none'");
   });
 
+  it("allows Cloudflare Turnstile's script and iframe only when it's configured", () => {
+    const withTurnstile = directives(
+      buildContentSecurityPolicy({ nonce: "abc123", isDev: false, turnstile: true }),
+    );
+    expect(withTurnstile.get("script-src")).toBe(
+      "'self' 'nonce-abc123' 'strict-dynamic' https://challenges.cloudflare.com",
+    );
+    expect(withTurnstile.get("frame-src")).toBe("https://challenges.cloudflare.com");
+    expect(withTurnstile.get("frame-ancestors")).toBe("'none'");
+    expect(withTurnstile.get("connect-src")).toBe("'self'");
+    expect(production.has("frame-src")).toBe(false);
+  });
+
   it("makes a fresh, 128-bit nonce each time", () => {
     const nonces = new Set(Array.from({ length: 50 }, () => createNonce()));
     expect(nonces.size).toBe(50);

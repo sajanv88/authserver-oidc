@@ -12,17 +12,35 @@
 //  - form-action 'self', frame-ancestors 'none', base-uri 'self', object-src 'none':
 //    no posting forms elsewhere, no framing (clickjacking on login and consent), no <base>
 //    hijack, no plugins.
+//  - With Cloudflare Turnstile configured, and only then: its script (loaded by ours, so
+//    'strict-dynamic' allows it; the origin is for browsers without 'strict-dynamic') and its
+//    widget's iframe (frame-src).
+
+export const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+
+/**
+ * Whether Turnstile is configured, from the raw variables: proxy.ts runs before every document
+ * and doesn't import env() (server-only, and the whole schema). Half a configuration counts as
+ * none here; env() refuses it (env-schema.ts).
+ */
+export function isTurnstileConfigured(source: Record<string, string | undefined>): boolean {
+  return Boolean(source.TURNSTILE_SITE_KEY?.trim() && source.TURNSTILE_SECRET_KEY?.trim());
+}
 
 export function buildContentSecurityPolicy({
   nonce,
   isDev,
+  turnstile = false,
 }: {
   nonce: string;
   isDev: boolean;
+  /** Whether the forms show Cloudflare Turnstile's widget. */
+  turnstile?: boolean;
 }): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}${turnstile ? ` ${TURNSTILE_ORIGIN}` : ""}`,
+    ...(turnstile ? [`frame-src ${TURNSTILE_ORIGIN}`] : []),
     `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' blob: data:",
