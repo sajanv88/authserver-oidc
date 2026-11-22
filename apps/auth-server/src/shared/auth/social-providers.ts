@@ -39,6 +39,32 @@ export function socialProviderName(id: string, social: SocialConfig): string {
   return names[id] ?? id;
 }
 
+/** Personal Microsoft accounts (outlook.com, hotmail.com…) all sign in from this tenant. */
+export const MICROSOFT_CONSUMER_TENANT_ID = "9188040d-6c67-4c5b-b112-36a304b66dad";
+
+const TENANT_ALIASES = new Set(["common", "organizations", "consumers"]);
+
+const claimIsTrue = (value: unknown) => value === true || value === "true" || value === "1";
+
+/**
+ * Whether a Microsoft ID token's email can be trusted as the person's (nOAuth). With a
+ * multi-tenant app any organisation can sign in, and an organisation's admin can put any
+ * address on their users, and on the claims Better Auth reads as "verified". Trusted only:
+ * - `xms_edov`: Microsoft checked the email's domain belongs to the user's organisation
+ *   (an optional claim, added in the app registration);
+ * - a personal Microsoft account, whose address Microsoft itself verified;
+ * - the one tenant MICROSOFT_TENANT_ID names, when it names one: the operator's own.
+ * Anything else counts as unverified: no account is linked to it, and a new account gets a
+ * confirmation email first.
+ */
+export function microsoftEmailVerified(claims: Record<string, unknown>, tenantId: string): boolean {
+  if (typeof claims.email !== "string" || claims.email.length === 0) return false;
+  const tid = typeof claims.tid === "string" ? claims.tid.toLowerCase() : "";
+  if (claimIsTrue(claims.xms_edov)) return true;
+  if (tid === MICROSOFT_CONSUMER_TENANT_ID) return true;
+  return !TENANT_ALIASES.has(tenantId.toLowerCase()) && tid === tenantId.toLowerCase();
+}
+
 /** Better Auth's built-in providers that are configured. */
 export function socialProviderOptions(social: SocialConfig): BetterAuthOptions["socialProviders"] {
   return {
@@ -59,6 +85,10 @@ export function socialProviderOptions(social: SocialConfig): BetterAuthOptions["
             // Better Auth would otherwise store the Graph photo in the user row, inline.
             disableProfilePhoto: true,
             requireEmailVerification: true,
+            // Replaces Better Auth's own reading of "verified", which another tenant controls.
+            mapProfileToUser: (claims: Record<string, unknown>) => ({
+              emailVerified: microsoftEmailVerified(claims, social.microsoft?.tenantId ?? "common"),
+            }),
           },
         }
       : {}),
