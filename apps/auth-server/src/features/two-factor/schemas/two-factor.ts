@@ -28,10 +28,8 @@ const TrustDeviceSchema = v.optional(
   undefined,
 );
 
-/** The second step of signing in, with a code from the app. */
 export const VerifyTotpSchema = v.object({ code: TotpCodeSchema, trustDevice: TrustDeviceSchema });
 
-/** The second step of signing in, with a backup code. */
 export const VerifyBackupCodeSchema = v.object({
   code: BackupCodeSchema,
   trustDevice: TrustDeviceSchema,

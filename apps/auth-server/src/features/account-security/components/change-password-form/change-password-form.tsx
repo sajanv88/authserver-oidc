@@ -23,9 +23,8 @@ import type { ChangePasswordState } from "../../types";
 const INITIAL: ChangePasswordState = { attempt: 0, errors: {} };
 
 /**
- * The current password, then the new one twice, checked by the server action. Through Better
- * Auth's handler, so the rate limiter applies (5 tries in 5 minutes). Every other session is
- * signed out; this one stays.
+ * Goes through Better Auth's handler, so the rate limiter applies (5 tries in 5 minutes). Every
+ * other session is signed out; this one stays.
  */
 export function ChangePasswordForm() {
   const [state, action, pending] = useActionState(changePasswordAction, INITIAL);

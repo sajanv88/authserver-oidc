@@ -37,6 +37,7 @@ catalog:
   vitest: 5.0.5
   # Auth server
   "@better-auth/oauth-provider": 1.7.27
+  "@nuvui/backgrounds": 0.1.2
   "@nuvui/barcodes": 0.1.6
   "@nuvui/icons": 0.1.0
   "@nuvui/table": 0.1.10

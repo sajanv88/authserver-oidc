@@ -15,7 +15,7 @@ import "./clients-table.scss";
 
 const created = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 
-/** The clients, newest first. A server component: only each row's actions run on the client. */
+/** The clients, newest first. */
 export function ClientsTable({ clients }: { clients: ClientRow[] }) {
   return (
     <TableContainer aria-label="OIDC clients">

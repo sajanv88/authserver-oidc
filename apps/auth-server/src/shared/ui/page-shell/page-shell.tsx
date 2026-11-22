@@ -18,9 +18,8 @@ type PageShellProps = {
 };
 
 /**
- * The frame of the signed-in pages, rendered by their layout so it stays put while pages
- * change: a skip link, nuvui's Navbar, and the main landmark. Each page renders its own
- * heading with PageHeader. A server component; only the links' `current` state runs on the
+ * Rendered by the signed-in layout so it stays put while pages change. Each page renders its
+ * own heading with PageHeader. A server component; only the links' `current` state runs on the
  * client.
  */
 export function PageShell({ links, actions, children }: PageShellProps) {

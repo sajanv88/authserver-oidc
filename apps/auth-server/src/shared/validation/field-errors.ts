@@ -7,10 +7,7 @@ export type ParseResult<Output, Field extends string> =
   | { ok: true; value: Output }
   | { ok: false; errors: FieldErrors<Field> };
 
-/**
- * Parses form values against an object schema, returning the typed output or a message per
- * field. Keys of the schema are the form's field names.
- */
+/** Keys of the schema are the form's field names. */
 export function parseForm<
   const Schema extends v.ObjectSchema<v.ObjectEntries, v.ErrorMessage<v.ObjectIssue> | undefined>,
 >(

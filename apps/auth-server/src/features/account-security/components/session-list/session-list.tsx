@@ -30,7 +30,6 @@ function At({ iso }: { iso: string }) {
   return <time dateTime={iso}>{when.format(new Date(iso))} UTC</time>;
 }
 
-/** Where the account is signed in. A server component: only the buttons run on the client. */
 export function SessionList({
   sessions,
   labelledBy,

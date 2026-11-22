@@ -53,7 +53,6 @@ function CreateClientPanel() {
   const [state, formAction, pending] = useActionState(createClientAction, INITIAL);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // After a failed attempt, focus goes to the first field with a message.
   useEffect(() => {
     if (state.status !== "editing" || !state.errors) return;
     const field = firstInvalidField(state.errors, CREATE_CLIENT_FIELDS);
@@ -184,7 +183,6 @@ function CreateClientPanel() {
   );
 }
 
-/** "New client", and the dialog it opens. */
 export function CreateClientDialog() {
   return (
     <Dialog>

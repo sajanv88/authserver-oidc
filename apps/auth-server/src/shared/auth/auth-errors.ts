@@ -1,7 +1,6 @@
 // Turning Better Auth's refusals into words for people. Never shows the server's own
 // message: it's written for developers, and can say more than a visitor should learn.
 
-/** A refused Better Auth call: its status and, when it has one, its error code. */
 export type AuthClientError = {
   status: number;
   code?: string | undefined;

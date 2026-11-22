@@ -2,12 +2,11 @@ import * as v from "valibot";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import { EmailSchema, NewPasswordSchema } from "@/shared/validation/fields";
 
-/** Asking for a reset link. */
 export const ForgotPasswordSchema = v.object({ email: EmailSchema });
 
 export type ForgotPasswordInput = v.InferOutput<typeof ForgotPasswordSchema>;
 
-/** Choosing the new password, typed twice. Field order is the order focus moves through. */
+/** Field order is the order focus moves through. */
 export const ResetPasswordSchema = v.object({
   password: NewPasswordSchema,
   confirmPassword: v.pipe(v.string(), v.nonEmpty("Type the new password again.")),

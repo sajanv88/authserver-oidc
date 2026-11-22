@@ -9,7 +9,6 @@ type PageHeaderProps = {
   action?: ReactNode;
 };
 
-/** The heading of a signed-in page, inside PageShell. */
 export function PageHeader({ title, description, action }: PageHeaderProps) {
   return (
     <header className="page-header">

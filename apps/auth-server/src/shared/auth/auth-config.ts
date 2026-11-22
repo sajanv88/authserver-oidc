@@ -84,9 +84,8 @@ function allowInsecureRedirectUri(env: ServerEnv) {
 }
 
 /**
- * The Better Auth instance: email and password, magic links, two-factor, a JWKS, and the OAuth
- * 2.1 / OIDC provider. Pure: everything it needs is passed in, so tests build the same
- * configuration against a PGlite database. The app uses getAuth() (auth.ts).
+ * Pure: everything it needs is passed in, so tests build the same configuration against a
+ * PGlite database. The app uses getAuth() (auth.ts).
  */
 export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const insecureRedirects = allowInsecureRedirectUri(env);

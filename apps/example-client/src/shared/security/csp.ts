@@ -8,10 +8,8 @@
 //  - style-src-attr 'unsafe-inline': nuvui components render some styles as style
 //    attributes on the server (nuvui's CSP guide). An attribute can't select other elements.
 //  - img-src blob: data:: nuvui's QR code download and file previews.
-//  - connect-src 'self': the auth forms only talk to this origin.
 //  - form-action 'self', frame-ancestors 'none', base-uri 'self', object-src 'none':
-//    no posting forms elsewhere, no framing (clickjacking on login and consent), no <base>
-//    hijack, no plugins.
+//    no posting forms elsewhere, no framing, no <base> hijack, no plugins.
 
 export function buildContentSecurityPolicy({
   nonce,

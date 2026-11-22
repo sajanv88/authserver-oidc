@@ -46,5 +46,4 @@ export type CreateClientField = keyof CreateClientInput;
 /** The order the fields appear in, for moving focus to the first one that's wrong. */
 export const CREATE_CLIENT_FIELDS = ["name", "kind", "redirectUris"] as const;
 
-/** A client_id sent by the rotate and delete buttons. */
 export const ClientIdSchema = v.pipe(v.string(), v.trim(), v.nonEmpty(), v.maxLength(200));

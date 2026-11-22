@@ -19,7 +19,6 @@ async function receiveResetLink(world: World, mailbox: Mailbox): Promise<string>
   return world.link;
 }
 
-/** Opens the reset link and submits the two password fields. */
 async function chooseNewPassword(page: Page, link: string, password: string, again = password) {
   await page.goto(link);
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();

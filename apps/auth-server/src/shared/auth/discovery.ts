@@ -13,7 +13,6 @@ const HEADERS = {
   "access-control-allow-origin": "*",
 };
 
-/** Points `jwks_uri` at `<issuer>/jwks`. */
 export function withRootJwksUri<T extends { issuer: string; jwks_uri?: string | undefined }>(
   metadata: T,
 ): T {

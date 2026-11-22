@@ -16,7 +16,7 @@ function SignOutSubmit() {
   );
 }
 
-/** Ends this session and goes to the login page. A form, so it works before JavaScript loads. */
+/** A form, so it works before JavaScript loads. */
 export function SignOutButton() {
   return (
     <Form action={signOutAction}>

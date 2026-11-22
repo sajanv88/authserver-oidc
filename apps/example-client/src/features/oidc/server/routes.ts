@@ -226,7 +226,6 @@ export async function signOut(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-/** The OIDC session for a page, or undefined. */
 export async function getAppSession(): Promise<AppSession | undefined> {
   // Per request, before the clock is read (the cookie's expiry): dev's prerender check
   // flags it otherwise.

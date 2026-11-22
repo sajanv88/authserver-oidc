@@ -4,8 +4,7 @@ import { APP_URL, AUTH_URL } from "./support/env";
 
 const ci = Boolean(process.env.CI);
 
-// Gherkin features in features/, step definitions in steps/; `bddgen` turns them into
-// Playwright tests in .features-gen/ before every run.
+// `bddgen` turns the features into Playwright tests in .features-gen/ before every run.
 const testDir = defineBddConfig({
   features: "features/*.feature",
   steps: "steps/*.ts",

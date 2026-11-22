@@ -20,7 +20,6 @@ type AccountSecurityScreenProps = {
   twoFactor: ReactNode;
 };
 
-/** /account/security: password, two-factor and where the account is signed in. */
 export async function AccountSecurityScreen({ email, twoFactor }: AccountSecurityScreenProps) {
   const sessions = await listSessionsForAccount();
   return (

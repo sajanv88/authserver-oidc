@@ -4,7 +4,7 @@ import { TextLink } from "@/shared/ui/text-link/text-link";
 import type { SignUpContext } from "../types";
 import { SignUpForm } from "./sign-up-form/sign-up-form";
 
-/** The sign-up page. The OIDC query, if any, rides along to the login link. */
+/** The OIDC query, if any, rides along to the login link. */
 export function SignUpScreen({ oidcQuery, next }: SignUpContext) {
   return (
     <AuthCard

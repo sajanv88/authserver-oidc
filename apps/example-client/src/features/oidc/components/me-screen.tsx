@@ -24,7 +24,6 @@ const when = new Intl.DateTimeFormat("en", {
   timeZone: "UTC",
 });
 
-/** /me: what the OIDC sign-in gave this app. Without a session, back to the start. */
 export async function MeScreen({ refreshed }: { refreshed: boolean }) {
   const session = await getAppSession();
   if (!session) redirect("/");

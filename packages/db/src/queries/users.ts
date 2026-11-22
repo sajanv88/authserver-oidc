@@ -2,8 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Executor } from "../executor";
 import { type User, users } from "../schema/users";
 
-// Query functions take the executor first so they work with `db`, inside a transaction (`tx`),
-// and against PGlite in tests. No business rules here: what a query does, not who may run it.
+// No business rules here: what a query does, not who may run it.
 // Reads and writes Better Auth owns (sign-up, sessions, tokens) go through Better Auth.
 
 export type UserSecurity = Pick<User, "id" | "emailVerified" | "twoFactorEnabled" | "role">;

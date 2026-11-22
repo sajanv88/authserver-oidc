@@ -3,8 +3,6 @@ import { createAccount, newPerson } from "../support/people";
 import { expectSignedIn, submitSignIn } from "../support/ui";
 import { Given, me, Then, When } from "./fixtures";
 
-// Steps every feature uses: who I am, signing in, and what the page says.
-
 Given("I am a new visitor", ({ world }) => {
   world.person = newPerson();
 });

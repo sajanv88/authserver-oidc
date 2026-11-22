@@ -9,7 +9,6 @@ export type ConsentRequest =
   | { status: "expired"; restartUrl: string | undefined }
   | { status: "valid"; clientId: string; scopes: ScopeItem[]; restartUrl: string | undefined };
 
-/** What /consent renders. */
 export type ConsentPageContext =
   | { status: "invalid" }
   | { status: "expired"; restartUrl: string | undefined }

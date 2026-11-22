@@ -2,7 +2,6 @@ import type { Route } from "next";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import type { LoginField } from "./schemas/login";
 
-/** What a sign-in attempt came to, as the form shows it. */
 export type LoginState =
   | {
       status: "editing";

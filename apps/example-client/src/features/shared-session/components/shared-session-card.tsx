@@ -21,7 +21,6 @@ const when = new Intl.DateTimeFormat("en", {
   timeZone: "UTC",
 });
 
-/** The session the auth server's shared cookie carries, as the auth server reports it. */
 export async function SharedSessionCard() {
   const session = await getSharedSession();
   const authServer = env().authServerUrl;

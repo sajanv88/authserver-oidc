@@ -5,7 +5,6 @@ import type { ConsentPageContext } from "../types";
 import { ConsentForm } from "./consent-form/consent-form";
 import { ScopeList } from "./scope-list/scope-list";
 
-/** /consent: an app asks for access to the signed-in account. */
 export function ConsentScreen(context: ConsentPageContext) {
   switch (context.status) {
     case "invalid":

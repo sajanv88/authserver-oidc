@@ -1,6 +1,5 @@
 import type { Route } from "next";
 
-/** How the second factor is given at sign-in. */
 export type SecondFactorMethod = "totp" | "backup";
 
 /** A failed verification that isn't about the field. */

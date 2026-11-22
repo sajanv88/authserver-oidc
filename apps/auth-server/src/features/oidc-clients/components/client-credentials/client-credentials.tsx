@@ -6,7 +6,6 @@ import { useRef } from "react";
 import type { ClientCredentials as Credentials } from "../../types";
 import "./client-credentials.scss";
 
-/** Selects what's shown in `element`, as if dragged over. */
 function selectContents(element: HTMLElement): Selection | null {
   const selection = window.getSelection();
   if (!selection) return null;
@@ -38,7 +37,6 @@ async function copyText(text: string, element: HTMLElement | null): Promise<bool
   return copied;
 }
 
-/** A value and its Copy button. */
 function CopyableValue({ value, label }: { value: string; label: string }) {
   const codeRef = useRef<HTMLElement>(null);
   async function copy() {
