@@ -122,11 +122,51 @@ const RawEnvSchema = v.object({
   // set: the site key is public (the ConfigMap), the secret key is a secret (the Secret).
   TURNSTILE_SITE_KEY: optionalText,
   TURNSTILE_SECRET_KEY: optionalText,
+  // Sign-in with another account. Each provider is on when its client ID (the ConfigMap) and
+  // secret (the Secret) are both set, and off when neither is.
+  GOOGLE_CLIENT_ID: optionalText,
+  GOOGLE_CLIENT_SECRET: optionalText,
+  GITHUB_CLIENT_ID: optionalText,
+  GITHUB_CLIENT_SECRET: optionalText,
+  MICROSOFT_CLIENT_ID: optionalText,
+  MICROSOFT_CLIENT_SECRET: optionalText,
+  // "common" (work and personal accounts), "organizations", "consumers", or one tenant's ID.
+  MICROSOFT_TENANT_ID: v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(
+        v.pipe(v.string(), v.trim(), v.regex(/^[A-Za-z0-9.-]+$/, "must be a tenant ID or name")),
+      ),
+    ),
+  ),
+  // Any OpenID Connect provider (Okta, Keycloak, Auth0, Entra ID…), found from its discovery
+  // document. SSO_NAME is what the button says: "Continue with <SSO_NAME>".
+  SSO_NAME: optionalText,
+  SSO_DISCOVERY_URL: v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(v.pipe(v.string(), v.trim(), v.url("must be a URL"))),
+    ),
+  ),
+  SSO_CLIENT_ID: optionalText,
+  SSO_CLIENT_SECRET: optionalText,
 });
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
 
 export type TurnstileConfig = { siteKey: string; secretKey: string };
+
+export type OAuthClientConfig = { clientId: string; clientSecret: string };
+
+/** The sign-in providers that are configured. A missing key is a provider that's off. */
+export type SocialConfig = {
+  google?: OAuthClientConfig;
+  github?: OAuthClientConfig;
+  microsoft?: OAuthClientConfig & { tenantId: string };
+  sso?: OAuthClientConfig & { name: string; discoveryUrl: string };
+};
 
 export type EmailConfig =
   | { provider: "console"; from: string }
@@ -146,7 +186,37 @@ export type ServerEnv = {
   email: EmailConfig;
   /** Cloudflare Turnstile, or undefined when it isn't configured (no widget, no check). */
   turnstile: TurnstileConfig | undefined;
+  social: SocialConfig;
 };
+
+const CLIENT_PAIRS = [
+  ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+  ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"],
+  ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
+] as const;
+
+const SSO_KEYS = ["SSO_NAME", "SSO_DISCOVERY_URL", "SSO_CLIENT_ID", "SSO_CLIENT_SECRET"] as const;
+
+function client(id: string | undefined, secret: string | undefined) {
+  return id && secret ? { clientId: id, clientSecret: secret } : undefined;
+}
+
+function socialConfig(env: RawEnv): SocialConfig {
+  const google = client(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
+  const github = client(env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET);
+  const microsoft = client(env.MICROSOFT_CLIENT_ID, env.MICROSOFT_CLIENT_SECRET);
+  const sso = client(env.SSO_CLIENT_ID, env.SSO_CLIENT_SECRET);
+  return {
+    ...(google ? { google } : {}),
+    ...(github ? { github } : {}),
+    ...(microsoft
+      ? { microsoft: { ...microsoft, tenantId: env.MICROSOFT_TENANT_ID ?? "common" } }
+      : {}),
+    ...(sso && env.SSO_NAME && env.SSO_DISCOVERY_URL
+      ? { sso: { ...sso, name: env.SSO_NAME, discoveryUrl: env.SSO_DISCOVERY_URL } }
+      : {}),
+  };
+}
 
 // Rules that span fields. Each issue is attached to the field it's about.
 const EnvSchema = v.pipe(
@@ -189,6 +259,19 @@ const EnvSchema = v.pipe(
     if (env.TURNSTILE_SECRET_KEY && !env.TURNSTILE_SITE_KEY) {
       issue("TURNSTILE_SITE_KEY", "is required when TURNSTILE_SECRET_KEY is set");
     }
+    // A client ID without its secret would show a button that can't work.
+    for (const [id, secret] of CLIENT_PAIRS) {
+      if (env[id] && !env[secret]) issue(secret, `is required when ${id} is set`);
+      if (env[secret] && !env[id]) issue(id, `is required when ${secret} is set`);
+    }
+    if (SSO_KEYS.some((key) => env[key])) {
+      for (const key of SSO_KEYS) {
+        if (!env[key]) issue(key, "is required when any SSO_* setting is set");
+      }
+    }
+    if (production && env.SSO_DISCOVERY_URL && !env.SSO_DISCOVERY_URL.startsWith("https://")) {
+      issue("SSO_DISCOVERY_URL", "must be https in production");
+    }
   }),
   v.transform(
     (env): ServerEnv => ({
@@ -215,6 +298,7 @@ const EnvSchema = v.pipe(
         env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY
           ? { siteKey: env.TURNSTILE_SITE_KEY, secretKey: env.TURNSTILE_SECRET_KEY }
           : undefined,
+      social: socialConfig(env),
     }),
   ),
 );
