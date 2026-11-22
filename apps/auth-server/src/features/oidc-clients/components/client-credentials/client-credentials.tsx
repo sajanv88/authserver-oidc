@@ -2,25 +2,70 @@
 
 import { CopyIcon } from "@nuvui/icons";
 import { Alert, AlertDescription, AlertTitle, Button, toast } from "@nuvui/react";
+import { useRef } from "react";
 import type { ClientCredentials as Credentials } from "../../types";
 import "./client-credentials.scss";
 
-function CopyButton({ value, label }: { value: string; label: string }) {
-  async function copy() {
+/** Selects what's shown in `element`, as if dragged over. */
+function selectContents(element: HTMLElement): Selection | null {
+  const selection = window.getSelection();
+  if (!selection) return null;
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return selection;
+}
+
+/**
+ * Copies `text`, shown in `element`. The Clipboard API exists only in a secure context (HTTPS
+ * or localhost), and local development runs on http://*.localtest.me, so there the text is
+ * selected and copied with the older copy command. Left selected if that fails too.
+ */
+async function copyText(text: string, element: HTMLElement | null): Promise<boolean> {
+  if (window.isSecureContext && navigator.clipboard) {
     try {
-      await navigator.clipboard.writeText(value);
-      toast(`${label} copied`, { intent: "success" });
+      await navigator.clipboard.writeText(text);
+      return true;
     } catch {
+      return false;
+    }
+  }
+  const selection = element ? selectContents(element) : null;
+  if (!selection) return false;
+  const copied = document.execCommand("copy");
+  if (copied) selection.removeAllRanges();
+  return copied;
+}
+
+/** A value and its Copy button. */
+function CopyableValue({ value, label }: { value: string; label: string }) {
+  const codeRef = useRef<HTMLElement>(null);
+  async function copy() {
+    if (await copyText(value, codeRef.current)) {
+      toast(`${label} copied`, { intent: "success" });
+    } else {
       toast(`Couldn't copy. Select the ${label.toLowerCase()} and copy it yourself.`, {
         intent: "warning",
       });
     }
   }
   return (
-    <Button type="button" intent="secondary" size="sm" onClick={copy} aria-label={`Copy ${label}`}>
-      <CopyIcon size={16} />
-      Copy
-    </Button>
+    <>
+      <code ref={codeRef} className="client-credentials__code">
+        {value}
+      </code>
+      <Button
+        type="button"
+        intent="secondary"
+        size="sm"
+        onClick={copy}
+        aria-label={`Copy ${label}`}
+      >
+        <CopyIcon size={16} />
+        Copy
+      </Button>
+    </>
   );
 }
 
@@ -35,16 +80,14 @@ export function ClientCredentials({ credentials }: { credentials: Credentials })
         <div className="client-credentials__item">
           <dt className="client-credentials__term">Client ID</dt>
           <dd className="client-credentials__value">
-            <code className="client-credentials__code">{credentials.clientId}</code>
-            <CopyButton value={credentials.clientId} label="Client ID" />
+            <CopyableValue value={credentials.clientId} label="Client ID" />
           </dd>
         </div>
         {credentials.clientSecret ? (
           <div className="client-credentials__item">
             <dt className="client-credentials__term">Client secret</dt>
             <dd className="client-credentials__value">
-              <code className="client-credentials__code">{credentials.clientSecret}</code>
-              <CopyButton value={credentials.clientSecret} label="Client secret" />
+              <CopyableValue value={credentials.clientSecret} label="Client secret" />
             </dd>
           </div>
         ) : null}

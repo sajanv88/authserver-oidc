@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Agent instructions live in the repo's CLAUDE.md; don't let `next dev` write an AGENTS.md.
   agentRules: false,
+  // Local development runs on *.localtest.me (see the README). The dev server only trusts
+  // localhost, and blocking its /_next/hmr socket also stops React hydrating the pages: Next
+  // sends the RSC debug channel over that socket. Development only; ignored by `next build`.
+  allowedDevOrigins: ["*.localtest.me"],
   // Skew protection across a rolling update: the Dockerfile passes the commit SHA.
   ...(deploymentId ? { deploymentId } : {}),
   sassOptions: {
