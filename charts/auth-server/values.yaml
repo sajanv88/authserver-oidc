@@ -122,6 +122,22 @@ config:
   # Cloudflare Turnstile's site key (public). Set it, with TURNSTILE_SECRET_KEY in the Secret,
   # to put Turnstile on the forms and the auth endpoints behind them. Empty turns it off.
   TURNSTILE_SITE_KEY: ""
+  # Sign-in with another account. Each provider's client ID is here and its secret in the
+  # Secret; a provider is on when both are set. Redirect URI to register with each provider:
+  #   <BETTER_AUTH_URL>/api/auth/callback/<google | microsoft | github | sso>
+  GOOGLE_CLIENT_ID: ""
+  GITHUB_CLIENT_ID: ""
+  MICROSOFT_CLIENT_ID: ""
+  # common (work and personal accounts), organizations, consumers, or your tenant's ID.
+  # A work account's email is trusted (linked to an existing account, no confirmation email)
+  # only from that one tenant, or when the app registration adds the optional ID token claim
+  # xms_edov: any organisation's admin can set any address on their own users.
+  MICROSOFT_TENANT_ID: common
+  # Any OpenID Connect provider (Okta, Keycloak, Auth0, Entra ID…): the button says
+  # "Continue with <SSO_NAME>". All three here, and SSO_CLIENT_SECRET in the Secret, or none.
+  SSO_NAME: ""
+  SSO_DISCOVERY_URL: ""
+  SSO_CLIENT_ID: ""
   # Connections per pod; replicas × this must stay under the database's limit.
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
@@ -134,6 +150,8 @@ config:
 #   SMTP_PASSWORD       the SMTP password or API token
 # and, only with config.TURNSTILE_SITE_KEY set:
 #   TURNSTILE_SECRET_KEY  Cloudflare Turnstile's secret key
+# and, for each sign-in provider whose client ID is set in config:
+#   GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_SECRET, MICROSOFT_CLIENT_SECRET, SSO_CLIENT_SECRET
 existingSecret: auth-server-secrets
 
 # Extra env entries, in the Kubernetes EnvVar shape.

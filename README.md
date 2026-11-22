@@ -5,6 +5,7 @@ A self-hosted sign-in server for your own apps. People create one account and us
 What you get:
 
 - **Sign-in:** sign-up with email confirmation, password sign-in, magic links, password reset
+- **Social sign-in (optional):** Google, Microsoft, GitHub, and any OpenID Connect provider (Okta, Keycloak, Auth0…), each on when its keys are set
 - **Two-factor authentication:** an authenticator app, with backup codes
 - **Account security:** change your password, see where you're signed in, sign out one device or all of them
 - **OpenID Connect:** authorization code with PKCE, refresh tokens, a consent screen, and an admin page to register apps (OIDC clients)
@@ -64,6 +65,7 @@ Apps on the same parent domain can also read the shared session cookie instead o
 2. Create a Secret in your namespace with `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD`. The chart reads it but never creates it.
 3. In `charts/auth-server/values-production.yaml`, set your domain and SMTP host and user.
    Optional: for Cloudflare Turnstile on the forms, set `TURNSTILE_SITE_KEY` there and add `TURNSTILE_SECRET_KEY` to the Secret.
+   Optional: for social sign-in, set a provider's client ID there (`GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`, `GITHUB_CLIENT_ID`, or `SSO_NAME`, `SSO_DISCOVERY_URL` and `SSO_CLIENT_ID`) and its secret in the Secret. Register `https://auth.example.com/api/auth/callback/<google | microsoft | github | sso>` as the redirect URI with the provider.
 4. Sync the chart with Argo CD. Database migrations run automatically before each rollout.
 
 ## License
