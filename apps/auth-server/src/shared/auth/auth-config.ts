@@ -3,7 +3,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { createAuthAdapter, type Executor, getUserSecurityByEmail } from "@repo/db";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { captcha, jwt, magicLink, twoFactor } from "better-auth/plugins";
+import { captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import { APP_NAME } from "@/shared/config/app";
 import type { ServerEnv } from "@/shared/config/env";
 import {
@@ -22,6 +22,8 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
 } from "./constants";
+import { socialProviderOptions, ssoProviderConfig } from "./social-providers";
+import { socialTwoFactorGuard } from "./social-two-factor-guard";
 
 // Lifetimes, in seconds. Short for anything that's a bearer credential in a URL or a header.
 export const LIFETIMES = {
@@ -67,6 +69,8 @@ const RATE_LIMIT_RULES = {
   "/magic-link/verify": { window: 60, max: 10 },
   "/two-factor/*": { window: 60, max: 5 },
   "/change-password": { window: 5 * 60, max: 5 },
+  "/sign-in/social": { window: 60, max: 10 },
+  "/callback/*": { window: 60, max: 10 },
   "/oauth2/token": { window: 60, max: 30 },
 };
 
@@ -90,6 +94,7 @@ function allowInsecureRedirectUri(env: ServerEnv) {
 export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const insecureRedirects = allowInsecureRedirectUri(env);
   const hostnames = turnstileHostnames(env);
+  const ssoProviders = ssoProviderConfig(env.social);
 
   return betterAuth({
     appName: APP_NAME,
@@ -148,6 +153,14 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
     // Verification, reset and magic-link tokens are stored hashed.
     verification: { storeIdentifier: "hashed" },
 
+    // Google, Microsoft and GitHub, each when it's configured (social-providers.ts).
+    socialProviders: socialProviderOptions(env.social),
+    // The tokens a provider hands over are kept encrypted with BETTER_AUTH_SECRET.
+    account: { encryptOAuthTokens: true },
+    // A provider's callback that fails before it knows where to go (a lost or forged state)
+    // lands on the login page with ?error=, not on Better Auth's bare error page.
+    onAPIError: { errorURL: `${env.betterAuthUrl}${LOGIN_PAGE}` },
+
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -195,6 +208,12 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         issuer: APP_NAME,
         backupCodeOptions: { amount: 10, length: 10, storeBackupCodes: "encrypted" },
       }),
+
+      // The SSO_* OpenID Connect provider, when it's configured.
+      ...(ssoProviders.length > 0 ? [genericOAuth({ config: ssoProviders })] : []),
+
+      // Before oauthProvider(): see the guard.
+      socialTwoFactorGuard(LOGIN_PAGE),
 
       jwt({
         // The OIDC issuer is the bare public origin, so discovery lives at
