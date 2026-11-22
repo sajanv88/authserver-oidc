@@ -50,6 +50,9 @@ config:
   SMTP_HOST: ""
   SMTP_PORT: "587"
   SMTP_USER: ""
+  # Cloudflare Turnstile: the site key here and TURNSTILE_SECRET_KEY in the Secret. Empty
+  # leaves it off.
+  TURNSTILE_SITE_KEY: ""
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
   OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production
