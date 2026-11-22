@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import { AppearanceMenu } from "@/shared/appearance/appearance-menu";
 import { requireSession } from "@/shared/auth/session";
 import { SignOutButton } from "@/shared/auth/sign-out-button";
 import { PageShell, type ShellLink } from "@/shared/ui/page-shell/page-shell";
@@ -23,7 +24,15 @@ export default async function SignedInLayout({ children }: { children: ReactNode
   ];
 
   return (
-    <PageShell links={links} actions={<SignOutButton />}>
+    <PageShell
+      links={links}
+      actions={
+        <>
+          <AppearanceMenu />
+          <SignOutButton />
+        </>
+      }
+    >
       {children}
     </PageShell>
   );
