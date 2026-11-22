@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { test as base, createBdd } from "playwright-bdd";
+import type { TwoFactor } from "../support/authenticator";
 import { AUTH_URL } from "../support/env";
 import { Mailbox } from "../support/mailbox";
 import { type Person, randomIp } from "../support/people";
@@ -14,6 +15,10 @@ export type World = {
   oldPassword?: string;
   /** A second browser where I'm signed in too: another device. */
   otherDevice?: Page;
+  /** My authenticator app's setup key and my backup codes, once two-factor is on. */
+  twoFactor?: TwoFactor;
+  /** The backup code I last signed in with. */
+  usedBackupCode?: string;
 };
 
 type Fixtures = {
