@@ -1,0 +1,58 @@
+@use "abstracts" as a;
+
+// A band of the page: its heading, a lead under it, and what it's about.
+.section {
+  padding: a.space(16) a.space(4);
+  color: var(--color-foreground);
+
+  @include a.breakpoint("md") {
+    padding: a.space(24) a.space(8);
+  }
+
+  &--muted {
+    border-block: var(--nuv-border-width) solid var(--color-border);
+    background-color: color-mix(in oklab, var(--color-muted) 45%, var(--color-background));
+  }
+
+  &__inner {
+    display: grid;
+    gap: a.space(10);
+    max-inline-size: var(--app-content-max-width);
+    margin-inline: auto;
+
+    @include a.breakpoint("md") {
+      gap: a.space(12);
+    }
+  }
+
+  &__intro {
+    display: grid;
+    gap: a.space(4);
+    max-inline-size: 42rem;
+  }
+
+  &__eyebrow {
+    margin: 0;
+    color: var(--color-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(1.75rem, 1.25rem + 2.2vw, 2.75rem);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  &__lead {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    text-wrap: pretty;
+  }
+}

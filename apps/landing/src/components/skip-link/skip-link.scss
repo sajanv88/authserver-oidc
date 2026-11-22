@@ -1,0 +1,22 @@
+@use "abstracts" as a;
+
+// Out of sight until it has focus, then over the top of the bar.
+.skip-link {
+  position: fixed;
+  inset-block-start: a.space(2);
+  inset-inline-start: a.space(2);
+  z-index: 30;
+  padding: a.space(2) a.space(4);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transform: translateY(calc(-100% - #{a.space(4)}));
+
+  &:focus-visible {
+    transform: none;
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,17 @@
+@use "abstracts" as a;
+
+// The site's own frame. nuvui styles its components and little else.
+html {
+  scroll-padding-block-start: var(--app-scroll-offset);
+
+  @media (prefers-reduced-motion: no-preference) {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}

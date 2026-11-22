@@ -3,8 +3,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["NEXT_PUBLIC_*", "NEXT_DEPLOYMENT_ID", "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "NEXT_DEPLOYMENT_ID",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY",
+        "PAGES_BASE_PATH"
+      ],
       "passThroughEnv": ["NEXT_TELEMETRY_DISABLED"]
     },
     "typecheck": {
