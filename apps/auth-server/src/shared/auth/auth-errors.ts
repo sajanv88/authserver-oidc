@@ -10,7 +10,22 @@ export type AuthClientError = {
 
 export const RATE_LIMITED_MESSAGE = "Too many attempts. Wait a minute, then try again.";
 
-/** The rate limiter's 429, or the generic message for anything else. */
+export const CAPTCHA_MESSAGE = "Complete the security check, then try again.";
+
+/**
+ * The captcha plugin's refusals: no token (400) or one Cloudflare didn't accept (403). It
+ * checks before the endpoint runs, so this never says anything about an account.
+ */
+export function isCaptchaRefusal(error: AuthClientError): boolean {
+  return (
+    (error.status === 400 && error.code === "MISSING_RESPONSE") ||
+    (error.status === 403 && error.code === "VERIFICATION_FAILED")
+  );
+}
+
+/** The rate limiter's 429, the captcha's refusal, or the generic message for anything else. */
 export function authErrorMessage(error: AuthClientError, fallback: string): string {
-  return error.status === 429 ? RATE_LIMITED_MESSAGE : fallback;
+  if (error.status === 429) return RATE_LIMITED_MESSAGE;
+  if (isCaptchaRefusal(error)) return CAPTCHA_MESSAGE;
+  return fallback;
 }
