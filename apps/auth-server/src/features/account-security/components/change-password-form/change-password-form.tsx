@@ -14,6 +14,7 @@ import {
 import { useActionState } from "react";
 import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { changePasswordAction } from "../../actions/password";
 import { CHANGE_PASSWORD_FIELDS } from "../../schemas/account";
@@ -68,6 +69,7 @@ export function ChangePasswordForm() {
         </FieldControl>
         <FieldError>{errors.confirmPassword}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Changing…">
         Change password
       </SubmitButton>

@@ -11,6 +11,8 @@ export type EndpointCall = {
   body?: Record<string, unknown>;
   /** The signed OIDC query the page was opened with: lets Better Auth continue the flow. */
   oauthQuery?: string | undefined;
+  /** The form's Turnstile token, for the captcha plugin (sent as X-Captcha-Response). */
+  captcha?: string | undefined;
 };
 
 /** What the browser's request carried, passed on so Better Auth sees the same client. */
@@ -57,6 +59,7 @@ export async function callEndpoint(
   if (context.cookie) headers.set("cookie", context.cookie);
   if (context.forwardedFor) headers.set("x-forwarded-for", context.forwardedFor);
   if (context.userAgent) headers.set("user-agent", context.userAgent);
+  if (call.captcha) headers.set("x-captcha-response", call.captcha);
 
   const body = {
     ...call.body,

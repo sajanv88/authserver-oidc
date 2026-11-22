@@ -56,6 +56,7 @@ Apps on the same parent domain can also read the shared session cookie instead o
 1. Every merge to `main` publishes the image `ghcr.io/sajanv88/auth-server`. A tag `vX.Y.Z` publishes a release and the Helm chart `oci://ghcr.io/sajanv88/charts/auth-server`.
 2. Create a Secret in your namespace with `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD`. The chart reads it but never creates it.
 3. In `charts/auth-server/values-production.yaml`, set your domain and SMTP host and user.
+   Optional: for Cloudflare Turnstile on the forms, set `TURNSTILE_SITE_KEY` there and add `TURNSTILE_SECRET_KEY` to the Secret.
 4. Sync the chart with Argo CD. Database migrations run automatically before each rollout.
 
 ## License

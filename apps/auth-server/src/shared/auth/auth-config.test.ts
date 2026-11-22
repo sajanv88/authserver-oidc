@@ -3,7 +3,7 @@
 // don't leak between them.
 import { createHash, randomBytes } from "node:crypto";
 import { createLocalJWKSet, jwtVerify } from "jose";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { withRootJwksUri } from "./discovery";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "./test-harness";
 
@@ -454,3 +454,110 @@ function authorizeQuery(
   }
   return query;
 }
+
+describe("Cloudflare Turnstile, when it's configured", () => {
+  const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+  const turnstile = { siteKey: "site-key", secretKey: "secret-key" };
+  // One client IP per test: the sign-in rate limit (5 a minute) counts these attempts too.
+  let clientIp = "";
+  let nextIp = 90;
+  const realFetch = globalThis.fetch;
+  let h: Harness;
+  /** What Cloudflare answers next, and what it was asked. */
+  let answer: () => Promise<Response>;
+  let asked: Record<string, unknown>[];
+
+  beforeAll(async () => {
+    // As production: that's where the token's host is checked too.
+    h = await createHarness({ turnstile, isProduction: true });
+  });
+
+  beforeEach(() => {
+    clientIp = `203.0.113.${nextIp++}`;
+    asked = [];
+    answer = async () => Response.json({ success: true, hostname: "auth.localtest.me" });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.startsWith(SITEVERIFY)) return realFetch(input, init);
+      asked.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return answer();
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const signIn = (headers: Record<string, string> = {}) =>
+    h.browser(clientIp).request("POST", "/api/auth/sign-in/email", {
+      json: { email: "nobody@example.com", password },
+      headers,
+    });
+
+  it("refuses a sign-in without a token, before looking at the password", async () => {
+    const response = await signIn();
+    expect(response.status).toBe(400);
+    expect(await json(response)).toMatchObject({ code: "MISSING_RESPONSE" });
+    expect(asked).toEqual([]);
+  });
+
+  it("asks Cloudflare with the secret, the token and the client IP, then lets it through", async () => {
+    const response = await signIn({ "x-captcha-response": "good-token" });
+    // Past the captcha: the endpoint itself answers (no such account).
+    expect(response.status).toBe(401);
+    expect(asked).toEqual([{ secret: "secret-key", response: "good-token", remoteip: clientIp }]);
+  });
+
+  it("refuses a token Cloudflare rejects, or one issued for another host", async () => {
+    answer = async () => Response.json({ success: false, "error-codes": ["invalid-input"] });
+    const rejected = await signIn({ "x-captcha-response": "bad-token" });
+    expect(rejected.status).toBe(403);
+    expect(await json(rejected)).toMatchObject({ code: "VERIFICATION_FAILED" });
+
+    answer = async () => Response.json({ success: true, hostname: "phishing.example" });
+    const elsewhere = await signIn({ "x-captcha-response": "other-site-token" });
+    expect(elsewhere.status).toBe(403);
+  });
+
+  it("doesn't check the host in development, where test keys report example.com", async () => {
+    const development = await createHarness({ turnstile });
+    answer = async () => Response.json({ success: true, hostname: "example.com" });
+    const response = await development
+      .browser(clientIp)
+      .request("POST", "/api/auth/sign-in/email", {
+        json: { email: "nobody@example.com", password },
+        headers: { "x-captcha-response": "XXXX.DUMMY.TOKEN.XXXX" },
+      });
+    expect(response.status).toBe(401);
+  });
+
+  it("refuses when Cloudflare can't be reached", async () => {
+    answer = async () => {
+      throw new TypeError("fetch failed");
+    };
+    const response = await signIn({ "x-captcha-response": "good-token" });
+    expect(response.status).toBe(500);
+  });
+
+  it("guards every endpoint a form posts to, and nothing else", async () => {
+    const browser = h.browser(clientIp);
+    for (const path of ["/sign-up/email", "/request-password-reset", "/sign-in/magic-link"]) {
+      const response = await browser.request("POST", `/api/auth${path}`, {
+        json: { email: "nobody@example.com", password, name: "Nobody", redirectTo: "/" },
+      });
+      expect(response.status, path).toBe(400);
+    }
+    const session = await browser.request("GET", "/api/auth/get-session");
+    expect(session.status).toBe(200);
+  });
+
+  it("passes a server action's token on as X-Captcha-Response", async () => {
+    const result = await h.browser(clientIp).caller()({
+      path: "/sign-in/email",
+      body: { email: "nobody@example.com", password },
+      captcha: "good-token",
+    });
+    expect(result.status).toBe(401);
+    expect(asked.map((body) => body.response)).toEqual(["good-token"]);
+  });
+});

@@ -119,6 +119,9 @@ config:
   SMTP_HOST: smtp.example.com
   SMTP_PORT: "587"
   SMTP_USER: ""
+  # Cloudflare Turnstile's site key (public). Set it, with TURNSTILE_SECRET_KEY in the Secret,
+  # to put Turnstile on the forms and the auth endpoints behind them. Empty turns it off.
+  TURNSTILE_SITE_KEY: ""
   # Connections per pod; replicas × this must stay under the database's limit.
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
@@ -129,6 +132,8 @@ config:
 #   BETTER_AUTH_SECRET  at least 32 random characters (openssl rand -base64 32)
 #   DATABASE_URL        postgres://… (TLS settings in the URL: sslmode=verify-full&…)
 #   SMTP_PASSWORD       the SMTP password or API token
+# and, only with config.TURNSTILE_SITE_KEY set:
+#   TURNSTILE_SECRET_KEY  Cloudflare Turnstile's secret key
 existingSecret: auth-server-secrets
 
 # Extra env entries, in the Kubernetes EnvVar shape.

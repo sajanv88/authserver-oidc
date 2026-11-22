@@ -19,6 +19,7 @@ import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { resetPasswordAction } from "../../actions/password-reset";
 import { RESET_PASSWORD_FIELDS } from "../../schemas/password-reset";
@@ -107,6 +108,7 @@ export function ResetPasswordForm({ token, next, forgotPasswordHref }: ResetPass
         </FieldControl>
         <FieldError>{errors.confirmPassword}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Changing password…">
         Change password
       </SubmitButton>

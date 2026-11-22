@@ -1,5 +1,6 @@
 "use server";
 
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { parseForm } from "@/shared/validation/field-errors";
@@ -18,7 +19,7 @@ export async function requestMagicLinkAction(
   const email = text(form, "email");
   const parsed = parseForm(MagicLinkSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
-  const outcome = await requestMagicLink(callAuth, {
+  const outcome = await requestMagicLink(withCaptcha(callAuth, captchaToken(form)), {
     email: parsed.value.email,
     callbackURL: safeReturnPath(text(form, "callbackURL")),
     errorCallbackURL: safeReturnPath(text(form, "errorCallbackURL")),

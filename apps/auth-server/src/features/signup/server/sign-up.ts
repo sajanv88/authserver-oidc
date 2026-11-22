@@ -1,5 +1,5 @@
 import "server-only";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import { authErrorMessage, isCaptchaRefusal } from "@/shared/auth/auth-errors";
 import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import type { AuthCaller } from "@/shared/auth/endpoint";
@@ -60,7 +60,9 @@ export async function resendVerification(
     path: "/send-verification-email",
     body: { email, callbackURL: confirmationUrl(next) },
   });
-  if (!result.ok && result.status === 429) {
+  // Only refusals that say nothing about the address get through: the rate limit, and the
+  // captcha (checked before Better Auth looks the address up).
+  if (!result.ok && (result.status === 429 || isCaptchaRefusal(result.error))) {
     return { kind: "failed", message: authErrorMessage(result.error, "") };
   }
   return { kind: "sent" };

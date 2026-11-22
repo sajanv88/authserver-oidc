@@ -1,0 +1,10 @@
+// Cloudflare's widget is an iframe of its own; this only keeps its place in the form.
+.turnstile {
+  display: grid;
+  gap: calc(var(--spacing) * 2);
+}
+
+// The widget's height (65px), held before it loads so the form doesn't jump.
+.turnstile__widget {
+  min-block-size: 4.0625rem;
+}

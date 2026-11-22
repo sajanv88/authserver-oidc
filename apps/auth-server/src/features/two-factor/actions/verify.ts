@@ -1,6 +1,7 @@
 "use server";
 
 import * as v from "valibot";
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { signedOidcQuery } from "@/shared/auth/oidc-query";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth, continueTo } from "@/shared/auth/server-endpoint";
@@ -27,7 +28,7 @@ export async function verifyAction(previous: VerifyState, form: FormData): Promi
   if (!parsed.ok) return { status: "editing", attempt, error: parsed.errors.code };
 
   const outcome = await verifySecondFactor(
-    callAuth,
+    withCaptcha(callAuth, captchaToken(form)),
     {
       method: method.output,
       code: parsed.value.code,

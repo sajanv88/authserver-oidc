@@ -1,7 +1,11 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_PREFIX, isProtectedPath, LOGIN_PATH } from "@/shared/auth/constants";
-import { buildContentSecurityPolicy, createNonce } from "@/shared/security/csp";
+import {
+  buildContentSecurityPolicy,
+  createNonce,
+  isTurnstileConfigured,
+} from "@/shared/security/csp";
 
 // Runs before every document request.
 //
@@ -24,7 +28,11 @@ export function proxy(request: NextRequest) {
   }
 
   const nonce = createNonce();
-  const csp = buildContentSecurityPolicy({ nonce, isDev: process.env.NODE_ENV === "development" });
+  const csp = buildContentSecurityPolicy({
+    nonce,
+    isDev: process.env.NODE_ENV === "development",
+    turnstile: isTurnstileConfigured(process.env),
+  });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

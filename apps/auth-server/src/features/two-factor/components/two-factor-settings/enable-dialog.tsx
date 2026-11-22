@@ -24,6 +24,7 @@ import Form from "next/form";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/shared/config/app";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { setupAction } from "../../actions/settings";
 import type { SetupStep } from "../../types";
 import { BackupCodesList } from "./backup-codes-list";
@@ -104,6 +105,7 @@ function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: 
             <FieldDescription>Two-factor turns on once this code is accepted.</FieldDescription>
             <FieldError>{setup.error}</FieldError>
           </Field>
+          <Turnstile />
           <DialogFooter>
             <Button type="submit" disabled={pending}>
               {pending ? (

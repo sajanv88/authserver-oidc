@@ -29,6 +29,7 @@ import {
 } from "@nuvui/react";
 import Form from "next/form";
 import { useActionState, useEffect, useRef } from "react";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { createClientAction } from "../../actions/clients";
 import { CREATE_CLIENT_FIELDS, MAX_REDIRECT_URIS } from "../../schemas/client";
@@ -160,6 +161,7 @@ function CreateClientPanel() {
             </FieldDescription>
             <FieldError>{errors?.redirectUris}</FieldError>
           </Field>
+          <Turnstile />
         </Form>
       </DialogBody>
       <DialogFooter>

@@ -125,4 +125,19 @@ describe("parseEnv", () => {
     const errors = errorsFor({ ...valid, BETTER_AUTH_SECRET: "leaky-secret-value" }).join();
     expect(errors).not.toContain("leaky-secret-value");
   });
+
+  it("leaves Turnstile off unless both keys are set, and refuses half of them", () => {
+    const off = parseEnv({ ...valid, TURNSTILE_SITE_KEY: "", TURNSTILE_SECRET_KEY: " " });
+    expect(off.ok && off.env.turnstile).toBeUndefined();
+
+    const on = parseEnv({ ...valid, TURNSTILE_SITE_KEY: " site ", TURNSTILE_SECRET_KEY: "secret" });
+    expect(on.ok && on.env.turnstile).toEqual({ siteKey: "site", secretKey: "secret" });
+
+    expect(errorsFor({ ...valid, TURNSTILE_SITE_KEY: "site" })).toEqual([
+      "TURNSTILE_SECRET_KEY is required when TURNSTILE_SITE_KEY is set",
+    ]);
+    expect(errorsFor({ ...valid, TURNSTILE_SECRET_KEY: "secret" })).toEqual([
+      "TURNSTILE_SITE_KEY is required when TURNSTILE_SECRET_KEY is set",
+    ]);
+  });
 });

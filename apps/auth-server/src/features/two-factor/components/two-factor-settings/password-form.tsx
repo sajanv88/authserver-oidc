@@ -15,6 +15,7 @@ import {
 } from "@nuvui/react";
 import Form from "next/form";
 import { useEffect, useRef } from "react";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import type { PasswordAttempt } from "../../types";
 import "./password-form.scss";
 
@@ -62,6 +63,7 @@ export function PasswordForm({
         </FieldControl>
         <FieldError>{attempt.error}</FieldError>
       </Field>
+      <Turnstile />
       <DialogFooter>
         <DialogClose asChild>
           <Button intent="secondary" disabled={pending}>

@@ -3,7 +3,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { createAuthAdapter, type Executor, getUserSecurityByEmail } from "@repo/db";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { jwt, magicLink, twoFactor } from "better-auth/plugins";
+import { captcha, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import { APP_NAME } from "@/shared/config/app";
 import type { ServerEnv } from "@/shared/config/env";
 import {
@@ -13,7 +13,9 @@ import {
   resetPasswordTemplate,
   verifyEmailTemplate,
 } from "@/shared/email";
+import { turnstileHostnames } from "@/shared/security/turnstile";
 import { AUTH_PAGES } from "./auth-pages";
+import { CAPTCHA_ENDPOINTS } from "./captcha";
 import {
   AUTH_COOKIE_PREFIX,
   LOGIN_PATH,
@@ -88,6 +90,7 @@ function allowInsecureRedirectUri(env: ServerEnv) {
  */
 export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const insecureRedirects = allowInsecureRedirectUri(env);
+  const hostnames = turnstileHostnames(env);
 
   return betterAuth({
     appName: APP_NAME,
@@ -229,6 +232,20 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         clientReference: ({ user }) => (isAdmin(user) ? ADMIN_CLIENT_OWNER : undefined),
         ...(insecureRedirects ? { allowInsecureRedirectUri: insecureRedirects } : {}),
       }),
+
+      // Cloudflare Turnstile on every endpoint a form posts typed input to (captcha.ts), only
+      // when it's configured. A request without a token Cloudflare accepts is refused before
+      // the endpoint runs; if Cloudflare can't be reached, it's refused too.
+      ...(env.turnstile
+        ? [
+            captcha({
+              provider: "cloudflare-turnstile",
+              secretKey: env.turnstile.secretKey,
+              endpoints: CAPTCHA_ENDPOINTS,
+              ...(hostnames ? { allowedHostnames: hostnames } : {}),
+            }),
+          ]
+        : []),
 
       // Last: lets server actions that call auth.api set cookies.
       nextCookies(),

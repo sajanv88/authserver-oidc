@@ -1,5 +1,6 @@
 "use server";
 
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { parseForm } from "@/shared/validation/field-errors";
@@ -19,7 +20,7 @@ export async function signUpAction(previous: SignUpState, form: FormData): Promi
   const parsed = parseForm(SignUpSchema, { ...values, password: text(form, "password") });
   if (!parsed.ok) return { status: "editing", attempt, values, errors: parsed.errors };
 
-  const outcome = await signUp(callAuth, parsed.value, next);
+  const outcome = await signUp(withCaptcha(callAuth, captchaToken(form)), parsed.value, next);
   switch (outcome.kind) {
     case "sent":
       return { status: "sent", attempt, email: parsed.value.email };
@@ -39,7 +40,7 @@ export async function resendVerificationAction(
   const parsed = parseForm(ResendVerificationSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
   const outcome = await resendVerification(
-    callAuth,
+    withCaptcha(callAuth, captchaToken(form)),
     parsed.value.email,
     safeReturnPath(text(form, "next")),
   );

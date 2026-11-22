@@ -14,6 +14,7 @@ import type { Route } from "next";
 import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { requestResetAction } from "../../actions/password-reset";
 import type { ForgotPasswordState, ResetDestination } from "../../types";
 import "./forgot-password-form.scss";
@@ -65,6 +66,7 @@ export function ForgotPasswordForm({ next, retryHref }: ResetDestination & { ret
         </FieldControl>
         <FieldError>{state.error}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Sending…">
         Send reset link
       </SubmitButton>
