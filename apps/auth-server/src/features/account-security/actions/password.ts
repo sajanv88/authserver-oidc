@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { requireSession } from "@/shared/auth/session";
 import { parseForm } from "@/shared/validation/field-errors";
@@ -26,7 +27,7 @@ export async function changePasswordAction(
   const errors = parsed.ok ? crossFieldErrors(parsed.value) : parsed.errors;
   if (!parsed.ok || Object.keys(errors).length > 0) return { attempt, errors };
 
-  const outcome = await changePassword(callAuth, parsed.value);
+  const outcome = await changePassword(withCaptcha(callAuth, captchaToken(form)), parsed.value);
   switch (outcome.kind) {
     case "changed":
       // The session list now has this session only.

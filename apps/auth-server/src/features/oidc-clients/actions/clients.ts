@@ -4,7 +4,11 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import * as v from "valibot";
 import { getAuth } from "@/shared/auth/auth";
+import { CAPTCHA_MESSAGE } from "@/shared/auth/auth-errors";
+import { captchaToken } from "@/shared/auth/captcha";
 import { requireAdmin } from "@/shared/auth/session";
+import { env } from "@/shared/config/env";
+import { turnstileHostnames, verifyTurnstileToken } from "@/shared/security/turnstile";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ClientIdSchema, CreateClientSchema } from "../schemas/client";
 import { CLIENTS_PATH, createClient, deleteClient, rotateClientSecret } from "../server/clients";
@@ -38,6 +42,20 @@ export async function createClientAction(
 
   const parsed = parseForm(CreateClientSchema, values);
   if (!parsed.ok) return { status: "editing", values, errors: parsed.errors, attempt };
+
+  // Turnstile, when it's on: this form posts to the plugin's server API, which the captcha
+  // plugin doesn't see, so the token is checked here.
+  const config = env();
+  if (
+    config.turnstile &&
+    !(await verifyTurnstileToken(
+      config.turnstile,
+      captchaToken(formData),
+      turnstileHostnames(config),
+    ))
+  ) {
+    return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
+  }
 
   const result = await createClient(getAuth(), await headers(), parsed.value);
   if (!result.ok) {

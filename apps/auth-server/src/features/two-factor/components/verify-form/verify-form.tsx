@@ -18,6 +18,7 @@ import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { LeavingFor } from "@/shared/ui/leaving-for/leaving-for";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { verifyAction } from "../../actions/verify";
 import type { SecondFactorMethod, VerifyProblem, VerifyState } from "../../types";
 
@@ -100,6 +101,7 @@ export function VerifyForm({ method, oidcQuery, returnTo, loginHref }: VerifyFor
         </FieldControl>
         <FieldLabel>Don't ask again on this device for 30 days</FieldLabel>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Checking…">
         Verify
       </SubmitButton>
