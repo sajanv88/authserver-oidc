@@ -27,7 +27,6 @@ When("I sign up with my name, email and a password", async ({ page, world }) => 
 });
 
 When("someone signs up with my email address", async ({ page, world }) => {
-  // Someone else: their own name and password, but my address.
   await signUp(page, { ...newPerson(), email: me(world).email });
 });
 

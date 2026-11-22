@@ -106,7 +106,6 @@ export type UserInfo =
   | { ok: true; claims: Record<string, unknown> }
   | { ok: false; status: number };
 
-/** The userinfo endpoint, with the access token as a Bearer token. */
 export async function fetchUserInfo(discovery: Discovery, accessToken: string): Promise<UserInfo> {
   const response = await fetch(discovery.userinfo_endpoint, {
     headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" },

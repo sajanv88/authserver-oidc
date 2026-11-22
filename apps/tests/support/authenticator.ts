@@ -20,7 +20,6 @@ export function totp(setupKey: string, at = Date.now()): string {
   return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
-/** The setup key in an otpauth:// URI. */
 export function setupKeyOf(totpURI: string): string {
   return new URL(totpURI).searchParams.get("secret") ?? "";
 }

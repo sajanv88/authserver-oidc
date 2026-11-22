@@ -1,10 +1,8 @@
 // Every table file, re-exported. drizzle-kit reads the schema from here (drizzle.config.ts),
 // and so does defineRelations. Column helpers (_columns.ts) are deliberately not exported.
 
-// Better Auth core
 export * from "./accounts";
 export * from "./jwks";
-// @better-auth/oauth-provider
 export * from "./oauth-access-tokens";
 export * from "./oauth-client-assertions";
 export * from "./oauth-client-resources";

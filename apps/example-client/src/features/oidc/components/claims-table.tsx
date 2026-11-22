@@ -25,7 +25,6 @@ function show(name: string, value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-/** Claims as a two-column table, times written out. A server component. */
 export function ClaimsTable({
   claims,
   caption,

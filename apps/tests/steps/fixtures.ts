@@ -11,15 +11,10 @@ export type World = {
   person?: Person;
   /** The last emailed link the scenario was given. */
   link?: string;
-  /** My password before I changed it. */
   oldPassword?: string;
-  /** A second browser where I'm signed in too: another device. */
   otherDevice?: Page;
-  /** My authenticator app's setup key and my backup codes, once two-factor is on. */
   twoFactor?: TwoFactor;
-  /** The backup code I last signed in with. */
   usedBackupCode?: string;
-  /** The OIDC client (app) the scenario registered, with the secret it was shown. */
   client?: { name: string; redirectUri: string; clientId: string; secret: string };
 };
 
@@ -60,7 +55,6 @@ export const test = base.extend<Fixtures>({
 
 export const { Given, When, Then } = createBdd(test);
 
-/** The scenario's person, set by a Given step. */
 export function me(world: World): Person {
   if (!world.person) throw new Error("No person yet: start the scenario with a Given about me.");
   return world.person;

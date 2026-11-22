@@ -44,7 +44,6 @@ async function signUp(api: APIRequestContext, person: Person): Promise<void> {
   expect(response.ok(), `sign-up: ${await response.text()}`).toBe(true);
 }
 
-/** Signed up, the confirmation email not opened yet. */
 export async function createUnconfirmedAccount(mailbox: Mailbox): Promise<Person> {
   const person = newPerson();
   const api = await authApi();

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { APP_NAME } from "@/shared/config/app";
 import "./site-header.scss";
 
-/** The bar across the top: the app's name and its two pages. */
 export function SiteHeader() {
   return (
     <header className="site-header">

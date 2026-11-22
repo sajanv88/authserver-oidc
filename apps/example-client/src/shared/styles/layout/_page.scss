@@ -1,6 +1,5 @@
 @use "abstracts" as a;
 
-// Every page of the example: one column, centered.
 .page {
   display: grid;
   gap: a.space(6);
