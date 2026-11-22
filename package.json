@@ -12,6 +12,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:e2e": "pnpm --filter tests e2e",
     "lint": "biome check . && stylelint \"**/*.scss\" --allow-empty-input",
     "lint:fix": "biome check --write . && stylelint \"**/*.scss\" --allow-empty-input --fix",
     "format": "biome format --write .",

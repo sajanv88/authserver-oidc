@@ -1,0 +1,103 @@
+# The end-to-end BDD suite (apps/tests): every second day, and on demand from the Actions tab.
+# Both apps run as `next dev` against a fresh Postgres, the way they run locally, and
+# Playwright drives them in Chromium. Publishes nothing.
+name: E2E
+
+on:
+  schedule:
+    # 03:00 UTC on every odd day of the month (1st, 3rd, …): every second day.
+    - cron: "0 3 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # The local-development settings (.env.example), for a database that lives for this job.
+    env:
+      DATABASE_URL: postgres://app:app@localhost:5432/app
+      BETTER_AUTH_URL: http://auth.localtest.me:3000
+      COOKIE_DOMAIN: .localtest.me
+      TRUSTED_ORIGINS: http://app.localtest.me:3001
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: Auth <no-reply@localtest.me>
+      SEED_ADMIN_EMAIL: admin@localtest.me
+      EXAMPLE_AUTH_SERVER_URL: http://auth.localtest.me:3000
+      EXAMPLE_APP_URL: http://app.localtest.me:3001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # *.localtest.me resolves to 127.0.0.1 in public DNS; pin it so no resolver is involved.
+      - name: Point the local hosts at this machine
+        run: echo "127.0.0.1 auth.localtest.me app.localtest.me" | sudo tee -a /etc/hosts
+
+      - name: Make throwaway secrets for this run
+        run: |
+          for name in BETTER_AUTH_SECRET EXAMPLE_SESSION_SECRET SEED_ADMIN_PASSWORD; do
+            value="$(openssl rand -base64 32)"
+            echo "::add-mask::${value}"
+            echo "${name}=${value}" >> "$GITHUB_ENV"
+          done
+
+      - run: pnpm db:migrate
+      - name: Seed the admin and the example app's client
+        run: |
+          pnpm db:seed | tee seed.log
+          client_id="$(sed -n 's/^ *EXAMPLE_CLIENT_ID=//p' seed.log)"
+          test -n "${client_id}"
+          echo "EXAMPLE_CLIENT_ID=${client_id}" >> "$GITHUB_ENV"
+
+      - name: Cache Playwright's Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter tests exec playwright install --with-deps chromium
+
+      - run: pnpm test:e2e
+
+      # The report and traces, and the servers' output (it holds this run's throwaway email
+      # links, nothing else).
+      - if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-report
+          path: |
+            apps/tests/playwright-report/
+            apps/tests/test-results/
+            apps/tests/.output/
+          include-hidden-files: true
+          retention-days: 7

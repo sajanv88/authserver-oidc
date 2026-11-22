@@ -1,0 +1,19 @@
+{
+  "name": "tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "bddgen && playwright test",
+    "e2e:ui": "bddgen && playwright test --ui",
+    "e2e:report": "playwright show-report",
+    "browsers": "playwright install chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@repo/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "playwright-bdd": "catalog:",
+    "typescript": "catalog:"
+  }
+}

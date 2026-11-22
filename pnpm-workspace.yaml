@@ -44,6 +44,9 @@ catalog:
   better-auth: 1.7.27
   jose: 6.2.18
   nodemailer: 10.6.1
+  # End-to-end suite (apps/tests)
+  "@playwright/test": 1.65.1
+  playwright-bdd: 9.2.1
 
 # Install scripts are denied unless listed here (strictDepBuilds is on by default).
 # Review a package's script before setting it to true.
