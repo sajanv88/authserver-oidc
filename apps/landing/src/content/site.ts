@@ -2,6 +2,14 @@
 
 export const PRODUCT_NAME = "Auth Server";
 
+/** The link preview's picture, drawn by src/app/og.png/route.tsx. */
+export const OG_IMAGE = {
+  path: "/og.png",
+  width: 1200,
+  height: 630,
+  alt: `${PRODUCT_NAME}: one sign-in for every app you ship. Self-hosted OpenID Connect on Next.js and Better Auth.`,
+};
+
 export const REPO_URL = "https://github.com/sajanv88/authserver-oidc";
 
 export const repo = (path: string) => `${REPO_URL}/${path}`;
