@@ -4,6 +4,7 @@ import "@nuvui/react/themes/ledger.css";
 import "@nuvui/react/themes/meadow.css";
 import "@nuvui/react/themes/ember.css";
 import "@nuvui/react/themes/high-contrast.css";
+import "@nuvui/backgrounds/styles.css";
 import "@nuvui/barcodes/styles.css";
 import "@nuvui/table/styles.css";
 import "@/shared/styles/globals.scss";

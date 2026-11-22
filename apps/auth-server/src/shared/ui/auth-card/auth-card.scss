@@ -1,12 +1,27 @@
 @use "abstracts" as a;
 
 .auth-card {
-  display: grid;
-  place-items: center;
-  min-block-size: 100svh;
-  padding: a.space(8) a.space(4);
-  background-color: var(--color-muted);
   color: var(--color-foreground);
+
+  // The gradient leads with the theme's primary color, so it follows the chosen preset.
+  &__backdrop {
+    --nuv-gradient-background-color-1: var(--color-primary);
+    --nuv-gradient-background-opacity: 0.55;
+
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-block-size: 100svh;
+    padding: a.space(16) a.space(4) a.space(8);
+  }
+
+  &__toolbar {
+    position: absolute;
+    inset-block-start: a.space(3);
+    inset-inline-end: a.space(3);
+    display: flex;
+    gap: a.space(1);
+  }
 
   &__inner {
     display: grid;
@@ -21,21 +36,19 @@
     align-items: center;
     justify-content: center;
     margin: 0;
-    font-size: var(--text-lg);
+    font-size: var(--text-xl);
     font-weight: var(--font-weight-semibold);
     letter-spacing: var(--tracking-tight);
   }
 
-  // The card's look comes from its own variables, not from selectors on its classes.
   &__card {
-    --nuv-card-shadow: var(--shadow-lg);
+    --nuv-card-shadow: var(--shadow-xl);
     --nuv-card-title-size: var(--text-2xl);
   }
 
+  // A block, not the card footer's flex row: its paragraphs' margins collapse into one gap.
   &__footer {
-    display: grid;
-    gap: a.space(2);
-    justify-items: center;
+    display: block;
     color: var(--color-muted-foreground);
     font-size: var(--text-sm);
     text-align: center;
