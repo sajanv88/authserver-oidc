@@ -1,7 +1,6 @@
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import type { SignUpField } from "./schemas/signup";
 
-/** What a sign-up attempt came to, as the form shows it. */
 export type SignUpState =
   | {
       status: "editing";

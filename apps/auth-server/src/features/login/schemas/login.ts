@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { CurrentPasswordSchema, EmailSchema } from "@/shared/validation/fields";
 
-/** The sign-in form. Field order is the order focus moves through on errors. */
+/** Field order is the order focus moves through on errors. */
 export const LoginSchema = v.object({
   email: EmailSchema,
   password: CurrentPasswordSchema,

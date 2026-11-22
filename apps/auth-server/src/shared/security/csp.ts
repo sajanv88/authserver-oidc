@@ -34,7 +34,6 @@ export function buildContentSecurityPolicy({
 }: {
   nonce: string;
   isDev: boolean;
-  /** Whether the forms show Cloudflare Turnstile's widget. */
   turnstile?: boolean;
 }): string {
   return [

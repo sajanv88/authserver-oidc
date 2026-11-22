@@ -2,7 +2,6 @@ import { CheckIcon } from "@nuvui/icons";
 import type { ScopeItem } from "../../types";
 import "./scope-list.scss";
 
-/** What the app will get, one line each. A server component. */
 export function ScopeList({ scopes }: { scopes: ScopeItem[] }) {
   return (
     <ul className="scope-list">

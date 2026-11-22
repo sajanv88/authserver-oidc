@@ -2,7 +2,6 @@ import * as v from "valibot";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import { CurrentPasswordSchema, NewPasswordSchema } from "@/shared/validation/fields";
 
-/** Changing the password: the current one, then the new one typed twice. */
 export const ChangePasswordSchema = v.object({
   currentPassword: CurrentPasswordSchema,
   newPassword: NewPasswordSchema,
@@ -28,5 +27,4 @@ export function crossFieldErrors(input: ChangePasswordInput): FieldErrors<Change
   return {};
 }
 
-/** A session id sent by a "Sign out" button in the session list. */
 export const SessionIdSchema = v.pipe(v.string(), v.uuid());

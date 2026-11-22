@@ -1,6 +1,5 @@
 import type { Route } from "next";
 
-/** The auth pages, by name. */
 export const AUTH_PAGES = {
   login: "/login",
   signup: "/signup",

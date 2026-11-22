@@ -119,7 +119,6 @@ export async function createHarness(overrides: Partial<ServerEnv> = {}) {
   return { auth, database, emails, browser, sql };
 }
 
-/** The first URL in an email's text. */
 export function linkIn(email: EmailMessage | undefined): string {
   const match = email?.text.match(/https?:\/\/\S+/);
   if (!match) throw new Error("no link in the email");

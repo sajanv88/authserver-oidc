@@ -165,7 +165,6 @@ function DeleteClient({ client }: { client: ClientRow }) {
   );
 }
 
-/** What can be done to one client: rotate its secret (confidential only), delete it. */
 export function ClientActions({ client }: { client: ClientRow }) {
   return (
     <div className="client-actions">

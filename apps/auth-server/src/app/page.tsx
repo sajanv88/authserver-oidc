@@ -6,7 +6,6 @@ import { requireSession } from "@/shared/auth/session";
 // with Cache Components); instant-navigation validation is off for this segment.
 export const instant = false;
 
-// The entry point: signed in → account security; otherwise → sign in, then account security.
 export default async function HomePage() {
   await requireSession("/account/security");
   redirect("/account/security");

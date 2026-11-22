@@ -4,7 +4,7 @@ import { TextLink } from "@/shared/ui/text-link/text-link";
 import type { LoginContext } from "../types";
 import { LoginForm } from "./login-form/login-form";
 
-/** The sign-in page. Its links keep the OIDC query (or returnTo) the page was opened with. */
+/** Its links keep the OIDC query (or returnTo) the page was opened with. */
 export function LoginScreen(context: LoginContext) {
   return (
     <AuthCard

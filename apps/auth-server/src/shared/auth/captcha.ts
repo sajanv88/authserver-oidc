@@ -6,7 +6,6 @@ import type { AuthCaller } from "./endpoint";
 // the endpoints below (auth-config.ts). The plugin guards the endpoints themselves, so a bot
 // that skips the forms and posts to /api/auth directly is refused too.
 
-/** The hidden field the Turnstile widget fills in. */
 export const CAPTCHA_FIELD = "cf-turnstile-response";
 
 /**
@@ -35,7 +34,6 @@ export function captchaToken(form: FormData): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-/** `call`, sending `token` with every endpoint call it makes. */
 export function withCaptcha(call: AuthCaller, token: string | undefined): AuthCaller {
   return token ? (endpointCall) => call({ ...endpointCall, captcha: token }) : call;
 }

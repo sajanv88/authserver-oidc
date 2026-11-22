@@ -71,10 +71,9 @@ function Problem({
 const INITIAL: LoginState = { status: "editing", attempt: 0, email: "", errors: {} };
 
 /**
- * Email and password, checked by the server action. Inside an OIDC flow the signed query goes
- * along, and Better Auth answers with where to go next: consent (a page here) or straight back
- * to the app (another site, so the form navigates there). A second factor goes on to
- * /two-factor. Otherwise on to returnTo.
+ * Inside an OIDC flow the signed query goes along, and Better Auth answers with where to go
+ * next: consent (a page here) or straight back to the app (another site, so the form navigates
+ * there). A second factor goes on to /two-factor. Otherwise on to returnTo.
  */
 export function LoginForm({
   oidcQuery,

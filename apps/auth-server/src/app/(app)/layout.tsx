@@ -10,9 +10,8 @@ import { PageShell, type ShellLink } from "@/shared/ui/page-shell/page-shell";
 // with Cache Components); instant-navigation validation is off for this segment.
 export const instant = false;
 
-// The frame of every signed-in page. The session check here sends anonymous visitors to the
-// login page; each page and server action still checks for itself, because a layout isn't
-// re-run on every navigation.
+// The session check here sends anonymous visitors to the login page; each page and server
+// action still checks for itself, because a layout isn't re-run on every navigation.
 export default async function SignedInLayout({ children }: { children: ReactNode }) {
   const returnTo = (await headers()).get("x-pathname") ?? "/";
   const session = await requireSession(returnTo);

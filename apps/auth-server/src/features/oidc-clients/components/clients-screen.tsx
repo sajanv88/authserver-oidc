@@ -5,7 +5,7 @@ import { listClientsForAdmin } from "../server/clients";
 import { ClientsTable } from "./clients-table/clients-table";
 import { CreateClientDialog } from "./create-client-dialog/create-client-dialog";
 
-/** /admin/clients: the apps that sign people in here. Checks the admin session itself. */
+/** Checks the admin session itself. */
 export async function ClientsScreen() {
   const clients = await listClientsForAdmin();
   return (

@@ -45,7 +45,6 @@ export const OriginSchema = v.pipe(
   v.transform((value) => new URL(value).origin),
 );
 
-/** An IPv4/IPv6 address, or a CIDR range of one. */
 const ProxySchema = v.pipe(
   v.string(),
   v.check((value) => {
@@ -58,7 +57,6 @@ const ProxySchema = v.pipe(
   }, "must be an IP address or CIDR range, such as 10.0.0.0/8"),
 );
 
-// A parent domain for the shared cookie: ".example.com" or "example.com".
 const CookieDomainSchema = v.pipe(
   v.string(),
   v.trim(),
@@ -128,7 +126,6 @@ const RawEnvSchema = v.object({
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
 
-/** Cloudflare Turnstile's keys, when it's turned on. */
 export type TurnstileConfig = { siteKey: string; secretKey: string };
 
 export type EmailConfig =

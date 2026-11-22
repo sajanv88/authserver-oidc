@@ -14,9 +14,8 @@ type AuthFormProps = {
 };
 
 /**
- * The form of an auth page: Next's `<Form>` posting to a server action, fields stacked, browser
- * validation off (the server checks, and each field shows its own FieldError). Works before
- * JavaScript loads: the browser posts the form, and the page comes back with the answer.
+ * Browser validation is off: the server checks, and each field shows its own FieldError. Works
+ * before JavaScript loads: the browser posts the form, and the page comes back with the answer.
  * Key it by the attempt, so a failed attempt remounts it with what was typed.
  */
 export function AuthForm({ action, focus, children }: AuthFormProps) {
@@ -50,7 +49,6 @@ type SubmitButtonProps = {
   children: ReactNode;
 };
 
-/** The one primary button of an auth form, full width, with a spinner while it's sending. */
 export function SubmitButton({
   pending,
   pendingLabel,

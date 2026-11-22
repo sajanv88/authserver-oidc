@@ -61,7 +61,6 @@ export function RevokeSessionButton({
   );
 }
 
-/** Ends every session, this one included, after asking. */
 export function SignOutEverywhereButton() {
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState(false);
