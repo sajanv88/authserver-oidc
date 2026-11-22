@@ -1,5 +1,6 @@
 "use server";
 
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { parseForm } from "@/shared/validation/field-errors";
@@ -24,7 +25,7 @@ export async function requestResetAction(
   const parsed = parseForm(ForgotPasswordSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
   const outcome = await requestReset(
-    callAuth,
+    withCaptcha(callAuth, captchaToken(form)),
     parsed.value.email,
     safeReturnPath(text(form, "next")),
   );
@@ -45,7 +46,11 @@ export async function resetPasswordAction(
   const errors = parsed.ok ? mismatchErrors(parsed.value) : parsed.errors;
   if (!parsed.ok || Object.keys(errors).length > 0) return { status: "editing", attempt, errors };
 
-  const outcome = await resetPassword(callAuth, text(form, "token"), parsed.value.password);
+  const outcome = await resetPassword(
+    withCaptcha(callAuth, captchaToken(form)),
+    text(form, "token"),
+    parsed.value.password,
+  );
   switch (outcome.kind) {
     case "done":
       return { status: "done", attempt };

@@ -17,6 +17,7 @@ import { useActionState } from "react";
 import { PASSWORD_MIN_LENGTH } from "@/shared/auth/constants";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { signUpAction } from "../../actions/sign-up";
 import { SIGN_UP_FIELDS } from "../../schemas/signup";
@@ -95,6 +96,7 @@ export function SignUpForm({ next, retryHref }: { next: string; retryHref: Route
         <FieldDescription>At least {PASSWORD_MIN_LENGTH} characters.</FieldDescription>
         <FieldError>{state.errors.password}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Creating account…">
         Create account
       </SubmitButton>

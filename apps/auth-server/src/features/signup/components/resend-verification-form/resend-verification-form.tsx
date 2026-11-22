@@ -12,6 +12,7 @@ import {
 } from "@nuvui/react";
 import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { resendVerificationAction } from "../../actions/sign-up";
 import type { ResendVerificationState } from "../../types";
 
@@ -56,6 +57,7 @@ export function ResendVerificationForm({ next }: { next: string }) {
         </FieldControl>
         <FieldError>{state.error}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Sending…">
         Send a new link
       </SubmitButton>

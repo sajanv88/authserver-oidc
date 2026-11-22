@@ -18,6 +18,7 @@ import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { LeavingFor } from "@/shared/ui/leaving-for/leaving-for";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { signInAction } from "../../actions/sign-in";
 import { LOGIN_FIELDS } from "../../schemas/login";
@@ -124,6 +125,7 @@ export function LoginForm({
         </FieldControl>
         <FieldLabel>Keep me signed in on this device</FieldLabel>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Signing in…">
         Sign in
       </SubmitButton>

@@ -14,6 +14,7 @@ import {
 import { useActionState } from "react";
 import { AuthForm, SubmitButton } from "@/shared/ui/auth-form/auth-form";
 import { TextLink } from "@/shared/ui/text-link/text-link";
+import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { requestMagicLinkAction } from "../../actions/magic-link";
 import type { MagicLinkContext, MagicLinkState } from "../../types";
 import "./magic-link-form.scss";
@@ -73,6 +74,7 @@ export function MagicLinkForm({
         </FieldDescription>
         <FieldError>{state.error}</FieldError>
       </Field>
+      <Turnstile />
       <SubmitButton pending={pending} pendingLabel="Sending…">
         Email me a link
       </SubmitButton>

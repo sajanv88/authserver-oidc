@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { authPageHref } from "@/shared/auth/auth-pages";
+import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { signedOidcQuery } from "@/shared/auth/oidc-query";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth, continueTo } from "@/shared/auth/server-endpoint";
@@ -24,7 +25,7 @@ export async function signInAction(previous: LoginState, form: FormData): Promis
   const parsed = parseForm(LoginSchema, fieldsOf(form));
   if (!parsed.ok) return { status: "editing", attempt, email, errors: parsed.errors };
 
-  const outcome = await signIn(callAuth, parsed.value, oidcQuery);
+  const outcome = await signIn(withCaptcha(callAuth, captchaToken(form)), parsed.value, oidcQuery);
   switch (outcome.kind) {
     case "problem":
       return { status: "editing", attempt, email, errors: {}, problem: outcome.problem };
