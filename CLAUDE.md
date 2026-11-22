@@ -58,7 +58,7 @@ charts/auth-server/          Helm chart, one per app
 
 - `app/`: routing only. Thin `page.tsx` / `layout.tsx` / `route.ts` that import from features and shared; no business logic.
 - `features/<feature>/`: `components/` (nuvui UI + BEM `.scss`), `actions/` (server actions: session, origin and valibot checks in each), `schemas/` (valibot), `server/` (server-only logic), `hooks/` (only if needed), `types.ts`, `index.ts` (the feature's public API).
-- `shared/`: `config/` (env, app constants), `email/`, `ui/` (AuthCard, PageShell, TextLink, NonceProvider), `styles/`, `auth/`.
+- `shared/`: `config/` (env, app constants), `email/`, `ui/` (AuthCard, PageShell, TextLink, NonceProvider), `styles/`, `auth/`, `appearance/` (light/dark and nuvui's presets: the root layout puts them on `<html>` from the `appearance` cookie; `AppearanceMenu` in the navbar and on the auth pages writes that cookie in the browser, not through a server action, which would re-render the page and lose what's typed). The auth pages' `AuthCard` sits on `@nuvui/backgrounds`' `GradientBackground`, led by `--color-primary` so it follows the preset, with a pause button (WCAG 2.2.2).
 - Boundaries, enforced by Biome (`noRestrictedImports` overrides in `biome.json`): other code imports a feature only as `@/features/<name>`; a feature never uses `../../` to leave its folder; `shared/` never imports from `features/`.
 
 ## Auth (apps/auth-server/src/shared/auth)

@@ -4,11 +4,16 @@ A self-hosted sign-in server for your own apps. People create one account and us
 
 What you get:
 
-- Sign-up with email confirmation, password sign-in, magic links, password reset
-- Two-factor authentication (authenticator app + backup codes)
-- A consent screen, and an admin page to register apps (OIDC clients)
-- A session that can be shared across your subdomains
-- A Docker image and a Helm chart to deploy it
+- **Sign-in:** sign-up with email confirmation, password sign-in, magic links, password reset
+- **Two-factor authentication:** an authenticator app, with backup codes
+- **Account security:** change your password, see where you're signed in, sign out one device or all of them
+- **OpenID Connect:** authorization code with PKCE, refresh tokens, a consent screen, and an admin page to register apps (OIDC clients)
+- **Shared session:** one sign-in, shared across your subdomains
+- **Bot protection (optional):** Cloudflare Turnstile on every form, checked on the server
+- **Rate limits** on sign-in, sign-up and every email, per client IP
+- **Themes:** light, dark or system, five color themes, and moving gradient backgrounds on the sign-in pages
+- **Tested:** unit tests, and end-to-end BDD scenarios in Chromium every second day
+- **Deploy:** a Docker image and a Helm chart
 
 Built with Next.js 16, [Better Auth](https://www.better-auth.com), PostgreSQL and the nuvui component library.
 
@@ -39,7 +44,7 @@ pnpm dev
 - Auth server: <http://auth.localtest.me:3000> (`*.localtest.me` always points to your own machine)
 - Example app: <http://app.localtest.me:3001> (in `.env`, set `EXAMPLE_CLIENT_ID` to the ID that `db:seed` prints, and `EXAMPLE_SESSION_SECRET` to `openssl rand -base64 32`)
 
-Emails are printed in the terminal instead of being sent. Checks: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
+Emails are printed in the terminal instead of being sent. Checks: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`. End-to-end: `pnpm test:e2e` (see [apps/tests](apps/tests/README.md)).
 
 ## Connect an app
 
