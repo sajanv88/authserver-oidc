@@ -53,6 +53,22 @@ config:
   # Cloudflare Turnstile: the site key here and TURNSTILE_SECRET_KEY in the Secret. Empty
   # leaves it off.
   TURNSTILE_SITE_KEY: ""
+  # Sign-in with another account. Each provider's client ID is here and its secret in the
+  # Secret; a provider is on when both are set. Redirect URI to register with each provider:
+  #   <BETTER_AUTH_URL>/api/auth/callback/<google | microsoft | github | sso>
+  GOOGLE_CLIENT_ID: ""
+  GITHUB_CLIENT_ID: ""
+  MICROSOFT_CLIENT_ID: ""
+  # common (work and personal accounts), organizations, consumers, or your tenant's ID.
+  # A work account's email is trusted (linked to an existing account, no confirmation email)
+  # only from that one tenant, or when the app registration adds the optional ID token claim
+  # xms_edov: any organisation's admin can set any address on their own users.
+  MICROSOFT_TENANT_ID: common
+  # Any OpenID Connect provider (Okta, Keycloak, Auth0, Entra ID…): the button says
+  # "Continue with <SSO_NAME>". All three here, and SSO_CLIENT_SECRET in the Secret, or none.
+  SSO_NAME: ""
+  SSO_DISCOVERY_URL: ""
+  SSO_CLIENT_ID: ""
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
   OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production

@@ -20,6 +20,7 @@ export const testEnv: ServerEnv = {
   trustedProxies: ["10.0.0.0/8"],
   email: { provider: "console", from: "Auth <no-reply@localtest.me>" },
   turnstile: undefined,
+  social: {},
 };
 
 /** `overrides` change the configuration, e.g. `{ turnstile: … }` to turn the captcha on. */

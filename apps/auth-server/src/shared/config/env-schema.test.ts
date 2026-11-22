@@ -140,4 +140,62 @@ describe("parseEnv", () => {
       "TURNSTILE_SITE_KEY is required when TURNSTILE_SECRET_KEY is set",
     ]);
   });
+
+  it("turns each sign-in provider on with its client ID and secret, and leaves the rest off", () => {
+    const none = parseEnv(valid);
+    expect(none.ok && none.env.social).toEqual({});
+
+    const some = parseEnv({
+      ...valid,
+      GOOGLE_CLIENT_ID: "google-id",
+      GOOGLE_CLIENT_SECRET: "google-secret",
+      GITHUB_CLIENT_ID: " ",
+      MICROSOFT_CLIENT_ID: "microsoft-id",
+      MICROSOFT_CLIENT_SECRET: "microsoft-secret",
+    });
+    expect(some.ok && some.env.social).toEqual({
+      google: { clientId: "google-id", clientSecret: "google-secret" },
+      microsoft: {
+        clientId: "microsoft-id",
+        clientSecret: "microsoft-secret",
+        tenantId: "common",
+      },
+    });
+  });
+
+  it("refuses half a provider", () => {
+    expect(errorsFor({ ...valid, GITHUB_CLIENT_ID: "id" })).toEqual([
+      "GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set",
+    ]);
+    expect(errorsFor({ ...valid, MICROSOFT_CLIENT_SECRET: "secret" })).toEqual([
+      "MICROSOFT_CLIENT_ID is required when MICROSOFT_CLIENT_SECRET is set",
+    ]);
+  });
+
+  it("needs every SSO setting for the OIDC provider, and https discovery in production", () => {
+    const sso = {
+      SSO_NAME: "Okta",
+      SSO_DISCOVERY_URL: "https://example.okta.com/.well-known/openid-configuration",
+      SSO_CLIENT_ID: "sso-id",
+      SSO_CLIENT_SECRET: "sso-secret",
+    };
+    const on = parseEnv({ ...valid, ...sso, MICROSOFT_TENANT_ID: "contoso.onmicrosoft.com" });
+    expect(on.ok && on.env.social.sso).toEqual({
+      name: "Okta",
+      discoveryUrl: sso.SSO_DISCOVERY_URL,
+      clientId: "sso-id",
+      clientSecret: "sso-secret",
+    });
+    expect(errorsFor({ ...valid, SSO_CLIENT_ID: "sso-id" })).toEqual([
+      "SSO_NAME is required when any SSO_* setting is set",
+      "SSO_DISCOVERY_URL is required when any SSO_* setting is set",
+      "SSO_CLIENT_SECRET is required when any SSO_* setting is set",
+    ]);
+    expect(
+      errorsFor({ ...production, ...sso, SSO_DISCOVERY_URL: "http://sso.internal/.well-known" }),
+    ).toEqual(["SSO_DISCOVERY_URL must be https in production"]);
+    expect(errorsFor({ ...valid, MICROSOFT_TENANT_ID: "not a tenant" })).toEqual([
+      "MICROSOFT_TENANT_ID must be a tenant ID or name",
+    ]);
+  });
 });

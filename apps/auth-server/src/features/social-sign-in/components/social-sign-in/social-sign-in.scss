@@ -1,0 +1,26 @@
+@use "abstracts" as a;
+
+.social-sign-in {
+  display: grid;
+  gap: a.space(4);
+  margin-block-end: a.space(4);
+
+  &__buttons {
+    display: grid;
+    gap: a.space(2);
+  }
+
+  &__button {
+    inline-size: 100%;
+  }
+
+  // The words between the two ways in, with a line on each side.
+  &__or {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: a.space(3);
+    align-items: center;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+}

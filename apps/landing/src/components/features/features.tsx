@@ -16,7 +16,7 @@ const FEATURES = [
   {
     Icon: KeyIcon,
     title: "Sign-in, done properly",
-    text: "Sign-up with email confirmation, passwords, magic links and password reset. The same answer whether or not an email exists.",
+    text: "Email and password, magic links and resets, plus Google, Microsoft, GitHub or your own OIDC provider when you set their keys.",
   },
   {
     Icon: SmartphoneIcon,
