@@ -8,6 +8,8 @@ export type World = {
   person?: Person;
   /** The last emailed link the scenario was given. */
   link?: string;
+  /** My password before I changed it. */
+  oldPassword?: string;
 };
 
 export const test = base.extend<{ world: World; mailbox: Mailbox }>({
