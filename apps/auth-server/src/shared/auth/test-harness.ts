@@ -19,12 +19,18 @@ export const testEnv: ServerEnv = {
   trustedOrigins: [APP_ORIGIN],
   trustedProxies: ["10.0.0.0/8"],
   email: { provider: "console", from: "Auth <no-reply@localtest.me>" },
+  turnstile: undefined,
 };
 
-export async function createHarness() {
+/** `overrides` change the configuration, e.g. `{ turnstile: … }` to turn the captcha on. */
+export async function createHarness(overrides: Partial<ServerEnv> = {}) {
   const database = await createTestDb();
   const emails: EmailMessage[] = [];
-  const auth = createAuth({ env: testEnv, database, sendEmail: (m) => emails.push(m) });
+  const auth = createAuth({
+    env: { ...testEnv, ...overrides },
+    database,
+    sendEmail: (m) => emails.push(m),
+  });
 
   /** A browser: keeps cookies between requests, and always comes from the same client IP. */
   function browser(clientIp = "203.0.113.10") {

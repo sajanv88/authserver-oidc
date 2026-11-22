@@ -11,6 +11,15 @@ const KNOWN_WEAK_SECRETS = new Set(["better-auth-secret-12345678901234567890", "
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
+/** A trimmed string, or undefined when it's missing or empty. */
+const optionalText = v.optional(
+  v.pipe(
+    v.unknown(),
+    v.transform(emptyToUndefined),
+    v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
+  ),
+);
+
 const commaList = (value: string) =>
   value
     .split(",")
@@ -111,9 +120,16 @@ const RawEnvSchema = v.object({
   SMTP_PASSWORD: v.optional(
     v.pipe(v.unknown(), v.transform(emptyToUndefined), v.optional(v.string())),
   ),
+  // Cloudflare Turnstile on the forms and the auth endpoints behind them. Off unless both are
+  // set: the site key is public (the ConfigMap), the secret key is a secret (the Secret).
+  TURNSTILE_SITE_KEY: optionalText,
+  TURNSTILE_SECRET_KEY: optionalText,
 });
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
+
+/** Cloudflare Turnstile's keys, when it's turned on. */
+export type TurnstileConfig = { siteKey: string; secretKey: string };
 
 export type EmailConfig =
   | { provider: "console"; from: string }
@@ -131,6 +147,8 @@ export type ServerEnv = {
   trustedOrigins: string[];
   trustedProxies: string[];
   email: EmailConfig;
+  /** Cloudflare Turnstile, or undefined when it isn't configured (no widget, no check). */
+  turnstile: TurnstileConfig | undefined;
 };
 
 // Rules that span fields. Each issue is attached to the field it's about.
@@ -167,6 +185,13 @@ const EnvSchema = v.pipe(
         issue("COOKIE_DOMAIN", `must be a parent domain of the auth server's host (${host})`);
       }
     }
+    // Half a configuration would show a widget nothing checks, or check tokens no page sends.
+    if (env.TURNSTILE_SITE_KEY && !env.TURNSTILE_SECRET_KEY) {
+      issue("TURNSTILE_SECRET_KEY", "is required when TURNSTILE_SITE_KEY is set");
+    }
+    if (env.TURNSTILE_SECRET_KEY && !env.TURNSTILE_SITE_KEY) {
+      issue("TURNSTILE_SITE_KEY", "is required when TURNSTILE_SECRET_KEY is set");
+    }
   }),
   v.transform(
     (env): ServerEnv => ({
@@ -189,6 +214,10 @@ const EnvSchema = v.pipe(
               password: env.SMTP_PASSWORD ?? "",
             }
           : { provider: "console", from: env.EMAIL_FROM },
+      turnstile:
+        env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY
+          ? { siteKey: env.TURNSTILE_SITE_KEY, secretKey: env.TURNSTILE_SECRET_KEY }
+          : undefined,
     }),
   ),
 );
