@@ -1,0 +1,71 @@
+@use "abstracts" as a;
+
+.deploy {
+  display: grid;
+  gap: a.space(10);
+  align-items: start;
+
+  @include a.breakpoint("lg") {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: a.space(12);
+  }
+
+  &__facts {
+    display: grid;
+    gap: a.space(6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__fact {
+    display: grid;
+    align-content: start;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(4);
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    inline-size: a.space(10);
+    block-size: a.space(10);
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  }
+
+  &__text {
+    display: grid;
+    gap: a.space(1);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__description {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__tabs {
+    --nuv-code-block-max-height: 28rem;
+
+    min-inline-size: 0;
+  }
+
+  &__note {
+    display: flex;
+    gap: a.space(2);
+    align-items: baseline;
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+}

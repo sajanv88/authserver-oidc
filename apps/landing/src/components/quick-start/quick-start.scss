@@ -1,0 +1,56 @@
+@use "abstracts" as a;
+
+.quick-start {
+  // One column on a phone, two from the lg breakpoint.
+  &__steps {
+    display: grid;
+    gap: a.space(8);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    @include a.breakpoint("lg") {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: a.space(10) a.space(8);
+    }
+  }
+
+  &__step {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(4);
+  }
+
+  &__number {
+    display: grid;
+    place-items: center;
+    inline-size: a.space(8);
+    block-size: a.space(8);
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__body {
+    display: grid;
+    gap: a.space(2);
+    align-content: start;
+    min-inline-size: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: a.space(8);
+  }
+
+  &__text {
+    margin: 0 0 a.space(1);
+    color: var(--color-muted-foreground);
+    line-height: var(--leading-relaxed);
+  }
+}

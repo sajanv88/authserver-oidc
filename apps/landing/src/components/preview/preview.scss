@@ -1,0 +1,130 @@
+@use "abstracts" as a;
+
+.preview {
+  &__figure {
+    display: grid;
+    gap: a.space(4);
+    margin: 0;
+  }
+
+  // The same gradient as the auth pages, led by the theme's primary color.
+  &__frame {
+    --nuv-gradient-background-color-1: var(--color-primary);
+    --nuv-gradient-background-opacity: 0.55;
+
+    display: grid;
+    place-items: center;
+    padding: a.space(12) a.space(4) a.space(16);
+    overflow: hidden;
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-xl);
+
+    @include a.breakpoint("md") {
+      padding-block: a.space(16) a.space(18);
+    }
+  }
+
+  &__picture {
+    inline-size: 100%;
+    max-inline-size: 26rem;
+  }
+
+  &__screen {
+    display: grid;
+    gap: a.space(6);
+  }
+
+  &__brand {
+    display: flex;
+    gap: a.space(2);
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  &__card {
+    --nuv-card-shadow: var(--shadow-xl);
+    --nuv-card-title-size: var(--text-2xl);
+  }
+
+  &__form {
+    display: grid;
+    gap: a.space(4);
+  }
+
+  &__submit {
+    inline-size: 100%;
+  }
+
+  // A grid, not the card footer's row of actions, so its lines stack in the middle.
+  &__footer {
+    display: grid;
+    gap: a.space(2);
+    justify-content: center;
+    justify-items: center;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  // Drawn like the auth pages' links. It's a picture, so there's nowhere to go.
+  &__link {
+    color: var(--color-foreground);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  &__scopes {
+    display: grid;
+    gap: a.space(3);
+    margin: 0 0 a.space(2);
+    padding: 0;
+    list-style: none;
+  }
+
+  &__scope {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(3);
+    align-items: start;
+  }
+
+  &__scope-icon {
+    margin-block-start: a.space(0.5);
+    color: var(--color-success);
+  }
+
+  &__scope-text {
+    display: grid;
+    gap: a.space(0.5);
+  }
+
+  &__scope-title {
+    font-weight: var(--font-weight-medium);
+  }
+
+  &__scope-description {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  &__choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: a.space(3);
+  }
+
+  &__caption {
+    max-inline-size: 48rem;
+    color: var(--color-muted-foreground);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__pause {
+    position: absolute;
+    inset-block-end: a.space(2);
+    inset-inline-end: a.space(2);
+  }
+}

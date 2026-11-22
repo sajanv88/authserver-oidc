@@ -46,6 +46,8 @@ pnpm dev
 
 Emails are printed in the terminal instead of being sent. Checks: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`. End-to-end: `pnpm test:e2e` (see [apps/tests](apps/tests/README.md)).
 
+The project's landing page is `apps/landing`: a static site (<http://localhost:3002> under `pnpm dev`), published at <https://sajanv88.github.io/authserver-oidc/> by `.github/workflows/pages.yaml` on every change to it on `main`.
+
 ## Connect an app
 
 1. Sign in as an admin and open **/admin/clients**. Add your app and its redirect URI.

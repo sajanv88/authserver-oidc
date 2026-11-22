@@ -1,0 +1,25 @@
+@use "abstracts" as a;
+
+// The heading above the questions on a phone, beside them from the lg breakpoint.
+.faq {
+  @include a.breakpoint("lg") {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: a.space(16);
+    align-items: start;
+  }
+
+  // A link in a line of text is underlined: color alone doesn't tell it from the words.
+  &__link {
+    border-radius: var(--radius-sm);
+    color: var(--color-foreground);
+    font-weight: var(--font-weight-medium);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+
+    @include a.focus-ring;
+  }
+
+  &__list {
+    inline-size: 100%;
+  }
+}

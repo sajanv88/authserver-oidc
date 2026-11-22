@@ -1,0 +1,14 @@
+@use "abstracts" as a;
+
+// New tokens nuvui doesn't have get an --app- prefix.
+:root {
+  --app-content-max-width: 72rem;
+
+  // The sticky navigation bar's height, plus a little air, so a heading a link jumps to
+  // isn't hidden under it.
+  --app-scroll-offset: #{a.space(20)};
+}
+
+@include a.dark {
+  color-scheme: dark;
+}

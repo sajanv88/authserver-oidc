@@ -1,0 +1,47 @@
+@use "abstracts" as a;
+
+.site-header {
+  --nuv-navbar-gap: #{a.space(2)};
+
+  @include a.breakpoint("md") {
+    --nuv-navbar-gap: #{a.space(6)};
+    --nuv-navbar-padding: #{a.space(8)};
+  }
+
+  // Over the sticky bar (whose stacking order is 20), under anything that opens over both.
+  &__progress {
+    --nuv-scroll-progress-size: 2px;
+
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 21;
+  }
+
+  &__brand {
+    display: inline-flex;
+    gap: a.space(2);
+    align-items: center;
+    min-block-size: var(--nuv-touch-size);
+    border-radius: var(--radius-sm);
+    color: inherit;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
+    text-decoration: none;
+
+    @include a.focus-ring;
+  }
+
+  // In the bar from the md breakpoint; below it, the panel has its own.
+  &__wide {
+    display: none;
+
+    @include a.breakpoint("md") {
+      display: inline-flex;
+    }
+  }
+
+  &__repo {
+    margin-block-start: a.space(4);
+  }
+}

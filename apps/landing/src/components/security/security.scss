@@ -1,0 +1,66 @@
+@use "abstracts" as a;
+
+.security {
+  display: grid;
+  gap: a.space(10);
+  align-items: start;
+
+  @include a.breakpoint("lg") {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: a.space(12);
+  }
+
+  &__list {
+    display: grid;
+    gap: a.space(6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    @include a.breakpoint("md") {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__item {
+    display: grid;
+    align-content: start;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(3);
+  }
+
+  &__icon {
+    margin-block-start: a.space(0.5);
+    color: var(--color-success);
+  }
+
+  &__text {
+    display: grid;
+    gap: a.space(1);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__description {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__limits {
+    display: grid;
+    gap: a.space(3);
+    min-inline-size: 0;
+  }
+
+  &__path {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-normal);
+  }
+}
