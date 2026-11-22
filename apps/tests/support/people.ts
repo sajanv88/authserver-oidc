@@ -67,6 +67,9 @@ export async function createAccount(mailbox: Mailbox): Promise<Person> {
     const confirmed = await api.get(linkIn(email, "/api/auth/verify-email"), { maxRedirects: 0 });
     expect(confirmed.status()).toBe(302);
     expect(confirmed.headers().location ?? "").not.toContain("error=");
+    // Confirming signs this client in; end that session, so the account starts with none.
+    const signedOut = await api.post("/api/auth/sign-out");
+    expect(signedOut.ok(), `sign-out: ${await signedOut.text()}`).toBe(true);
   } finally {
     await api.dispose();
   }

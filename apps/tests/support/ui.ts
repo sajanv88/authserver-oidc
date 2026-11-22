@@ -31,6 +31,21 @@ export async function expectSignedOut(page: Page): Promise<void> {
 }
 
 /**
+ * Presses a form's submit button and waits for the server's answer. Leaving the page before
+ * it arrives cancels it in the browser after the server has acted: an answer that carries a
+ * new session cookie (changing the password, turning two-factor on or off) would be lost.
+ */
+export async function submitAndWait(page: Page, button: Locator): Promise<void> {
+  const path = new URL(page.url()).pathname;
+  const answered = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === path,
+  );
+  await button.click();
+  await answered;
+}
+
+/**
  * Presses `trigger` until `dialog` shows. Forms on these pages work before React hydrates,
  * but a dialog needs it: a click that lands first does nothing, so it's tried again.
  */
