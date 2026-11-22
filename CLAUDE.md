@@ -48,10 +48,11 @@ Run `pnpm typecheck && pnpm lint && pnpm build` before calling a change done.
 ```
 apps/auth-server/            Next.js app: src/app (routing only), src/features/<feature>/, src/shared/, src/proxy.ts
 apps/example-client/         demo relying party on :3001 (shared cookie + OIDC code/PKCE); not shipped as an image
+apps/landing/                the project's landing page on :3002: `output: "export"`, no server code, published to GitHub Pages by pages.yaml (PAGES_BASE_PATH = the repo's path there); appearance kept in localStorage
 apps/auth-server/Dockerfile  standalone image; build context is the repo root
 packages/tsconfig/       shared tsconfig (base.json)
 charts/auth-server/          Helm chart, one per app
-.github/workflows/       pr.yaml, main.yaml, release.yaml
+.github/workflows/       pr.yaml, main.yaml, release.yaml, e2e.yaml, pages.yaml
 ```
 
 ## Feature structure (apps/auth-server/src)
