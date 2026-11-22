@@ -19,6 +19,8 @@ export type World = {
   twoFactor?: TwoFactor;
   /** The backup code I last signed in with. */
   usedBackupCode?: string;
+  /** The OIDC client (app) the scenario registered, with the secret it was shown. */
+  client?: { name: string; redirectUri: string; clientId: string; secret: string };
 };
 
 type Fixtures = {
