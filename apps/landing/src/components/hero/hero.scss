@@ -1,0 +1,97 @@
+@use "abstracts" as a;
+
+.hero {
+  &__stage {
+    padding: a.space(16) a.space(4) a.space(20);
+    color: var(--color-foreground);
+
+    @include a.breakpoint("md") {
+      padding: a.space(24) a.space(8) a.space(24);
+    }
+  }
+
+  &__inner {
+    display: grid;
+    gap: a.space(12);
+    align-items: center;
+    max-inline-size: var(--app-content-max-width);
+    margin-inline: auto;
+
+    @include a.breakpoint("lg") {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    }
+  }
+
+  &__words {
+    display: grid;
+    gap: a.space(6);
+    justify-items: start;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(2.5rem, 1.6rem + 3.2vw, 3.75rem);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+
+  &__lead {
+    max-inline-size: 36rem;
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    text-wrap: pretty;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(3);
+  }
+
+  &__highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2) a.space(5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  &__highlight {
+    display: inline-flex;
+    gap: a.space(1.5);
+    align-items: center;
+  }
+
+  &__check {
+    color: var(--color-success);
+  }
+
+  // The code on a surface of its own, so the characters behind never mix with it.
+  &__code {
+    --nuv-code-block-radius: var(--radius-xl);
+    --nuv-code-block-font-size: var(--text-xs);
+
+    display: grid;
+    gap: a.space(3);
+    min-inline-size: 0;
+    margin: 0;
+    filter: drop-shadow(0 a.space(6) a.space(8) color-mix(in oklab, var(--color-primary) 18%, transparent));
+  }
+
+  &__caption {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  &__pause {
+    position: absolute;
+    inset-block-end: a.space(3);
+    inset-inline-end: a.space(3);
+  }
+}
