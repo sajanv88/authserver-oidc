@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { authPageHref } from "@/shared/auth/auth-pages";
 import { AuthCard } from "@/shared/ui/auth-card/auth-card";
 import { TextLink } from "@/shared/ui/text-link/text-link";
@@ -5,7 +6,14 @@ import type { SignUpContext } from "../types";
 import { SignUpForm } from "./sign-up-form/sign-up-form";
 
 /** The OIDC query, if any, rides along to the login link. */
-export function SignUpScreen({ oidcQuery, next }: SignUpContext) {
+export function SignUpScreen({
+  oidcQuery,
+  next,
+  social,
+}: SignUpContext & {
+  /** The sign-in-with-a-provider buttons, from their feature: the page puts them here. */
+  social?: ReactNode;
+}) {
   return (
     <AuthCard
       title="Create an account"
@@ -17,6 +25,7 @@ export function SignUpScreen({ oidcQuery, next }: SignUpContext) {
         </p>
       }
     >
+      {social}
       <SignUpForm next={next} retryHref={authPageHref("signup", oidcQuery)} />
     </AuthCard>
   );

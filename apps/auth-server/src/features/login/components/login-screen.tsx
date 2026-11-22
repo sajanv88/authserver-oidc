@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { APP_NAME } from "@/shared/config/app";
 import { AuthCard } from "@/shared/ui/auth-card/auth-card";
 import { TextLink } from "@/shared/ui/text-link/text-link";
@@ -5,7 +6,13 @@ import type { LoginContext } from "../types";
 import { LoginForm } from "./login-form/login-form";
 
 /** Its links keep the OIDC query (or returnTo) the page was opened with. */
-export function LoginScreen(context: LoginContext) {
+export function LoginScreen({
+  social,
+  ...context
+}: LoginContext & {
+  /** The sign-in-with-a-provider buttons, from their feature: the page puts them here. */
+  social?: ReactNode;
+}) {
   return (
     <AuthCard
       title="Sign in"
@@ -21,6 +28,7 @@ export function LoginScreen(context: LoginContext) {
         </>
       }
     >
+      {social}
       <LoginForm
         oidcQuery={context.oidcQuery}
         returnTo={context.returnTo}
