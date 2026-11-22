@@ -25,6 +25,9 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   poweredByHeader: false,
   agentRules: false,
+  // app.localtest.me in development; without it the dev server blocks /_next/hmr, and with it
+  // the RSC debug channel React waits on before hydrating. See the auth server's config.
+  allowedDevOrigins: ["*.localtest.me"],
   sassOptions: {
     loadPaths: ["src/shared/styles"],
   },
