@@ -1,0 +1,89 @@
+@use "abstracts" as a;
+
+// Down the page on a phone, joined by a line. Five across from the xl breakpoint.
+.how-it-works {
+  display: grid;
+  gap: a.space(8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include a.breakpoint("xl") {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: a.space(5);
+  }
+
+  &__step {
+    position: relative;
+    display: grid;
+    align-content: start;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: a.space(4);
+
+    @include a.breakpoint("xl") {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  // The line from this step's number to the next one.
+  &__step:not(:last-child)::before {
+    position: absolute;
+    inset-block: a.space(10) calc(a.space(-8) + a.space(1));
+    inset-inline-start: calc(a.space(5) - var(--nuv-border-width) / 2);
+    border-inline-start: var(--nuv-border-width) dashed var(--color-border-strong);
+    content: "";
+
+    @include a.breakpoint("xl") {
+      inset-block: a.space(5) auto;
+      inset-inline: a.space(12) a.space(-4);
+      border-block-start: var(--nuv-border-width) dashed var(--color-border-strong);
+      border-inline-start: 0;
+    }
+  }
+
+  &__number {
+    display: grid;
+    place-items: center;
+    inline-size: a.space(10);
+    block-size: a.space(10);
+    border: var(--nuv-border-width) solid var(--color-primary);
+    border-radius: var(--radius-full);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, var(--color-background));
+    font-family: var(--font-mono);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__body {
+    display: grid;
+    gap: a.space(2);
+    align-content: start;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: a.space(10);
+
+    @include a.breakpoint("xl") {
+      line-height: var(--leading-snug);
+    }
+  }
+
+  &__text {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    line-height: var(--leading-relaxed);
+  }
+
+  &__call {
+    justify-self: start;
+    padding: a.space(0.5) a.space(2);
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    overflow-wrap: anywhere;
+  }
+}

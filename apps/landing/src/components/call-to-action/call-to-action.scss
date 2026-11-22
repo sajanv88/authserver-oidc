@@ -1,0 +1,59 @@
+@use "abstracts" as a;
+
+.call-to-action {
+  padding: a.space(6) a.space(4) a.space(16);
+  color: var(--color-foreground);
+
+  @include a.breakpoint("md") {
+    padding: a.space(12) a.space(8) a.space(24);
+  }
+
+  &__panel {
+    --nuv-gradient-background-color-1: var(--color-primary);
+
+    display: grid;
+    gap: a.space(5);
+    justify-items: center;
+    max-inline-size: 64rem;
+    margin-inline: auto;
+    padding: a.space(16) a.space(5) a.space(18);
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-xl);
+    text-align: center;
+
+    @include a.breakpoint("md") {
+      padding-block: a.space(20) a.space(20);
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  &__text {
+    max-inline-size: 32rem;
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    text-wrap: pretty;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(3);
+    justify-content: center;
+  }
+
+  &__pause {
+    position: absolute;
+    inset-block-end: a.space(2);
+    inset-inline-end: a.space(2);
+  }
+}
