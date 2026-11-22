@@ -1,4 +1,6 @@
 import {
+  Badge,
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -7,8 +9,10 @@ import {
   CardTitle,
 } from "@nuvui/react";
 import type { ReactNode } from "react";
+import { authPageHref } from "@/shared/auth/auth-pages";
 import { PageHeader } from "@/shared/ui/page-header/page-header";
 import { listSessionsForAccount } from "../server/sessions";
+import { signInMethodsForAccount } from "../server/sign-in-methods";
 import { ChangePasswordForm } from "./change-password-form/change-password-form";
 import { SignOutEverywhereButton } from "./session-list/session-actions";
 import { SessionList } from "./session-list/session-list";
@@ -21,7 +25,11 @@ type AccountSecurityScreenProps = {
 };
 
 export async function AccountSecurityScreen({ email, twoFactor }: AccountSecurityScreenProps) {
-  const sessions = await listSessionsForAccount();
+  const [sessions, methods] = await Promise.all([
+    listSessionsForAccount(),
+    signInMethodsForAccount(),
+  ]);
+  const others = new Intl.ListFormat("en", { type: "conjunction" }).format(methods.providers);
   return (
     <div className="account-security-screen">
       <PageHeader title="Security" description={`Signed in as ${email}.`} />
@@ -31,14 +39,60 @@ export async function AccountSecurityScreen({ email, twoFactor }: AccountSecurit
           <CardTitle asChild>
             <h2>Password</h2>
           </CardTitle>
-          <CardDescription>Changing it signs you out on every other device.</CardDescription>
+          <CardDescription>
+            {methods.hasPassword
+              ? "Changing it signs you out on every other device."
+              : `You sign in with ${others}. Add a password to sign in with your email too, and to turn on two-factor authentication.`}
+          </CardDescription>
         </CardHeader>
         <CardContent className="account-security-screen__password">
-          <ChangePasswordForm />
+          {methods.hasPassword ? (
+            <ChangePasswordForm />
+          ) : (
+            // A reset link creates the password: it proves the email is theirs first.
+            <Button asChild intent="secondary">
+              <a href={authPageHref("forgotPassword")}>Set a password</a>
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {twoFactor}
+      {methods.providers.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle asChild>
+              <h2>Linked accounts</h2>
+            </CardTitle>
+            <CardDescription>
+              Linked the first time you signed in with them, to the same email.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="account-security-screen__providers">
+              {methods.providers.map((name) => (
+                <li key={name}>
+                  <Badge variant="outline">{name}</Badge>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {methods.hasPassword ? (
+        twoFactor
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle asChild>
+              <h2>Two-factor authentication</h2>
+            </CardTitle>
+            <CardDescription>
+              It asks for your password before it turns on, so add a password first.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

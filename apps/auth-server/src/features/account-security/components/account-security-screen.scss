@@ -8,4 +8,13 @@
   &__password {
     max-inline-size: 28rem;
   }
+
+  &__providers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 }
