@@ -63,6 +63,7 @@ Apps on the same parent domain can also read the shared session cookie instead o
 
 1. Every merge to `main` publishes the image `ghcr.io/sajanv88/auth-server`. A tag `vX.Y.Z` publishes a release and the Helm chart `oci://ghcr.io/sajanv88/charts/auth-server`.
 2. Create a Secret in your namespace with `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD`. The chart reads it but never creates it.
+   Keep `BETTER_AUTH_SECRET` the same for everything that uses the database: it encrypts the token-signing key stored there, and with another secret apps can't get tokens (the token endpoint answers 500). To change it, also delete the rows of the `jwks` table; a new key is made, and apps verify against it from `/jwks`.
 3. In `charts/auth-server/values-production.yaml`, set your domain and SMTP host and user.
    Optional: for Cloudflare Turnstile on the forms, set `TURNSTILE_SITE_KEY` there and add `TURNSTILE_SECRET_KEY` to the Secret.
    Optional: for social sign-in, set a provider's client ID there (`GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`, `GITHUB_CLIENT_ID`, or `SSO_NAME`, `SSO_DISCOVERY_URL` and `SSO_CLIENT_ID`) and its secret in the Secret. Register `https://auth.example.com/api/auth/callback/<google | microsoft | github | sso>` as the redirect URI with the provider.
