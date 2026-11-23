@@ -1,11 +1,14 @@
 import {
   BotIcon,
+  CpuIcon,
   GaugeIcon,
   KeyIcon,
   LayoutDashboardIcon,
   LinkIcon,
+  LogOutIcon,
   PaletteIcon,
   PlugIcon,
+  ServerIcon,
   ShieldCheckIcon,
   SmartphoneIcon,
 } from "@nuvui/icons";
@@ -34,9 +37,24 @@ const FEATURES = [
     text: "Authorization code with PKCE, rotating refresh tokens, discovery, a consent screen and token revocation.",
   },
   {
+    Icon: ServerIcon,
+    title: "Tokens for your APIs",
+    text: "JWT access tokens for each API you list (RFC 8707), with your own scopes, only for the apps you linked to it.",
+  },
+  {
+    Icon: CpuIcon,
+    title: "Services, too",
+    text: "Client credentials for jobs and queue consumers, each limited to the scopes its client was given.",
+  },
+  {
+    Icon: LogOutIcon,
+    title: "Sign out everywhere",
+    text: "When a session ends, every app that holds a token for it gets a signed back-channel logout token.",
+  },
+  {
     Icon: LayoutDashboardIcon,
     title: "An admin for your apps",
-    text: "Register clients, public or confidential, and rotate their secrets. Secrets are stored hashed and shown once.",
+    text: "Register clients on the admin page, or declare them in a file and run one command. Secrets are hashed and shown once.",
   },
   {
     Icon: LinkIcon,

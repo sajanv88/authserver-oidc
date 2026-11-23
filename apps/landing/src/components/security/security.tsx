@@ -12,8 +12,8 @@ import "./security.scss";
 
 const GUARANTEES = [
   {
-    title: "PKCE on every client",
-    text: "S256 only. No implicit flow, no client credentials, no dynamic registration: an admin adds each app.",
+    title: "PKCE on every sign-in",
+    text: "S256 only, no implicit flow, no dynamic registration: an admin adds each app, and links it to the APIs it may call.",
   },
   {
     title: "Secrets you can't leak",
@@ -47,6 +47,8 @@ const LIMITS = [
   { path: "/sign-in/magic-link", limit: "3 in 5 minutes" },
   { path: "/magic-link/verify", limit: "10 a minute" },
   { path: "/change-password", limit: "5 in 5 minutes" },
+  { path: "/sign-in/social", limit: "10 a minute" },
+  { path: "/callback/*", limit: "10 a minute" },
   { path: "/oauth2/token", limit: "30 a minute" },
   { path: "Everything else", limit: "100 a minute" },
 ];

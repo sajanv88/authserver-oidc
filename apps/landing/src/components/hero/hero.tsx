@@ -16,8 +16,9 @@ const DISCOVERY = `{
   "userinfo_endpoint": "https://auth.example.com/api/auth/oauth2/userinfo",
   "jwks_uri": "https://auth.example.com/jwks",
   "scopes_supported": ["openid", "profile", "email", "offline_access"],
-  "grant_types_supported": ["authorization_code", "refresh_token"],
-  "code_challenge_methods_supported": ["S256"]
+  "grant_types_supported": ["authorization_code", "client_credentials", "refresh_token"],
+  "code_challenge_methods_supported": ["S256"],
+  "backchannel_logout_supported": true
 }`;
 
 const HIGHLIGHTS = ["OpenID Connect", "Two-factor", "Docker and Helm"];

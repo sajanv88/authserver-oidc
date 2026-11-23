@@ -13,13 +13,19 @@ const QUESTIONS = [
     id: "flows",
     question: "Which OAuth and OIDC flows does it support?",
     answer:
-      "The authorization code flow with PKCE (S256), and refresh tokens that rotate. No implicit flow, no client credentials and no device flow: they're the ones that go wrong.",
+      "The authorization code flow with PKCE (S256) for apps that sign people in, refresh tokens that rotate, and client credentials for services that call your APIs. No implicit flow and no device flow: they're the ones that go wrong.",
   },
   {
     id: "clients",
     question: "How do I add an app?",
     answer:
-      "Sign in as an admin, open /admin/clients and add it with its redirect URI. A confidential client gets a secret, shown once; a public one, such as a single-page app, uses PKCE alone.",
+      "Sign in as an admin, open /admin/clients and add it with its redirect URI. A confidential client gets a secret, shown once; a public one, such as a single-page app, uses PKCE alone. For many apps, declare them in a JSON file and run pnpm clients:provision.",
+  },
+  {
+    id: "apis",
+    question: "Can my own APIs check its tokens?",
+    answer:
+      "Yes. List them in OAUTH_RESOURCES and an app that names one as resource gets a JWT whose audience is that API. Your API checks it against /jwks, with no call to this server. Only apps linked to an API get tokens for it.",
   },
   {
     id: "cookie",

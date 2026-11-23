@@ -59,7 +59,9 @@ config:
   TRUSTED_ORIGINS: https://app.example.com
   SMTP_HOST: smtp.example.com
   SMTP_USER: apikey
-  TURNSTILE_SITE_KEY: ""                        # optional bot protection`,
+  TURNSTILE_SITE_KEY: ""                        # optional bot protection
+  OAUTH_RESOURCES: https://api.example.com      # optional: APIs that get JWT access tokens
+  OAUTH_API_SCOPES: crm,booking                 # optional: their scopes`,
   },
   {
     value: "argo",

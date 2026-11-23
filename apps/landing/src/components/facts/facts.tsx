@@ -2,7 +2,7 @@ import "./facts.scss";
 
 const FACTS = [
   { value: "RS256", label: "Signed ID tokens, keys at /jwks" },
-  { value: "S256", label: "PKCE, required of every client" },
+  { value: "S256", label: "PKCE, required for every sign-in" },
   { value: "10 min", label: "Access and ID tokens" },
   { value: "30 days", label: "Refresh tokens, rotated on each use" },
 ];
