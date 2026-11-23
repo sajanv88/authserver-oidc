@@ -102,6 +102,9 @@ describe("oauth client queries", () => {
         tokenEndpointAuthMethod: "client_secret_basic",
         grantTypes: ["client_credentials"],
         disabled: false,
+        backchannelLogoutUri: null,
+        metadata: null,
+        postLogoutRedirectUris: [],
         resources: ["https://admin.example.com", "https://api.example.com"],
       },
     ]);

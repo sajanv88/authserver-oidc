@@ -58,10 +58,14 @@ describe("provisioning clients", () => {
     const { rows } = await h.sql(
       `select name, token_endpoint_auth_method, grant_types, scopes, client_credentials_scopes,
               skip_consent, enable_end_session, require_pkce, backchannel_logout_uri,
-              post_logout_redirect_uris, client_secret
+              post_logout_redirect_uris, client_secret, metadata
          from oauth_clients order by created_at`,
     );
     const [web, machine] = rows as Record<string, unknown>[];
+    expect(rows.map((row) => (row as { metadata: unknown }).metadata)).toEqual([
+      { provisioned_by: "clients:provision" },
+      { provisioned_by: "clients:provision" },
+    ]);
     expect(web).toMatchObject({
       name: "Platform web",
       token_endpoint_auth_method: "client_secret_basic",
@@ -157,6 +161,56 @@ describe("provisioning clients", () => {
         oauth,
       }),
     ).rejects.toThrow(/exists as a web client; the file says machine/);
+  });
+
+  it("never takes over a client an admin registered under the same name, and changes nothing", async () => {
+    // Someone else's app, registered on the admin screen: no provisioning mark.
+    await h.sql(
+      "insert into oauth_clients (client_id, name, redirect_uris, skip_consent) values ($1, $2, $3, false)",
+      ["partner-app", "Partner app", ["https://partner.example.com/cb"]],
+    );
+    await expect(
+      provision(h.auth, h.database, {
+        adminEmail,
+        file: file([
+          { ...jobs, name: "Brand new" },
+          { ...zone, name: "Partner app" },
+        ]),
+        oauth,
+      }),
+    ).rejects.toThrow(/Partner app exists but wasn't created by this script/);
+
+    const { rows } = await h.sql(
+      "select name, skip_consent from oauth_clients where name in ('Partner app', 'Brand new')",
+    );
+    expect(rows).toEqual([{ name: "Partner app", skip_consent: false }]);
+    const { rows: links } = await h.sql(
+      "select 1 from oauth_client_resources where client_id = 'partner-app'",
+    );
+    expect(links).toEqual([]);
+  });
+
+  it("refuses to drop logout URIs the server can't clear", async () => {
+    const { backchannelLogoutUri: _, ...withoutBackchannel } = zone;
+    await expect(
+      provision(h.auth, h.database, { adminEmail, file: file([withoutBackchannel]), oauth }),
+    ).rejects.toThrow(/removes its back-channel logout URI/);
+    await expect(
+      provision(h.auth, h.database, {
+        adminEmail,
+        file: file([{ ...zone, postLogoutRedirectUris: [] }]),
+        oauth,
+      }),
+    ).rejects.toThrow(/removes its post-logout redirect URIs/);
+    const { rows } = await h.sql(
+      "select backchannel_logout_uri, post_logout_redirect_uris from oauth_clients where name = 'Platform web'",
+    );
+    expect(rows).toEqual([
+      {
+        backchannel_logout_uri: zone.backchannelLogoutUri,
+        post_logout_redirect_uris: zone.postLogoutRedirectUris,
+      },
+    ]);
   });
 
   it("refuses scopes and APIs this server doesn't offer, before changing anything", async () => {

@@ -45,8 +45,16 @@ export async function listOAuthClients(
 /** A client as the provisioning script compares it: what it is, and the APIs it may ask for. */
 export type OAuthClientRegistration = Pick<
   OAuthClient,
-  "clientId" | "name" | "tokenEndpointAuthMethod" | "grantTypes" | "disabled"
+  | "clientId"
+  | "name"
+  | "tokenEndpointAuthMethod"
+  | "grantTypes"
+  | "disabled"
+  | "backchannelLogoutUri"
+  | "metadata"
 > & {
+  /** Where the client may send people after it signs them out; empty when none. */
+  postLogoutRedirectUris: string[];
   /** The resource identifiers (APIs) the client is linked to, sorted. */
   resources: string[];
 };
@@ -63,6 +71,9 @@ export async function findOAuthClientsByName(
       tokenEndpointAuthMethod: oauthClients.tokenEndpointAuthMethod,
       grantTypes: oauthClients.grantTypes,
       disabled: oauthClients.disabled,
+      backchannelLogoutUri: oauthClients.backchannelLogoutUri,
+      metadata: oauthClients.metadata,
+      postLogoutRedirectUris: oauthClients.postLogoutRedirectUris,
     })
     .from(oauthClients)
     .where(eq(oauthClients.name, name))
@@ -80,6 +91,7 @@ export async function findOAuthClientsByName(
     );
   return clients.map((client) => ({
     ...client,
+    postLogoutRedirectUris: client.postLogoutRedirectUris ?? [],
     resources: links
       .filter((link) => link.clientId === client.clientId)
       .map((link) => link.resource)

@@ -131,8 +131,36 @@ async function adminSession(
   };
 }
 
+/**
+ * Marks a client this script created, in its metadata. Only marked clients are updated: a
+ * client an admin registered on the admin screen under the same name (someone else's app) is
+ * never made first-party or linked to the APIs by accident.
+ */
+const PROVISIONED_BY = "clients:provision";
+
 function kindOf(existing: OAuthClientRegistration): ClientSpec["type"] {
   return existing.grantTypes?.includes("client_credentials") ? "machine" : "web";
+}
+
+/** Why the file can't be applied to this existing client, or undefined when it can. */
+function refusal(spec: ClientSpec, existing: OAuthClientRegistration): string | undefined {
+  if (existing.metadata?.provisioned_by !== PROVISIONED_BY) {
+    return `${spec.name} exists but wasn't created by this script (it was registered on the admin screen). Rename it there, or give the file's client another name.`;
+  }
+  if (kindOf(existing) !== spec.type) {
+    return `${spec.name} exists as a ${kindOf(existing)} client; the file says ${spec.type}. Delete it on the admin screen first, then run this again.`;
+  }
+  if (spec.type === "web") {
+    // The plugin's update can replace these but not clear them, so a removal would silently
+    // leave the old value working.
+    if (existing.postLogoutRedirectUris.length > 0 && spec.postLogoutRedirectUris.length === 0) {
+      return `${spec.name}: the file removes its post-logout redirect URIs, which can't be cleared. Delete the client on the admin screen and run this again, or keep at least one.`;
+    }
+    if (existing.backchannelLogoutUri && !spec.backchannelLogoutUri) {
+      return `${spec.name}: the file removes its back-channel logout URI, which can't be cleared. Delete the client on the admin screen and run this again, or keep it.`;
+    }
+  }
+  return undefined;
 }
 
 async function create(auth: Auth, headers: Headers, spec: ClientSpec): Promise<ProvisionResult> {
@@ -156,7 +184,11 @@ async function create(auth: Auth, headers: Headers, spec: ClientSpec): Promise<P
         };
   const client = await auth.api.adminCreateOAuthClient({
     headers,
-    body: { ...body, ...(spec.resources.length > 0 ? { resources: spec.resources } : {}) },
+    body: {
+      ...body,
+      ...(spec.resources.length > 0 ? { resources: spec.resources } : {}),
+      metadata: { provisioned_by: PROVISIONED_BY },
+    },
   });
   return {
     name: spec.name,
@@ -172,12 +204,6 @@ async function update(
   spec: ClientSpec,
   existing: OAuthClientRegistration,
 ): Promise<ProvisionResult> {
-  if (kindOf(existing) !== spec.type) {
-    throw new ProvisionError(
-      `${spec.name} exists as a ${kindOf(existing)} client; the file says ${spec.type}. ` +
-        "Delete it on the admin screen first, then run this again.",
-    );
-  }
   const changes =
     spec.type === "machine"
       ? {
@@ -217,17 +243,29 @@ export async function provision(
   input: { adminEmail: string; file: ProvisionFile; oauth: OAuthApiConfig },
 ): Promise<ProvisionResult[]> {
   checkAgainstServer(input.file, input.oauth);
+
+  // Every client is checked before any is changed, so a refusal leaves nothing half done.
+  const plan: { spec: ClientSpec; existing: OAuthClientRegistration | undefined }[] = [];
+  const problems: string[] = [];
+  for (const spec of input.file.clients) {
+    const found = await findOAuthClientsByName(database, spec.name);
+    const [existing] = found;
+    if (found.length > 1) {
+      problems.push(
+        `${found.length} clients are named ${spec.name}; delete the extra ones on the admin screen.`,
+      );
+    } else {
+      const reason = existing ? refusal(spec, existing) : undefined;
+      if (reason) problems.push(reason);
+    }
+    plan.push({ spec, existing });
+  }
+  if (problems.length > 0) throw new ProvisionError(problems.join("\n"));
+
   const session = await adminSession(auth, database, input.adminEmail);
   try {
     const results: ProvisionResult[] = [];
-    for (const spec of input.file.clients) {
-      const found = await findOAuthClientsByName(database, spec.name);
-      if (found.length > 1) {
-        throw new ProvisionError(
-          `${found.length} clients are named ${spec.name}; delete the extra ones on the admin screen.`,
-        );
-      }
-      const [existing] = found;
+    for (const { spec, existing } of plan) {
       results.push(
         existing
           ? await update(auth, session.headers, spec, existing)
