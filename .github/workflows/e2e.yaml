@@ -49,6 +49,8 @@ jobs:
       SEED_ADMIN_EMAIL: admin@localtest.me
       EXAMPLE_AUTH_SERVER_URL: http://auth.localtest.me:3000
       EXAMPLE_APP_URL: http://app.localtest.me:3001
+      # The servers' output, outside the checkout (see apps/tests/support/env.ts).
+      E2E_OUTPUT_DIR: /tmp/auth-server-e2e
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -98,6 +100,6 @@ jobs:
           path: |
             apps/tests/playwright-report/
             apps/tests/test-results/
-            apps/tests/.output/
+            /tmp/auth-server-e2e/
           include-hidden-files: true
           retention-days: 7

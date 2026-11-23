@@ -29,7 +29,9 @@ DATABASE_URL=postgres://app:app@127.0.0.1:5432/auth-server pnpm test:e2e
 
 - **Email.** The auth server runs with `EMAIL_PROVIDER=console` and prints each email. The
   wrapper Playwright starts the servers with (`scripts/serve.ts`) copies their output to
-  `.output/`, and `support/mailbox.ts` reads the links from there.
+  `auth-server-e2e/` in the system's temporary folder (`E2E_OUTPUT_DIR` overrides it), and
+  `support/mailbox.ts` reads the links from there. It's outside the repo on purpose: the dev
+  servers watch the workspace, and a log inside it would reload the open pages on every request.
 - **Accounts.** Most scenarios begin with a fresh, confirmed account made through the auth
   server's public API (`support/people.ts`): sign up, then open the emailed link.
 - **Rate limits.** The auth server limits sign-ins, sign-ups and emails per client IP. Each

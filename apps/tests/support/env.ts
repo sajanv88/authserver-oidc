@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // The suite runs against the two apps' dev servers, configured like local development: the
@@ -16,8 +17,13 @@ export const AUTH_URL = origin(process.env.BETTER_AUTH_URL, "http://auth.localte
 /** The example app: the relying party on a sibling subdomain. */
 export const APP_URL = origin(process.env.EXAMPLE_APP_URL, "http://app.localtest.me:3001");
 
-/** Where the server wrapper (scripts/serve.ts) writes each app's output. */
-export const OUTPUT_DIR = join(import.meta.dirname, "..", ".output");
+/**
+ * Where the server wrapper (scripts/serve.ts) writes each app's output. Outside the repo: the
+ * dev servers watch the whole workspace, so a log inside it changes with every request, and on
+ * macOS each change reloads the open page, which logs another request, and so on.
+ * E2E_OUTPUT_DIR overrides it (CI sets it, to upload the logs when a run fails).
+ */
+export const OUTPUT_DIR = process.env.E2E_OUTPUT_DIR?.trim() || join(tmpdir(), "auth-server-e2e");
 
 /** The admin `pnpm db:seed` creates. Only the OIDC client scenarios need it. */
 export function adminCredentials(): { email: string; password: string } {
