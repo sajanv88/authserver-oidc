@@ -1,0 +1,30 @@
+{
+  "clients": [
+    {
+      "type": "web",
+      "name": "Platform web",
+      "redirectUris": ["https://app.example.com/api/auth/callback"],
+      "postLogoutRedirectUris": ["https://app.example.com/"],
+      "backchannelLogoutUri": "https://app.example.com/api/auth/backchannel-logout",
+      "firstParty": true,
+      "scopes": ["crm", "booking"],
+      "resources": ["https://api.example.com"]
+    },
+    {
+      "type": "web",
+      "name": "Platform web: AI zone",
+      "redirectUris": ["https://app.example.com/ai/api/auth/callback"],
+      "postLogoutRedirectUris": ["https://app.example.com/ai/"],
+      "backchannelLogoutUri": "https://app.example.com/ai/api/auth/backchannel-logout",
+      "firstParty": true,
+      "scopes": ["crm", "booking"],
+      "resources": ["https://api.example.com"]
+    },
+    {
+      "type": "machine",
+      "name": "Platform jobs",
+      "scopes": ["crm"],
+      "resources": ["https://api.example.com"]
+    }
+  ]
+}

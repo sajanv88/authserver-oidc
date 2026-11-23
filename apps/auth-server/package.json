@@ -10,7 +10,9 @@
     "analyze": "next analyze",
     "test": "vitest run",
     "seed:build": "esbuild scripts/seed.ts --bundle --platform=node --format=esm --target=node26 --outfile=dist/seed.mjs --external:pg-native --external:next --alias:server-only=./test/server-only.ts --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
-    "db:seed": "pnpm run seed:build && node --env-file-if-exists=../../.env dist/seed.mjs"
+    "db:seed": "pnpm run seed:build && node --env-file-if-exists=../../.env dist/seed.mjs",
+    "clients:build": "esbuild scripts/provision-clients.ts --bundle --platform=node --format=esm --target=node26 --outfile=dist/provision-clients.mjs --external:pg-native --external:next --alias:server-only=./test/server-only.ts --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "clients:provision": "pnpm run clients:build && node --env-file-if-exists=../../.env dist/provision-clients.mjs"
   },
   "dependencies": {
     "@better-auth/oauth-provider": "catalog:",
