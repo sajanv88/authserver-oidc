@@ -20,6 +20,7 @@ import { consentScopes } from "./scopes";
 export async function readConsentRequest(
   searchParams: SearchParamsInput,
   secret: string,
+  apiScopes: readonly string[] = [],
 ): Promise<ConsentRequest> {
   const query = signedOidcQuery(searchParams);
   if (!query) return { status: "invalid" };
@@ -29,7 +30,7 @@ export async function readConsentRequest(
   return {
     status: "valid",
     clientId: params.get("client_id") ?? "",
-    scopes: consentScopes(params.get("scope")),
+    scopes: consentScopes(params.get("scope"), apiScopes),
     restartUrl,
   };
 }
@@ -41,7 +42,8 @@ export async function readConsentRequest(
 export async function consentPageContext(
   searchParams: SearchParamsInput,
 ): Promise<ConsentPageContext> {
-  const request = await readConsentRequest(searchParams, env().betterAuthSecret);
+  const { betterAuthSecret, oauth } = env();
+  const request = await readConsentRequest(searchParams, betterAuthSecret, oauth.apiScopes);
   if (request.status !== "valid") return request;
 
   const session = await getSession();
