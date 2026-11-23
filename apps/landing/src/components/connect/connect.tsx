@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@nuvui/table/table";
+import type { ReactNode } from "react";
 import { repo } from "@/content/site";
 import { Code } from "../code/code";
 import "./connect.scss";
@@ -82,6 +83,106 @@ export async function verifyIdToken(idToken: string, nonce: string) {
   },
 ];
 
+/** Tokens for the developer's own APIs: views of one subject, not steps, so tabs fit. */
+const API_SNIPPETS: {
+  value: string;
+  name: string;
+  about: ReactNode;
+  title: string;
+  language: string;
+  code: string;
+}[] = [
+  {
+    value: "declare",
+    name: "Declare",
+    about: (
+      <>
+        List your APIs in <code>OAUTH_RESOURCES</code> and their scopes in{" "}
+        <code>OAUTH_API_SCOPES</code>, then declare your apps in a file.{" "}
+        <code>pnpm clients:provision clients.json</code> creates them, updates them on the next run,
+        and prints each new secret once.
+      </>
+    ),
+    title: "clients.json",
+    language: "json",
+    code: `{
+  "clients": [
+    {
+      "type": "web",
+      "name": "Dashboard",
+      "redirectUris": ["https://app.example.com/api/auth/callback"],
+      "backchannelLogoutUri": "https://app.example.com/api/auth/backchannel-logout",
+      "firstParty": true,
+      "scopes": ["crm"],
+      "resources": ["https://api.example.com"]
+    },
+    {
+      "type": "machine",
+      "name": "Nightly jobs",
+      "scopes": ["crm"],
+      "resources": ["https://api.example.com"]
+    }
+  ]
+}`,
+  },
+  {
+    value: "app",
+    name: "App token",
+    about: (
+      <>
+        Name the API as <code>resource</code> in the token request. The access token is then a JWT
+        for that API, and only apps linked to the API get one.
+      </>
+    ),
+    title: "Terminal",
+    language: "sh",
+    code: `curl -X POST https://auth.example.com/api/auth/oauth2/token \\
+  -u your-client-id:your-client-secret \\
+  -d grant_type=authorization_code \\
+  -d code=CODE_FROM_THE_CALLBACK \\
+  -d redirect_uri=https://app.example.com/api/auth/callback \\
+  -d code_verifier=YOUR_PKCE_VERIFIER \\
+  -d resource=https://api.example.com`,
+  },
+  {
+    value: "service",
+    name: "Service token",
+    about:
+      "A job or a queue consumer calls the API as itself, with client credentials, and gets only the scopes its client was given.",
+    title: "Terminal",
+    language: "sh",
+    code: `curl -X POST https://auth.example.com/api/auth/oauth2/token \\
+  -u nightly-jobs-client-id:its-secret \\
+  -d grant_type=client_credentials \\
+  -d scope=crm \\
+  -d resource=https://api.example.com`,
+  },
+  {
+    value: "check",
+    name: "Check it",
+    about:
+      "Your API checks every token against the published keys, with itself as the audience, and needs no call to this server.",
+    title: "require-token.ts",
+    language: "ts",
+    code: `import { createRemoteJWKSet, jwtVerify } from "jose";
+
+const issuer = "https://auth.example.com";
+const keys = createRemoteJWKSet(new URL("/jwks", issuer));
+
+export async function requireToken(authorization: string | undefined, scope: string) {
+  const token = authorization?.match(/^Bearer (.+)$/)?.[1];
+  if (!token) throw new Error("No access token");
+  const { payload } = await jwtVerify(token, keys, {
+    issuer,
+    audience: "https://api.example.com", // this API, as named in OAUTH_RESOURCES
+    algorithms: ["RS256"],
+  });
+  if (!String(payload.scope).split(" ").includes(scope)) throw new Error("Missing scope");
+  return payload; // sub for a person, client_id for a service
+}`,
+  },
+];
+
 const ENDPOINTS = [
   {
     method: "GET",
@@ -90,10 +191,19 @@ const ENDPOINTS = [
   },
   { method: "GET", path: "/jwks", what: "The public keys ID tokens are signed with (RS256)" },
   { method: "GET", path: "/api/auth/oauth2/authorize", what: "Starts a sign-in: code + PKCE S256" },
-  { method: "POST", path: "/api/auth/oauth2/token", what: "A code or a refresh token for tokens" },
+  {
+    method: "POST",
+    path: "/api/auth/oauth2/token",
+    what: "A code, a refresh token or client credentials for tokens",
+  },
   { method: "GET", path: "/api/auth/oauth2/userinfo", what: "The signed-in user's claims" },
   { method: "POST", path: "/api/auth/oauth2/revoke", what: "Revokes a token, on sign-out" },
   { method: "POST", path: "/api/auth/oauth2/introspect", what: "Whether a token is still active" },
+  {
+    method: "GET",
+    path: "/api/auth/oauth2/end-session",
+    what: "Signs the user out here too, from an app that signs them out",
+  },
 ];
 
 export function Connect() {
@@ -123,17 +233,50 @@ export function Connect() {
               ))}
             </TabsList>
             {SNIPPETS.map((snippet) => (
-              <TabsContent key={snippet.value} value={snippet.value} className="connect__panel">
-                <p className="connect__about">{snippet.about}</p>
-                <Code
-                  code={snippet.code}
-                  language={snippet.language}
-                  title={snippet.title}
-                  label={`${snippet.name} example`}
-                />
+              <TabsContent key={snippet.value} value={snippet.value}>
+                <div className="connect__panel">
+                  <p className="connect__about">{snippet.about}</p>
+                  <Code
+                    code={snippet.code}
+                    language={snippet.language}
+                    title={snippet.title}
+                    label={`${snippet.name} example`}
+                  />
+                </div>
               </TabsContent>
             ))}
           </Tabs>
+          <div className="connect__reference" id="apis">
+            <h3 className="connect__heading" id="apis-title">
+              Tokens for your own APIs
+            </h3>
+            <p className="connect__about">
+              Optional. Your APIs get JWT access tokens they check themselves (RFC 8707), your
+              services get client credentials, and signing out of one app signs out of all of them.
+            </p>
+            <Tabs defaultValue="declare" className="connect__tabs">
+              <TabsList aria-labelledby="apis-title">
+                {API_SNIPPETS.map((snippet) => (
+                  <TabsTrigger key={snippet.value} value={snippet.value}>
+                    {snippet.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {API_SNIPPETS.map((snippet) => (
+                <TabsContent key={snippet.value} value={snippet.value}>
+                  <div className="connect__panel">
+                    <p className="connect__about">{snippet.about}</p>
+                    <Code
+                      code={snippet.code}
+                      language={snippet.language}
+                      title={snippet.title}
+                      label={`${snippet.name} example`}
+                    />
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
           <div className="connect__reference">
             <h3 className="connect__heading" id="endpoints-title">
               Endpoints

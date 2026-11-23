@@ -9,6 +9,8 @@
     min-inline-size: 0;
   }
 
+  // Inside the tab panel, not on it: Radix hides the other panels with [hidden], which a
+  // display on the panel itself would override, so each empty one would add a gap.
   &__panel {
     display: grid;
     gap: a.space(4);
