@@ -11,10 +11,6 @@ Feature: Two-factor authentication
     When I enter the current code from my authenticator app
     Then I am signed in to the security page
 
-  # Known bug: two-factor is turned on, but the dialog closes before it shows the backup
-  # codes (the page loses the action's answer when it refreshes), so they're never seen.
-  # @fail expects this scenario to fail; once the codes show, Playwright reports it.
-  @fail
   Scenario: The backup codes are shown once two-factor authentication is on
     Given I am signed in
     When I set up two-factor authentication with my authenticator app
