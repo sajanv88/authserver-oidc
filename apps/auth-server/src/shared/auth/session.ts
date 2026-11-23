@@ -1,6 +1,6 @@
 import "server-only";
 import type { Route } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
@@ -15,7 +15,12 @@ async function readSession() {
   // Per request, before anything reads env or the clock (Better Auth checks expiry with
   // new Date()): without it, dev's prerender check flags the session read.
   await connection();
-  const requestHeaders = await headers();
+  // The cookies as they stand now, not the Cookie header the request arrived with: a server
+  // action that changes the session (a new password, two-factor turned on) sets a new session
+  // cookie, and the page it re-renders must read that one. The old session is gone by then,
+  // so the header's cookie would send the re-render to /login and lose the action's answer.
+  const requestHeaders = new Headers(await headers());
+  requestHeaders.set("cookie", (await cookies()).toString());
   return getAuth().api.getSession({ headers: requestHeaders });
 }
 

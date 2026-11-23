@@ -8,10 +8,6 @@ Feature: Keep my account secure
     Then I am still signed in on this device
     And the other device is signed out
 
-  # Known bug: the action answers "changed", but the page loses that answer when it refreshes
-  # after the change, and shows an empty form instead. @fail expects this scenario to fail;
-  # once the message shows, Playwright reports it, and the tag comes off.
-  @fail
   Scenario: The page confirms that the password was changed
     Given I am signed in
     When I change my password
