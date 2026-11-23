@@ -20,6 +20,7 @@
     "db:check": "pnpm --filter @repo/db db:check",
     "db:migrate": "pnpm --filter @repo/db db:migrate",
     "db:seed": "pnpm --filter auth-server db:seed",
+    "clients:provision": "pnpm --filter auth-server clients:provision",
     "db:studio": "pnpm --filter @repo/db db:studio"
   },
   "devDependencies": {

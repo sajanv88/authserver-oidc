@@ -7,9 +7,11 @@ export { type Db, db } from "./client";
 export type { Executor } from "./executor";
 export { getSignInMethods, type SignInMethods } from "./queries/accounts";
 export {
+  findOAuthClientsByName,
   getOAuthClientPublicInfo,
   listOAuthClients,
   type OAuthClientPublicInfo,
+  type OAuthClientRegistration,
   type OAuthClientSummary,
 } from "./queries/oauth-clients";
 export { getSessionToken, listActiveSessions, type SessionSummary } from "./queries/sessions";

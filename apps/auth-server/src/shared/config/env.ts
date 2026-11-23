@@ -1,7 +1,13 @@
 import "server-only";
 import { parseEnv, type ServerEnv } from "./env-schema";
 
-export type { EmailConfig, ServerEnv, SocialConfig, TurnstileConfig } from "./env-schema";
+export type {
+  EmailConfig,
+  OAuthApiConfig,
+  ServerEnv,
+  SocialConfig,
+  TurnstileConfig,
+} from "./env-schema";
 
 let parsed: ServerEnv | undefined;
 

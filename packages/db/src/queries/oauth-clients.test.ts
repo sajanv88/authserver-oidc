@@ -1,7 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { oauthClientResources } from "../schema/oauth-client-resources";
 import { oauthClients } from "../schema/oauth-clients";
+import { oauthResources } from "../schema/oauth-resources";
 import { createTestDb } from "../testing/pglite";
-import { getOAuthClientPublicInfo, listOAuthClients } from "./oauth-clients";
+import {
+  findOAuthClientsByName,
+  getOAuthClientPublicInfo,
+  listOAuthClients,
+} from "./oauth-clients";
 
 type TestDb = Awaited<ReturnType<typeof createTestDb>>;
 
@@ -70,6 +76,40 @@ describe("oauth client queries", () => {
       disabled: false,
     });
     expect(await getOAuthClientPublicInfo(db, "missing")).toBeUndefined();
+  });
+
+  it("findOAuthClientsByName returns every client with the name, with its linked APIs", async () => {
+    await db.insert(oauthResources).values([
+      { identifier: "https://api.example.com", name: "API" },
+      { identifier: "https://admin.example.com", name: "Admin API" },
+    ]);
+    await db.insert(oauthClients).values({
+      clientId: "jobs",
+      name: "Jobs",
+      tokenEndpointAuthMethod: "client_secret_basic",
+      grantTypes: ["client_credentials"],
+      redirectUris: [],
+    });
+    await db.insert(oauthClientResources).values([
+      { clientId: "jobs", resourceId: "https://api.example.com" },
+      { clientId: "jobs", resourceId: "https://admin.example.com" },
+    ]);
+
+    expect(await findOAuthClientsByName(db, "Jobs")).toEqual([
+      {
+        clientId: "jobs",
+        name: "Jobs",
+        tokenEndpointAuthMethod: "client_secret_basic",
+        grantTypes: ["client_credentials"],
+        disabled: false,
+        backchannelLogoutUri: null,
+        metadata: null,
+        postLogoutRedirectUris: [],
+        resources: ["https://admin.example.com", "https://api.example.com"],
+      },
+    ]);
+    expect((await findOAuthClientsByName(db, "Second")).map((c) => c.resources)).toEqual([[]]);
+    expect(await findOAuthClientsByName(db, "missing")).toEqual([]);
   });
 
   it("works inside a transaction (the executor can be tx)", async () => {

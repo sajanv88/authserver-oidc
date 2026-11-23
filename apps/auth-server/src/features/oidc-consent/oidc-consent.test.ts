@@ -28,6 +28,14 @@ describe("consent rules", () => {
     expect(consentScopes("offline_access")[0]?.title).toBe("Stay connected");
   });
 
+  it("says what an API scope lets the app do, but only for scopes this server offers", () => {
+    expect(consentScopes("openid crm billing", ["crm"])).toEqual([
+      expect.objectContaining({ scope: "openid" }),
+      expect.objectContaining({ scope: "crm", title: "Act for you in crm" }),
+    ]);
+    expect(consentScopes("crm").map((s) => s.scope)).toEqual([]);
+  });
+
   it("takes Allow or Deny, nothing else", () => {
     expect(parseForm(ConsentDecisionSchema, { decision: "allow" })).toEqual({
       ok: true,

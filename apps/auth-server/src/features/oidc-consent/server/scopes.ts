@@ -21,14 +21,29 @@ const SCOPES: Record<string, Omit<ScopeItem, "scope">> = {
   },
 };
 
+/** An API scope (OAUTH_API_SCOPES): named by its operator, so said the same way for all. */
+function apiScope(scope: string): ScopeItem {
+  return {
+    scope,
+    title: `Act for you in ${scope}`,
+    description:
+      "Read and change what you can there, with your own permissions, while you're signed in.",
+  };
+}
+
 /**
- * The scopes of an authorization request, in words, in the order asked. Unknown ones are left
- * out: the authorize endpoint has already refused any this server doesn't offer.
+ * The scopes of an authorization request, in words, in the order asked. `apiScopes` are the
+ * APIs' scopes this server offers (OAUTH_API_SCOPES). Unknown ones are left out: the authorize
+ * endpoint has already refused any this server doesn't offer.
  */
-export function consentScopes(scope: string | null | undefined): ScopeItem[] {
+export function consentScopes(
+  scope: string | null | undefined,
+  apiScopes: readonly string[] = [],
+): ScopeItem[] {
   const asked = [...new Set((scope ?? "").split(" ").filter((value) => value !== ""))];
   return asked.flatMap((value) => {
     const known = SCOPES[value];
-    return known ? [{ scope: value, ...known }] : [];
+    if (known) return [{ scope: value, ...known }];
+    return apiScopes.includes(value) ? [apiScope(value)] : [];
   });
 }

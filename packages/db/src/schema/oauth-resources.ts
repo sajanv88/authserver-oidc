@@ -2,8 +2,8 @@ import { boolean, integer, jsonb, snakeCase, text, uniqueIndex, uuid } from "dri
 import { createdAt, updatedAt } from "./_columns";
 
 // @better-auth/oauth-provider, model "oauthResource": a protected API (RFC 8707 resource
-// indicator) that access tokens can be issued for. Not used by this server's own flows yet,
-// but the plugin reads the table, so it has to exist.
+// indicator) that access tokens can be issued for. The plugin inserts a row for each URI in
+// OAUTH_RESOURCES when it starts; tokens for one carry it as `aud`.
 export const oauthResources = snakeCase.table(
   "oauth_resources",
   {

@@ -67,6 +67,35 @@ const CookieDomainSchema = v.pipe(
   ),
 );
 
+/**
+ * A protected resource's identifier (RFC 8707 2): an absolute http(s) URI, no fragment, no
+ * query, no credentials. Kept exactly as written: it's the `aud` the API checks.
+ */
+const ResourceSchema = v.pipe(
+  v.string(),
+  v.check((value) => {
+    if (!URL.canParse(value) || value.includes("#") || value.includes("?")) return false;
+    const url = new URL(value);
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      url.username === "" &&
+      url.password === ""
+    );
+  }, "must be absolute URIs such as https://api.example.com, without ? or #"),
+);
+
+/** The OpenID Connect scopes the server always offers; an API scope can't reuse one. */
+const OIDC_SCOPE_NAMES = new Set(["openid", "profile", "email", "offline_access"]);
+
+const ApiScopeSchema = v.pipe(
+  v.string(),
+  v.regex(/^[a-z][a-z0-9_.:-]{0,63}$/, "must be lowercase scope names such as crm or crm:read"),
+  v.check((value) => !OIDC_SCOPE_NAMES.has(value), "must not repeat an OpenID Connect scope"),
+);
+
+/** Scope names, separated by commas or spaces. */
+const scopeList = (value: string) => value.split(/[\s,]+/).filter((item) => item.length > 0);
+
 const RawEnvSchema = v.object({
   NODE_ENV: v.optional(v.picklist(["development", "production", "test"]), "production"),
   DATABASE_URL: v.pipe(
@@ -152,6 +181,17 @@ const RawEnvSchema = v.object({
   ),
   SSO_CLIENT_ID: optionalText,
   SSO_CLIENT_SECRET: optionalText,
+  // The APIs this server issues access tokens for (RFC 8707 resource indicators), comma
+  // separated. A token asked for with resource=<one of them> is a JWT whose `aud` is that API.
+  OAUTH_RESOURCES: v.optional(
+    v.pipe(v.string(), v.transform(commaList), v.array(ResourceSchema)),
+    "",
+  ),
+  // Scopes for those APIs (crm, booking…), offered beside the OpenID Connect ones.
+  OAUTH_API_SCOPES: v.optional(
+    v.pipe(v.string(), v.transform(scopeList), v.array(ApiScopeSchema)),
+    "",
+  ),
 });
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
@@ -172,6 +212,14 @@ export type EmailConfig =
   | { provider: "console"; from: string }
   | { provider: "smtp"; from: string; host: string; port: number; user: string; password: string };
 
+/** What apps may ask access tokens for, besides signing in. */
+export type OAuthApiConfig = {
+  /** RFC 8707 resource identifiers: each a possible `aud` of an access token. */
+  resources: string[];
+  /** API scopes, offered beside openid, profile, email and offline_access. */
+  apiScopes: string[];
+};
+
 export type ServerEnv = {
   nodeEnv: RawEnv["NODE_ENV"];
   isProduction: boolean;
@@ -187,6 +235,7 @@ export type ServerEnv = {
   /** Cloudflare Turnstile, or undefined when it isn't configured (no widget, no check). */
   turnstile: TurnstileConfig | undefined;
   social: SocialConfig;
+  oauth: OAuthApiConfig;
 };
 
 const CLIENT_PAIRS = [
@@ -272,6 +321,15 @@ const EnvSchema = v.pipe(
     if (production && env.SSO_DISCOVERY_URL && !env.SSO_DISCOVERY_URL.startsWith("https://")) {
       issue("SSO_DISCOVERY_URL", "must be https in production");
     }
+    if (production && env.OAUTH_RESOURCES.some((resource) => !resource.startsWith("https://"))) {
+      issue("OAUTH_RESOURCES", "must all be https in production");
+    }
+    if (new Set(env.OAUTH_RESOURCES).size !== env.OAUTH_RESOURCES.length) {
+      issue("OAUTH_RESOURCES", "must not list a resource twice");
+    }
+    if (new Set(env.OAUTH_API_SCOPES).size !== env.OAUTH_API_SCOPES.length) {
+      issue("OAUTH_API_SCOPES", "must not list a scope twice");
+    }
   }),
   v.transform(
     (env): ServerEnv => ({
@@ -299,6 +357,7 @@ const EnvSchema = v.pipe(
           ? { siteKey: env.TURNSTILE_SITE_KEY, secretKey: env.TURNSTILE_SECRET_KEY }
           : undefined,
       social: socialConfig(env),
+      oauth: { resources: env.OAUTH_RESOURCES, apiScopes: env.OAUTH_API_SCOPES },
     }),
   ),
 );

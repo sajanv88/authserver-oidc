@@ -5,7 +5,7 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import { APP_NAME } from "@/shared/config/app";
-import type { ServerEnv } from "@/shared/config/env";
+import type { OAuthApiConfig, ServerEnv } from "@/shared/config/env";
 import {
   type EmailMessage,
   existingAccountTemplate,
@@ -41,6 +41,11 @@ export const LIFETIMES = {
 } as const;
 
 export const OIDC_SCOPES = ["openid", "profile", "email", "offline_access"];
+
+/** Every scope a client may ask for: the OpenID Connect ones, then the APIs' (OAUTH_API_SCOPES). */
+export function offeredScopes(oauth: OAuthApiConfig): string[] {
+  return [...OIDC_SCOPES, ...oauth.apiScopes];
+}
 
 export const LOGIN_PAGE = LOGIN_PATH;
 export const CONSENT_PAGE = AUTH_PAGES.consent;
@@ -227,11 +232,13 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       oauthProvider({
         loginPage: LOGIN_PAGE,
         consentPage: CONSENT_PAGE,
-        scopes: OIDC_SCOPES,
-        // Authorization code (always with PKCE S256) and refresh tokens. No client
-        // credentials, no implicit, no device flow.
-        grantTypes: ["authorization_code", "refresh_token"],
+        scopes: offeredScopes(env.oauth),
+        // Authorization code (always with PKCE S256) and refresh tokens for apps that sign
+        // people in; client credentials for services that call an API as themselves, within
+        // the scopes an admin gave the client. No implicit, no device flow.
+        grantTypes: ["authorization_code", "client_credentials", "refresh_token"],
         accessTokenExpiresIn: LIFETIMES.accessToken,
+        m2mAccessTokenExpiresIn: LIFETIMES.accessToken,
         idTokenExpiresIn: LIFETIMES.idToken,
         refreshTokenExpiresIn: LIFETIMES.refreshToken,
         codeExpiresIn: LIFETIMES.authorizationCode,
@@ -245,6 +252,13 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
             "none",
           ],
         },
+        // The APIs (RFC 8707). A token asked for with `resource` is a JWT whose `aud` is that
+        // API, and only clients an admin linked to the API may ask (enforcePerClientResources).
+        // Without `resource`, an access token stays opaque: for /userinfo and introspection.
+        // Rows are inserted on start, never overwritten: a removed URI stays in the database.
+        resources: env.oauth.resources,
+        enforcePerClientResources: true,
+        resourcePrivileges: ({ user }) => isAdmin(user),
         // Only admins create, update, rotate and delete clients, and they share them.
         clientPrivileges: ({ user }) => isAdmin(user),
         clientReference: ({ user }) => (isAdmin(user) ? ADMIN_CLIENT_OWNER : undefined),
