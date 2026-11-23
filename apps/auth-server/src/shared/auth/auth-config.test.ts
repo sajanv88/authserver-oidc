@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { withRootJwksUri } from "./discovery";
+import { machineClientDefaults, oidcClientDefaults } from "./oidc-client-defaults";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "./test-harness";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
@@ -255,7 +256,11 @@ describe("auth configuration", () => {
       expect(config.jwks_uri).toBe(`${BASE_URL}/jwks`);
       expect(config.authorization_endpoint).toBe(`${BASE_URL}/api/auth/oauth2/authorize`);
       expect(config.token_endpoint).toBe(`${BASE_URL}/api/auth/oauth2/token`);
-      expect(config.grant_types_supported).toEqual(["authorization_code", "refresh_token"]);
+      expect(config.grant_types_supported).toEqual([
+        "authorization_code",
+        "client_credentials",
+        "refresh_token",
+      ]);
       expect(config.code_challenge_methods_supported).toEqual(["S256"]);
       expect(config.scopes_supported).toEqual(["openid", "profile", "email", "offline_access"]);
     });
@@ -559,5 +564,237 @@ describe("Cloudflare Turnstile, when it's configured", () => {
     });
     expect(result.status).toBe(401);
     expect(asked.map((body) => body.response)).toEqual(["good-token"]);
+  });
+});
+
+describe("APIs: resources, API scopes, client credentials, back-channel logout", () => {
+  const api = "https://api.localtest.me";
+  const ip = "203.0.113.60";
+  const zoneRedirect = `${APP_ORIGIN}/api/auth/callback`;
+  // https (or loopback): the plugin refuses http for back-channel logout, in development too.
+  const logoutUri = "https://app.localtest.me/api/auth/backchannel-logout";
+  let h: Harness;
+  let user: Awaited<ReturnType<typeof verifiedUser>>;
+  let userId: string;
+  let zone: { client_id: string; client_secret?: string | undefined };
+  let unlinked: { client_id: string; client_secret?: string | undefined };
+  let machine: { client_id: string; client_secret?: string | undefined };
+
+  beforeAll(async () => {
+    h = await createHarness({ oauth: { resources: [api], apiScopes: ["crm", "booking"] } });
+    const admin = await verifiedUser(h, "admin@example.com", ip);
+    await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
+    const adminHeaders = cookieHeaders(admin.jar);
+    user = await verifiedUser(h, "zone-user@example.com", "203.0.113.61");
+    const { rows } = await h.sql("select id from users where email = $1", [
+      "zone-user@example.com",
+    ]);
+    userId = (rows[0] as { id: string }).id;
+
+    // A platform zone: first-party (no consent screen), linked to the API, told of sign-outs.
+    zone = await h.auth.api.adminCreateOAuthClient({
+      headers: adminHeaders,
+      body: {
+        ...oidcClientDefaults(["crm"]),
+        client_name: "Platform web",
+        redirect_uris: [zoneRedirect],
+        token_endpoint_auth_method: "client_secret_basic",
+        skip_consent: true,
+        backchannel_logout_uri: logoutUri,
+        resources: [api],
+      },
+    });
+    unlinked = await h.auth.api.adminCreateOAuthClient({
+      headers: adminHeaders,
+      body: {
+        ...oidcClientDefaults(["crm"]),
+        client_name: "Not linked",
+        redirect_uris: [zoneRedirect],
+        token_endpoint_auth_method: "client_secret_basic",
+        skip_consent: true,
+      },
+    });
+    machine = await h.auth.api.adminCreateOAuthClient({
+      headers: adminHeaders,
+      body: { ...machineClientDefaults(["crm"]), client_name: "Platform jobs", resources: [api] },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function keys() {
+    const jwks = await json(await user.request("GET", "/api/auth/jwks"));
+    return createLocalJWKSet(jwks as unknown as Parameters<typeof createLocalJWKSet>[0]);
+  }
+
+  function token(
+    credentials: { client_id: string; client_secret?: string | undefined },
+    form: Record<string, string>,
+  ) {
+    const basic = Buffer.from(
+      `${credentials.client_id}:${credentials.client_secret ?? ""}`,
+    ).toString("base64");
+    return h.auth.handler(
+      new Request(`${BASE_URL}/api/auth/oauth2/token`, {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${basic}`,
+          "content-type": "application/x-www-form-urlencoded",
+          "x-forwarded-for": "198.51.100.60",
+        },
+        body: new URLSearchParams(form).toString(),
+      }),
+    );
+  }
+
+  /** Signs the user in to a zone, for `scope` and the API; returns the token response. */
+  async function signInToZone(
+    client: { client_id: string; client_secret?: string | undefined },
+    scope: string,
+    options: { resourceAtAuthorize?: boolean } = {},
+  ) {
+    const verifier = randomBytes(32).toString("base64url");
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: zoneRedirect,
+      scope,
+      state: "s",
+      nonce: "n",
+      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    if (options.resourceAtAuthorize !== false) query.set("resource", api);
+    const authorize = await user.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    const location = new URL(authorize.headers.get("location") ?? "", BASE_URL);
+    return {
+      location,
+      response: await token(client, {
+        grant_type: "authorization_code",
+        code: location.searchParams.get("code") ?? "",
+        redirect_uri: zoneRedirect,
+        code_verifier: verifier,
+        resource: api,
+      }),
+    };
+  }
+
+  it("publishes the API scopes, client credentials and back-channel logout in discovery", async () => {
+    const config = await h.auth.api.getOpenIdConfig();
+    expect(config.scopes_supported).toEqual([
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      "crm",
+      "booking",
+    ]);
+    expect(config.grant_types_supported).toContain("client_credentials");
+    expect(config.backchannel_logout_supported).toBe(true);
+  });
+
+  it("signs a first-party zone in without a consent screen, with a JWT for the API", async () => {
+    const { location, response } = await signInToZone(zone, "openid email crm");
+    expect(`${location.origin}${location.pathname}`).toBe(zoneRedirect);
+    expect(response.status).toBe(200);
+    const body = await json(response);
+
+    const { payload, protectedHeader } = await jwtVerify(String(body.access_token), await keys(), {
+      issuer: BASE_URL,
+      audience: api,
+    });
+    expect(protectedHeader.alg).toBe("RS256");
+    expect(payload.sub).toBe(userId);
+    expect(String(payload.scope).split(" ")).toEqual(expect.arrayContaining(["openid", "crm"]));
+    expect(payload.exp && payload.iat ? payload.exp - payload.iat : 0).toBe(600);
+  });
+
+  it("refuses the API to a client an admin didn't link to it", async () => {
+    const { location } = await signInToZone(unlinked, "openid crm");
+    expect(`${location.origin}${location.pathname}`).toBe(zoneRedirect);
+    expect(location.searchParams.get("error")).toBe("invalid_target");
+    expect(location.searchParams.get("code")).toBeNull();
+
+    // Asked for only at the token endpoint (RFC 8707 allows either): refused there too.
+    const signIn = await signInToZone(unlinked, "openid crm", { resourceAtAuthorize: false });
+    expect(signIn.location.searchParams.get("code")).toBeTruthy();
+    expect(signIn.response.status).toBe(400);
+    expect(await json(signIn.response)).toMatchObject({ error: "invalid_target" });
+  });
+
+  it("refuses a scope the client wasn't registered for", async () => {
+    const { location } = await signInToZone(zone, "openid booking");
+    expect(location.searchParams.get("error")).toBe("invalid_scope");
+  });
+
+  it("gives a service a JWT for the API through client credentials, within its scopes", async () => {
+    const granted = await token(machine, {
+      grant_type: "client_credentials",
+      scope: "crm",
+      resource: api,
+    });
+    expect(granted.status).toBe(200);
+    const body = await json(granted);
+    expect(body.refresh_token).toBeUndefined();
+    const { payload } = await jwtVerify(String(body.access_token), await keys(), {
+      issuer: BASE_URL,
+      audience: api,
+    });
+    expect(payload.scope).toBe("crm");
+    expect(payload.client_id ?? payload.azp).toBe(machine.client_id);
+
+    const beyond = await token(machine, {
+      grant_type: "client_credentials",
+      scope: "booking",
+      resource: api,
+    });
+    expect(beyond.status).toBe(400);
+    expect(await json(beyond)).toMatchObject({ error: "invalid_scope" });
+
+    const wrongSecret = await token(
+      { client_id: machine.client_id, client_secret: "nope" },
+      { grant_type: "client_credentials", scope: "crm", resource: api },
+    );
+    expect(wrongSecret.status).toBe(401);
+  });
+
+  it("refuses client credentials to an app that signs people in", async () => {
+    const response = await token(zone, { grant_type: "client_credentials", scope: "crm" });
+    expect(response.status).toBe(400);
+  });
+
+  it("tells the zone when the user signs out, with a signed logout token", async () => {
+    // A zone keeps a refresh token for its session: the server tells the clients holding a
+    // token for the session that ends, so one with only an ID token wouldn't hear of it.
+    const { response } = await signInToZone(zone, "openid offline_access crm");
+    expect(response.status).toBe(200);
+    const idToken = String((await json(response)).id_token);
+    const sid = (await jwtVerify(idToken, await keys(), { issuer: BASE_URL })).payload.sid;
+
+    const delivered: { url: string; body: string }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      delivered.push({ url: String(input), body: String(init?.body ?? "") });
+      return new Response(null, { status: 200 });
+    });
+    const signOut = await user.request("POST", "/api/auth/sign-out", { json: {} });
+    expect(signOut.status).toBe(200);
+    await vi.waitFor(() => expect(delivered).toHaveLength(1));
+
+    expect(delivered[0]?.url).toBe(logoutUri);
+    const logoutToken = new URLSearchParams(delivered[0]?.body).get("logout_token") ?? "";
+    const { payload, protectedHeader } = await jwtVerify(logoutToken, await keys(), {
+      issuer: BASE_URL,
+      audience: zone.client_id,
+      typ: "logout+jwt",
+    });
+    expect(protectedHeader.alg).toBe("RS256");
+    expect(payload).toMatchObject({
+      sub: userId,
+      events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+    });
+    if (sid !== undefined) expect(payload.sid).toBe(sid);
+    expect(payload.nonce).toBeUndefined();
   });
 });
