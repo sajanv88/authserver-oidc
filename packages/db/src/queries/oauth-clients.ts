@@ -1,5 +1,6 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Executor } from "../executor";
+import { oauthClientResources } from "../schema/oauth-client-resources";
 import { type OAuthClient, oauthClients } from "../schema/oauth-clients";
 
 // Reads of the OAuth clients table for the admin list and the consent screen. Creating,
@@ -39,6 +40,51 @@ export async function listOAuthClients(
     .orderBy(desc(oauthClients.createdAt), desc(oauthClients.id))
     .limit(limit)
     .offset(options.offset ?? 0);
+}
+
+/** A client as the provisioning script compares it: what it is, and the APIs it may ask for. */
+export type OAuthClientRegistration = Pick<
+  OAuthClient,
+  "clientId" | "name" | "tokenEndpointAuthMethod" | "grantTypes" | "disabled"
+> & {
+  /** The resource identifiers (APIs) the client is linked to, sorted. */
+  resources: string[];
+};
+
+/** The clients with exactly this name, oldest first. Names aren't unique, so it's a list. */
+export async function findOAuthClientsByName(
+  db: Executor,
+  name: string,
+): Promise<OAuthClientRegistration[]> {
+  const clients = await db
+    .select({
+      clientId: oauthClients.clientId,
+      name: oauthClients.name,
+      tokenEndpointAuthMethod: oauthClients.tokenEndpointAuthMethod,
+      grantTypes: oauthClients.grantTypes,
+      disabled: oauthClients.disabled,
+    })
+    .from(oauthClients)
+    .where(eq(oauthClients.name, name))
+    .orderBy(asc(oauthClients.createdAt), asc(oauthClients.id));
+  if (clients.length === 0) return [];
+
+  const links = await db
+    .select({ clientId: oauthClientResources.clientId, resource: oauthClientResources.resourceId })
+    .from(oauthClientResources)
+    .where(
+      inArray(
+        oauthClientResources.clientId,
+        clients.map((client) => client.clientId),
+      ),
+    );
+  return clients.map((client) => ({
+    ...client,
+    resources: links
+      .filter((link) => link.clientId === client.clientId)
+      .map((link) => link.resource)
+      .sort(),
+  }));
 }
 
 /** What the consent screen may show about a client: its public metadata only. */
