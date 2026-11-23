@@ -198,4 +198,45 @@ describe("parseEnv", () => {
       "MICROSOFT_TENANT_ID must be a tenant ID or name",
     ]);
   });
+
+  it("offers no APIs unless OAUTH_RESOURCES and OAUTH_API_SCOPES name some", () => {
+    const off = parseEnv(valid);
+    expect(off.ok && off.env.oauth).toEqual({ resources: [], apiScopes: [] });
+
+    const on = parseEnv({
+      ...valid,
+      OAUTH_RESOURCES: "https://api.example.com, http://api.localtest.me:4000/v1",
+      OAUTH_API_SCOPES: "crm, booking invoicing:read",
+    });
+    expect(on.ok && on.env.oauth).toEqual({
+      resources: ["https://api.example.com", "http://api.localtest.me:4000/v1"],
+      apiScopes: ["crm", "booking", "invoicing:read"],
+    });
+  });
+
+  it("refuses resources that aren't plain absolute URIs, and http ones in production", () => {
+    for (const resource of ["api.example.com", "https://api.example.com/#x", "https://a/?q=1"]) {
+      expect(errorsFor({ ...valid, OAUTH_RESOURCES: resource })).toEqual([
+        "OAUTH_RESOURCES.0 must be absolute URIs such as https://api.example.com, without ? or #",
+      ]);
+    }
+    expect(errorsFor({ ...production, OAUTH_RESOURCES: "http://api.internal" })).toEqual([
+      "OAUTH_RESOURCES must all be https in production",
+    ]);
+    expect(
+      errorsFor({ ...valid, OAUTH_RESOURCES: "https://api.example.com,https://api.example.com" }),
+    ).toEqual(["OAUTH_RESOURCES must not list a resource twice"]);
+  });
+
+  it("refuses API scopes that aren't lowercase names, repeat, or reuse an OpenID Connect one", () => {
+    expect(errorsFor({ ...valid, OAUTH_API_SCOPES: "CRM" })).toEqual([
+      "OAUTH_API_SCOPES.0 must be lowercase scope names such as crm or crm:read",
+    ]);
+    expect(errorsFor({ ...valid, OAUTH_API_SCOPES: "crm email" })).toEqual([
+      "OAUTH_API_SCOPES.1 must not repeat an OpenID Connect scope",
+    ]);
+    expect(errorsFor({ ...valid, OAUTH_API_SCOPES: "crm,crm" })).toEqual([
+      "OAUTH_API_SCOPES must not list a scope twice",
+    ]);
+  });
 });

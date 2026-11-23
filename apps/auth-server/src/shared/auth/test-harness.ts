@@ -21,6 +21,7 @@ export const testEnv: ServerEnv = {
   email: { provider: "console", from: "Auth <no-reply@localtest.me>" },
   turnstile: undefined,
   social: {},
+  oauth: { resources: [], apiScopes: [] },
 };
 
 /** `overrides` change the configuration, e.g. `{ turnstile: … }` to turn the captcha on. */
