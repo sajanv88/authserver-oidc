@@ -147,8 +147,11 @@ function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: 
  * Turning two-factor on: the password, then the authenticator (QR code, or the setup key typed
  * in) confirmed with a code, then the backup codes. Two-factor is only on once a code from the
  * new authenticator has been accepted, so a half-finished setup locks nobody out.
+ *
+ * `available`: two-factor is off, so the button shows. Once it's on, the dialog stays open
+ * until the backup codes have been seen.
  */
-export function EnableDialog() {
+export function EnableDialog({ available }: { available: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const finished = useRef(false);
@@ -166,11 +169,14 @@ export function EnableDialog() {
     }
   }
 
+  if (!available && !open) return null;
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger asChild>
-        <Button>Set up two-factor</Button>
-      </DialogTrigger>
+      {available ? (
+        <DialogTrigger asChild>
+          <Button>Set up two-factor</Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <SetupPanel
           onEnabled={() => {

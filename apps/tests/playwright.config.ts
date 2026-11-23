@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { defineBddConfig } from "playwright-bdd";
-import { APP_URL, AUTH_URL } from "./support/env";
+import { APP_URL, AUTH_URL, OUTPUT_DIR } from "./support/env";
 
 const ci = Boolean(process.env.CI);
 
@@ -18,7 +18,7 @@ const server = (app: "auth-server" | "example-client", url: string) => ({
   // Always our own servers: the steps read the emails from the output they write.
   reuseExistingServer: false,
   timeout: 180_000,
-  env: { EMAIL_PROVIDER: "console", NEXT_TELEMETRY_DISABLED: "1" },
+  env: { EMAIL_PROVIDER: "console", NEXT_TELEMETRY_DISABLED: "1", E2E_OUTPUT_DIR: OUTPUT_DIR },
 });
 
 export default defineConfig({

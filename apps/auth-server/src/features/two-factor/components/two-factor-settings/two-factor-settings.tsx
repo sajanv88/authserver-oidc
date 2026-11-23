@@ -35,15 +35,14 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           ? "Keep your backup codes somewhere safe: each signs you in once if you lose your phone."
           : "Turn it on so a stolen password isn't enough to get into your account."}
       </CardContent>
+      {/* Turning two-factor on or off gives the session a new cookie, so the page re-renders
+          with `enabled` flipped while that dialog is still open (showing the backup codes, or
+          about to say it's off). Both keep their place in the tree, so React keeps them and
+          their state; each shows its button only when it applies. */}
       <CardFooter>
-        {enabled ? (
-          <>
-            <BackupCodesDialog />
-            <DisableDialog />
-          </>
-        ) : (
-          <EnableDialog />
-        )}
+        <EnableDialog available={!enabled} />
+        {enabled ? <BackupCodesDialog /> : null}
+        <DisableDialog available={enabled} />
       </CardFooter>
     </Card>
   );

@@ -42,16 +42,22 @@ function DisablePanel({ onDone }: { onDone: () => void }) {
 /**
  * Turning two-factor off, after the password. A Dialog, not an AlertDialog: it holds a form
  * (nuvui's guidance). Its content unmounts when closed, so each opening starts afresh.
+ *
+ * `available`: two-factor is on, so the button shows. Once it's off, the dialog stays until
+ * it has closed itself and said so.
  */
-export function DisableDialog() {
+export function DisableDialog({ available }: { available: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
+  if (!available && !open) return null;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button intent="danger">Turn off</Button>
-      </DialogTrigger>
+      {available ? (
+        <DialogTrigger asChild>
+          <Button intent="danger">Turn off</Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent size="sm">
         <DialogTitle>Turn off two-factor authentication?</DialogTitle>
         <DialogDescription>

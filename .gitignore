@@ -11,8 +11,7 @@ next-env.d.ts
 !.env.example
 .DS_Store
 
-# End-to-end suite (apps/tests): generated tests, server output, results
+# End-to-end suite (apps/tests): generated tests, results
 .features-gen/
-apps/tests/.output/
 test-results/
 playwright-report/
