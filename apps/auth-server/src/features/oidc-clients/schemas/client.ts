@@ -50,6 +50,15 @@ export type CreateClientField = keyof CreateClientInput;
 /** The order the fields appear in, for moving focus to the first one that's wrong. */
 export const CREATE_CLIENT_FIELDS = ["name", "kind", "redirectUris"] as const;
 
+/** Clients on one page of the admin list. */
+export const CLIENTS_PER_PAGE = 10;
+
+/** `?page=` of the client list: a page number from 1. Anything else, or none, is page 1. */
+export const ClientsPageSchema = v.fallback(
+  v.pipe(v.string(), v.regex(/^[1-9]\d{0,5}$/), v.transform(Number)),
+  1,
+);
+
 export const ClientIdSchema = v.pipe(v.string(), v.trim(), v.nonEmpty(), v.maxLength(200));
 
 /** Editing a client: its name and redirect URIs. Its kind stays: that would change its secret. */

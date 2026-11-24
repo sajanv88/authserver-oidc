@@ -2,10 +2,16 @@
 // the server functions its actions call, as admins and as someone who isn't one.
 import { createHash, randomBytes } from "node:crypto";
 import type { OAuthClientSummary } from "@repo/db";
+import * as v from "valibot";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
-import { CreateClientSchema, redirectUriLines, UpdateClientSchema } from "./schemas/client";
+import {
+  ClientsPageSchema,
+  CreateClientSchema,
+  redirectUriLines,
+  UpdateClientSchema,
+} from "./schemas/client";
 import {
   createClient,
   deleteClient,
@@ -103,6 +109,15 @@ describe("create-client form rules", () => {
       createdAt: "2026-11-21T10:00:00.000Z",
     });
     expect(toClientRow({ ...summary, tokenEndpointAuthMethod: null }).kind).toBe("confidential");
+  });
+});
+
+describe("the list's ?page=", () => {
+  it("is a page number from 1, and anything else is page 1", () => {
+    expect(v.parse(ClientsPageSchema, "3")).toBe(3);
+    for (const page of [undefined, "", "0", "-2", "1.5", "2abc", "01", "9999999", ["2", "3"]]) {
+      expect(v.parse(ClientsPageSchema, page)).toBe(1);
+    }
   });
 });
 

@@ -1,10 +1,20 @@
 import "server-only";
-import { db, listOAuthClients, type OAuthClientSummary } from "@repo/db";
+import { countOAuthClients, db, listOAuthClients, type OAuthClientSummary } from "@repo/db";
 import type { Auth } from "@/shared/auth/auth-config";
 import { oidcClientDefaults } from "@/shared/auth/oidc-client-defaults";
 import { requireAdmin } from "@/shared/auth/session";
-import type { CreateClientInput, UpdateClientInput } from "../schemas/client";
-import type { ClientCredentials, ClientProblem, ClientResult, ClientRow } from "../types";
+import {
+  CLIENTS_PER_PAGE,
+  type CreateClientInput,
+  type UpdateClientInput,
+} from "../schemas/client";
+import type {
+  ClientCredentials,
+  ClientProblem,
+  ClientResult,
+  ClientRow,
+  ClientsPage,
+} from "../types";
 
 // Managing OIDC clients through @better-auth/oauth-provider, which hashes the secrets and
 // checks redirect URIs. Its client endpoints check the admin session again themselves
@@ -24,10 +34,20 @@ export function toClientRow(client: OAuthClientSummary): ClientRow {
   };
 }
 
-/** The client list for the admin page. Checks the admin session itself. */
-export async function listClientsForAdmin(): Promise<ClientRow[]> {
+/**
+ * One page of the admin list, newest first. A page past the end is the last one, so the
+ * caller can send the browser there. Checks the admin session itself.
+ */
+export async function listClientsForAdmin(page: number): Promise<ClientsPage> {
   await requireAdmin(CLIENTS_PATH);
-  return (await listOAuthClients(db, { limit: 100 })).map(toClientRow);
+  const total = await countOAuthClients(db);
+  const pageCount = Math.max(1, Math.ceil(total / CLIENTS_PER_PAGE));
+  const shown = Math.min(page, pageCount);
+  const rows = await listOAuthClients(db, {
+    limit: CLIENTS_PER_PAGE,
+    offset: (shown - 1) * CLIENTS_PER_PAGE,
+  });
+  return { clients: rows.map(toClientRow), page: shown, pageCount, total };
 }
 
 /** The plugin's errors, as something the screen can say. */
