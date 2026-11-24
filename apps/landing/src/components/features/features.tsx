@@ -83,13 +83,13 @@ export function Features() {
     <section className="section" id="features" aria-labelledby="features-title">
       <div className="section__inner">
         <div className="section__intro">
-          <p className="section__eyebrow">Features</p>
+          <p className="section__eyebrow">Everything included</p>
           <h2 className="section__title" id="features-title">
-            Everything between “Sign in” and a verified ID token
+            Everything between “Sign in” and a verified ID token, nothing sold separately
           </h2>
           <p className="section__lead">
-            What an app needs from an identity provider, with nothing to write before the first user
-            signs in.
+            Social sign-in, two-factor, API tokens, back-channel logout and bot protection aren't
+            add-ons or paid tiers: they're in the image, on when you set their keys.
           </p>
         </div>
         <ul className="features">

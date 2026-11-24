@@ -6,6 +6,7 @@ import { Faq } from "@/components/faq/faq";
 import { Features } from "@/components/features/features";
 import { Hero } from "@/components/hero/hero";
 import { HowItWorks } from "@/components/how-it-works/how-it-works";
+import { Pillars } from "@/components/pillars/pillars";
 import { Preview } from "@/components/preview/preview";
 import { QuickStart } from "@/components/quick-start/quick-start";
 import { Security } from "@/components/security/security";
@@ -13,6 +14,7 @@ import { SiteFooter } from "@/components/site-footer/site-footer";
 import { SiteHeader } from "@/components/site-header/site-header";
 import { SkipLink } from "@/components/skip-link/skip-link";
 import { Stack } from "@/components/stack/stack";
+import { Why } from "@/components/why/why";
 
 export default function Home() {
   return (
@@ -22,6 +24,8 @@ export default function Home() {
       <main id="content">
         <Hero />
         <Facts />
+        <Pillars />
+        <Why />
         <Features />
         <Preview />
         <HowItWorks />

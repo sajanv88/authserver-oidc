@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   title: `${PRODUCT_NAME}: self-hosted OpenID Connect for your apps`,
   description,
   openGraph: {
-    title: `${PRODUCT_NAME}: one sign-in for every app you ship`,
+    title: `${PRODUCT_NAME}: the identity server you run yourself`,
     description,
     type: "website",
     siteName: PRODUCT_NAME,
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${PRODUCT_NAME}: one sign-in for every app you ship`,
+    title: `${PRODUCT_NAME}: the identity server you run yourself`,
     description,
     images: [ogImage],
   },

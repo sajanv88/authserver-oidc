@@ -4,6 +4,12 @@ import "./faq.scss";
 
 const QUESTIONS = [
   {
+    id: "licence",
+    question: "Is it free for commercial use?",
+    answer:
+      "Yes. It's MIT licensed: run it in production, for as many users and apps as you have, with no licence key and nothing to pay.",
+  },
+  {
     id: "hosted",
     question: "Is this a hosted service?",
     answer:
@@ -37,7 +43,7 @@ const QUESTIONS = [
     id: "email",
     question: "What sends the emails?",
     answer:
-      "Any SMTP server in production, such as Cloudflare's. Locally, every email is printed in the terminal, links included.",
+      "Any SMTP server in production, such as Cloudflare's. The emails are React Email templates with your name and logo, in HTML and plain text. Locally, every email is printed in the terminal, links included.",
   },
   {
     id: "turnstile",
@@ -49,7 +55,19 @@ const QUESTIONS = [
     id: "look",
     question: "Can I change how it looks?",
     answer:
-      "Users pick light or dark and one of six themes. The product's name is one constant, and every screen is built on nuvui's tokens, so a color you change, changes everywhere.",
+      "Set APP_NAME and LOGO_URL and every page, email and authenticator entry carries your name and logo. Users pick light or dark and one of six themes, and every screen is built on nuvui's tokens, so a color you change, changes everywhere.",
+  },
+  {
+    id: "upgrades",
+    question: "How do upgrades work?",
+    answer:
+      "Each release is a version tag with its own image and Helm chart. Upgrading is a new chart version: the database migrations run as a job before the new pods start, and a migration is never edited once it's released.",
+  },
+  {
+    id: "help",
+    question: "Where do I get help?",
+    answer:
+      "Open an issue on GitHub for a bug or a question. The README and CLAUDE.md in the repository describe how each part works and how to deploy it.",
   },
 ];
 

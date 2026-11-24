@@ -80,8 +80,8 @@ export function GET() {
               letterSpacing: "-0.03em",
             }}
           >
-            <span>One sign-in</span>
-            <span>for every app you ship</span>
+            <span>The identity server</span>
+            <span>you run yourself</span>
           </div>
           <div style={{ display: "flex", fontSize: 26, color: COLORS.muted, lineHeight: 1.4 }}>
             Self-hosted OpenID Connect on Next.js and Better Auth.

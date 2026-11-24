@@ -1,0 +1,41 @@
+@use "abstracts" as a;
+
+// Two by two from md, with a rule above each reason.
+.why {
+  display: grid;
+  gap: a.space(8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include a.breakpoint("md") {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: a.space(10) a.space(12);
+  }
+
+  &__item {
+    display: grid;
+    gap: a.space(3);
+    align-content: start;
+    padding-block-start: a.space(6);
+    border-block-start: var(--nuv-border-width) solid var(--color-border);
+  }
+
+  &__icon {
+    color: var(--color-primary);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
+  }
+
+  &__text {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    line-height: var(--leading-relaxed);
+    text-wrap: pretty;
+  }
+}
