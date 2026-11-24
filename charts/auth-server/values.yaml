@@ -151,6 +151,7 @@ config:
   # Your logo instead of the shield, on every page (32 px, 28 px in the top bar) and as the
   # browser tab's icon: a full https URL; a square image looks best. Empty, or an image that
   # fails to load, shows the shield. Its origin is allowed in the CSP.
+  # Emails show it too, unless it's an SVG (Gmail and Outlook don't).
   LOGO_URL: ""
   # Connections per pod; replicas × this must stay under the database's limit.
   DATABASE_POOL_MAX: "10"
