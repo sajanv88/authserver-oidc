@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { sessions } from "../schema/sessions";
 import { users } from "../schema/users";
 import { createTestDb } from "../testing/pglite";
-import { getSessionToken, listActiveSessions } from "./sessions";
+import { countActiveSessions, getSessionToken, listActiveSessions } from "./sessions";
 
 type TestDb = Awaited<ReturnType<typeof createTestDb>>;
 
@@ -39,7 +39,7 @@ describe("sessions queries", () => {
   });
 
   it("listActiveSessions: the user's unexpired sessions, most recent first, without tokens", async () => {
-    const list = await listActiveSessions(db, ada, now);
+    const list = await listActiveSessions(db, ada, { limit: 10, now });
     expect(list.map((s) => s.id)).toEqual([ids.phone, ids.laptop]);
     expect(Object.keys(list[0] ?? {}).sort()).toEqual([
       "createdAt",
@@ -49,6 +49,23 @@ describe("sessions queries", () => {
       "updatedAt",
       "userAgent",
     ]);
+  });
+
+  it("listActiveSessions puts `first` at the top, and pages with limit and offset", async () => {
+    const first = await listActiveSessions(db, ada, { limit: 10, first: ids.laptop, now });
+    expect(first.map((s) => s.id)).toEqual([ids.laptop, ids.phone]);
+    const one = await listActiveSessions(db, ada, { limit: 1, first: ids.laptop, now });
+    expect(one.map((s) => s.id)).toEqual([ids.laptop]);
+    const two = await listActiveSessions(db, ada, { limit: 1, offset: 1, first: ids.laptop, now });
+    expect(two.map((s) => s.id)).toEqual([ids.phone]);
+    // Another user's session id changes nothing.
+    const other = await listActiveSessions(db, ada, { limit: 10, first: ids.grace, now });
+    expect(other.map((s) => s.id)).toEqual([ids.phone, ids.laptop]);
+  });
+
+  it("countActiveSessions counts the user's unexpired sessions", async () => {
+    expect(await countActiveSessions(db, ada, now)).toBe(2);
+    expect(await countActiveSessions(db, grace, now)).toBe(1);
   });
 
   it("getSessionToken finds only the user's own session", async () => {

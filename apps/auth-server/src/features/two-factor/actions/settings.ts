@@ -1,5 +1,6 @@
 "use server";
 
+import { SECURITY_PAGES } from "@/shared/auth/account-pages";
 import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { requireSession } from "@/shared/auth/session";
@@ -18,15 +19,13 @@ import type { BackupCodesState, DisableState, SetupStep } from "../types";
 // The settings dialogs' actions. Each one: the session (Next has checked the Origin), valibot,
 // then Better Auth with the browser's session cookie, which asks for the password again.
 
-const SECURITY_PATH = "/account/security";
-
 /**
  * Setting up an authenticator, a step per submission: the password starts it, a code from the
  * app confirms it. The previous step comes back from the form; it only carries what the server
  * itself handed out (the URI and the codes, which are the user's own).
  */
 export async function setupAction(previous: SetupStep, form: FormData): Promise<SetupStep> {
-  await requireSession(SECURITY_PATH);
+  await requireSession(SECURITY_PAGES.twoFactor);
   const attempt = previous.attempt + 1;
 
   if (previous.step === "scan") {
@@ -54,7 +53,7 @@ export async function backupCodesAction(
   previous: BackupCodesState,
   form: FormData,
 ): Promise<BackupCodesState> {
-  await requireSession(SECURITY_PATH);
+  await requireSession(SECURITY_PAGES.twoFactor);
   const attempt = previous.attempt + 1;
   const parsed = parseForm(PasswordConfirmSchema, { password: text(form, "password") });
   if (!parsed.ok) return { status: "password", attempt, error: parsed.errors.password };
@@ -71,7 +70,7 @@ export async function backupCodesAction(
 }
 
 export async function disableAction(previous: DisableState, form: FormData): Promise<DisableState> {
-  await requireSession(SECURITY_PATH);
+  await requireSession(SECURITY_PAGES.twoFactor);
   const attempt = previous.attempt + 1;
   const parsed = parseForm(PasswordConfirmSchema, { password: text(form, "password") });
   if (!parsed.ok) return { status: "password", attempt, error: parsed.errors.password };

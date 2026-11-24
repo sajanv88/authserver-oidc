@@ -16,7 +16,7 @@ export default async function SignedInLayout({ children }: { children: ReactNode
   const returnTo = (await headers()).get("x-pathname") ?? "/";
   const session = await requireSession(returnTo);
   const links: ShellLink[] = [
-    { href: "/account/security", label: "Security" },
+    { href: "/account/security", label: "My profile" },
     ...(session.user.role === "admin"
       ? [{ href: "/admin/clients", label: "OIDC clients" } satisfies ShellLink]
       : []),

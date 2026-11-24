@@ -20,6 +20,8 @@ export const KNOWN_ROUTES = [
   "/verify-email",
   "/consent",
   "/account/security",
+  "/account/security/two-factor",
+  "/account/security/sessions",
   "/admin/clients",
 ] as const;
 

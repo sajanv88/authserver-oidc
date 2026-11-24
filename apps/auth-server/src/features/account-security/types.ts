@@ -1,5 +1,16 @@
 import type { FieldErrors } from "@/shared/validation/field-errors";
+import type { PageWindow } from "@/shared/validation/paging";
 import type { ChangePasswordField } from "./schemas/account";
+
+/** The signed-in user, as the profile pages show it. */
+export type AccountUser = {
+  name: string;
+  email: string;
+  image?: string | null | undefined;
+  createdAt: Date;
+  role?: string | null | undefined;
+  twoFactorEnabled?: boolean | null | undefined;
+};
 
 export type DeviceKind = "phone" | "tablet" | "computer" | "unknown";
 
@@ -15,6 +26,9 @@ export type SessionRow = {
   /** The session this page was opened with. */
   current: boolean;
 };
+
+/** One page of the session list. `page` is the one shown, which is at most `pageCount`. */
+export type SessionsPage = PageWindow & { sessions: SessionRow[] };
 
 export type SessionProblem = "current" | "not-found" | "failed";
 

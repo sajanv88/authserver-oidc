@@ -1,21 +1,25 @@
 import "server-only";
 import {
+  countActiveSessions,
   db,
   type Executor,
   getSessionToken,
   listActiveSessions,
   type SessionSummary,
 } from "@repo/db";
+import { SECURITY_PAGES } from "@/shared/auth/account-pages";
 import type { Auth } from "@/shared/auth/auth-config";
 import { requireSession } from "@/shared/auth/session";
-import type { SessionProblem, SessionRow } from "../types";
+import { pageOffset, pageWindow } from "@/shared/validation/paging";
+import type { SessionProblem, SessionRow, SessionsPage } from "../types";
 import { describeDevice } from "./user-agent";
 
 // The account's sessions. Listing reads the database directly (Better Auth's list-sessions
 // only answers for sessions less than a day old); revoking goes through Better Auth, which
 // checks the session belongs to the signed-in user. Tokens never leave this file.
 
-export const SECURITY_PATH = "/account/security";
+/** Sessions on one page of the list. */
+export const SESSIONS_PER_PAGE = 10;
 
 export function toSessionRow(session: SessionSummary, currentId: string): SessionRow {
   return {
@@ -28,13 +32,21 @@ export function toSessionRow(session: SessionSummary, currentId: string): Sessio
   };
 }
 
-/** The signed-in user's sessions, this one first. Checks the session itself. */
-export async function listSessionsForAccount(): Promise<SessionRow[]> {
-  const session = await requireSession(SECURITY_PATH);
-  const rows = (await listActiveSessions(db, session.user.id)).map((row) =>
-    toSessionRow(row, session.session.id),
-  );
-  return rows.sort((a, b) => Number(b.current) - Number(a.current));
+/**
+ * One page of the signed-in user's sessions: this one first, then the most recently used. A
+ * page past the end is the last one, so the caller can send the browser there. Checks the
+ * session itself.
+ */
+export async function listSessionsForAccount(page: number): Promise<SessionsPage> {
+  const session = await requireSession(SECURITY_PAGES.sessions);
+  const userId = session.user.id;
+  const window = pageWindow(page, await countActiveSessions(db, userId), SESSIONS_PER_PAGE);
+  const rows = await listActiveSessions(db, userId, {
+    limit: SESSIONS_PER_PAGE,
+    offset: pageOffset(window),
+    first: session.session.id,
+  });
+  return { ...window, sessions: rows.map((row) => toSessionRow(row, session.session.id)) };
 }
 
 type Who = { userId: string; currentSessionId: string };

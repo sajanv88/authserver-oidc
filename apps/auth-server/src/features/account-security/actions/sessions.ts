@@ -6,12 +6,13 @@ import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import * as v from "valibot";
+import { SECURITY_PAGES } from "@/shared/auth/account-pages";
 import { getAuth } from "@/shared/auth/auth";
 import { LOGIN_PATH } from "@/shared/auth/constants";
 import { requireSession } from "@/shared/auth/session";
 import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { SessionIdSchema } from "../schemas/account";
-import { revokeSession, SECURITY_PATH, signOutEverywhere } from "../server/sessions";
+import { revokeSession, signOutEverywhere } from "../server/sessions";
 import type { SessionProblem } from "../types";
 
 // The session list's actions. Each one: the session (Next has already checked the request's
@@ -20,7 +21,7 @@ import type { SessionProblem } from "../types";
 export async function revokeSessionAction(
   sessionId: unknown,
 ): Promise<{ ok: true } | { ok: false; problem: SessionProblem }> {
-  const session = await requireSession(SECURITY_PATH);
+  const session = await requireSession(SECURITY_PAGES.sessions);
   const parsed = v.safeParse(SessionIdSchema, sessionId);
   if (!parsed.success) return { ok: false, problem: "not-found" };
   const result = await traceFlow("account.session.revoke", async () =>
@@ -37,7 +38,7 @@ export async function revokeSessionAction(
 }
 
 export async function signOutEverywhereAction(): Promise<{ ok: false }> {
-  await requireSession(SECURITY_PATH);
+  await requireSession(SECURITY_PAGES.sessions);
   const signedOut = await traceFlow("account.sign_out_everywhere", async () =>
     signOutEverywhere(getAuth(), await headers()),
   );
