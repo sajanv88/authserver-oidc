@@ -2,12 +2,14 @@
 
 import { CopyIcon, DownloadIcon } from "@nuvui/icons";
 import { Button, toast } from "@nuvui/react";
-import { APP_NAME } from "@/shared/config/app";
 import "./backup-codes-list.scss";
 
-/** The backup codes, once: to copy or download now, since they're never shown again. */
-export function BackupCodesList({ codes }: { codes: string[] }) {
-  const text = `${APP_NAME} backup codes. Each works once.\n\n${codes.join("\n")}\n`;
+/**
+ * The backup codes, once: to copy or download now, since they're never shown again.
+ * `appName` (APP_NAME) heads the copied text, so people know which account they're for.
+ */
+export function BackupCodesList({ codes, appName }: { codes: string[]; appName: string }) {
+  const text = `${appName} backup codes. Each works once.\n\n${codes.join("\n")}\n`;
 
   async function copy() {
     try {

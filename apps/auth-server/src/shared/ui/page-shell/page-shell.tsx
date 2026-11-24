@@ -1,8 +1,8 @@
-import { ShieldCheckIcon } from "@nuvui/icons";
 import { Navbar, NavbarActions, NavbarBrand, NavbarMenu, NavbarNav } from "@nuvui/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { APP_NAME } from "@/shared/config/app";
+import { env } from "@/shared/config/env";
+import { BrandMark } from "@/shared/ui/brand-mark/brand-mark";
 import { PageShellLinks, type ShellLink } from "./page-shell-links";
 import "./page-shell.scss";
 
@@ -23,6 +23,7 @@ type PageShellProps = {
  * client.
  */
 export function PageShell({ links, actions, children }: PageShellProps) {
+  const { appName, logoUrl } = env();
   return (
     <div className="page-shell">
       <a className="page-shell__skip" href="#content">
@@ -31,8 +32,8 @@ export function PageShell({ links, actions, children }: PageShellProps) {
       <Navbar sticky>
         <NavbarBrand>
           <Link className="page-shell__brand" href="/">
-            <ShieldCheckIcon size={20} />
-            {APP_NAME}
+            <BrandMark logoUrl={logoUrl} size={20} logoSize={28} />
+            {appName}
           </Link>
         </NavbarBrand>
         <NavbarNav aria-label="Main">

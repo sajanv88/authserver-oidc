@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@nuvui/react";
+import { env } from "@/shared/config/env";
 import { BackupCodesDialog } from "./backup-codes-dialog";
 import { DisableDialog } from "./disable-dialog";
 import { EnableDialog } from "./enable-dialog";
@@ -17,6 +18,7 @@ import { EnableDialog } from "./enable-dialog";
  * session; only the dialogs run on the client.
  */
 export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
+  const { appName } = env();
   return (
     <Card>
       <CardHeader>
@@ -40,8 +42,8 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           about to say it's off). Both keep their place in the tree, so React keeps them and
           their state; each shows its button only when it applies. */}
       <CardFooter>
-        <EnableDialog available={!enabled} />
-        {enabled ? <BackupCodesDialog /> : null}
+        <EnableDialog available={!enabled} appName={appName} />
+        {enabled ? <BackupCodesDialog appName={appName} /> : null}
         <DisableDialog available={enabled} />
       </CardFooter>
     </Card>

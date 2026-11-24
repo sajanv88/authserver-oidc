@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { APP_NAME } from "@/shared/config/app";
+import { env } from "@/shared/config/env";
 import { AuthCard } from "@/shared/ui/auth-card/auth-card";
 import { TextLink } from "@/shared/ui/text-link/text-link";
 import type { LoginContext } from "../types";
@@ -13,10 +13,11 @@ export function LoginScreen({
   /** The sign-in-with-a-provider buttons, from their feature: the page puts them here. */
   social?: ReactNode;
 }) {
+  const { appName } = env();
   return (
     <AuthCard
       title="Sign in"
-      description={`Use your ${APP_NAME} account.`}
+      description={`Use your ${appName} account.`}
       footer={
         <>
           <p>

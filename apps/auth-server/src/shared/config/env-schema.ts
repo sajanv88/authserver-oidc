@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 import * as v from "valibot";
+import { DEFAULT_APP_NAME } from "./app";
 
 // Runtime configuration, parsed once at the edge (see env.ts). Values come from the chart's
 // ConfigMap and the existing Secret in Kubernetes, and from the repo root .env locally.
@@ -192,6 +193,45 @@ const RawEnvSchema = v.object({
     v.pipe(v.string(), v.transform(scopeList), v.array(ApiScopeSchema)),
     "",
   ),
+  // The product's name on the pages, in titles, in emails and in authenticator apps. No line
+  // breaks or other control characters: it goes into email subjects.
+  APP_NAME: v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(
+        v.pipe(
+          v.string(),
+          v.trim(),
+          v.maxLength(50, "must be at most 50 characters"),
+          v.regex(/^[^\p{Cc}]+$/u, "must be one line, without control characters"),
+        ),
+      ),
+    ),
+  ),
+  // The logo in place of the shield, on every page: an image anywhere (its origin is
+  // added to the CSP's img-src). A square image looks best.
+  LOGO_URL: v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(
+        v.pipe(
+          v.string(),
+          v.trim(),
+          v.check((value) => {
+            if (!URL.canParse(value)) return false;
+            const url = new URL(value);
+            return (
+              (url.protocol === "https:" || url.protocol === "http:") &&
+              url.username === "" &&
+              url.password === ""
+            );
+          }, "must be a full http(s) URL, such as https://cdn.example.com/logo.svg"),
+        ),
+      ),
+    ),
+  ),
 });
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
@@ -236,6 +276,10 @@ export type ServerEnv = {
   turnstile: TurnstileConfig | undefined;
   social: SocialConfig;
   oauth: OAuthApiConfig;
+  /** The product's name: APP_NAME, or "Auth Server". */
+  appName: string;
+  /** The sign-in pages' logo, or undefined for the default shield. */
+  logoUrl: string | undefined;
 };
 
 const CLIENT_PAIRS = [
@@ -330,6 +374,9 @@ const EnvSchema = v.pipe(
     if (new Set(env.OAUTH_API_SCOPES).size !== env.OAUTH_API_SCOPES.length) {
       issue("OAUTH_API_SCOPES", "must not list a scope twice");
     }
+    if (production && env.LOGO_URL && !env.LOGO_URL.startsWith("https://")) {
+      issue("LOGO_URL", "must be https in production");
+    }
   }),
   v.transform(
     (env): ServerEnv => ({
@@ -358,6 +405,8 @@ const EnvSchema = v.pipe(
           : undefined,
       social: socialConfig(env),
       oauth: { resources: env.OAUTH_RESOURCES, apiScopes: env.OAUTH_API_SCOPES },
+      appName: env.APP_NAME ?? DEFAULT_APP_NAME,
+      logoUrl: env.LOGO_URL,
     }),
   ),
 );

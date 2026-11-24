@@ -1,0 +1,6 @@
+// The logo in the shield's box (width and height come from the element): a logo of any shape
+// fits inside it without being stretched, and the name beside it never moves.
+.brand-mark {
+  flex-shrink: 0;
+  object-fit: contain;
+}

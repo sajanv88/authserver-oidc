@@ -23,7 +23,6 @@ import {
 import Form from "next/form";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { APP_NAME } from "@/shared/config/app";
 import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { setupAction } from "../../actions/settings";
 import type { SetupStep } from "../../types";
@@ -35,7 +34,15 @@ import { setupKeyFrom } from "./setup-key";
 const INITIAL: SetupStep = { step: "password", attempt: 0 };
 
 /** The dialog's content, one step per server action answer. Mounted only while it's open. */
-function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: () => void }) {
+function SetupPanel({
+  appName,
+  onEnabled,
+  onFinish,
+}: {
+  appName: string;
+  onEnabled: () => void;
+  onFinish: () => void;
+}) {
   const [setup, action, pending] = useActionState(setupAction, INITIAL);
   const codeField = useRef<HTMLFormElement>(null);
   // Two-factor is on from the moment the code is accepted, however the dialog is then closed.
@@ -87,7 +94,7 @@ function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: 
             <QRCode
               value={setup.totpURI}
               size={176}
-              aria-label={`Add ${APP_NAME} to your authenticator app`}
+              aria-label={`Add ${appName} to your authenticator app`}
             />
             <div className="enable-dialog__manual">
               <p className="enable-dialog__label">Setup key</p>
@@ -133,7 +140,7 @@ function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: 
       <Alert intent="success" role="status">
         <AlertDescription>Two-factor authentication is on.</AlertDescription>
       </Alert>
-      <BackupCodesList codes={setup.backupCodes} />
+      <BackupCodesList codes={setup.backupCodes} appName={appName} />
       <DialogFooter>
         <Button type="button" onClick={onFinish}>
           I've saved them
@@ -149,9 +156,9 @@ function SetupPanel({ onEnabled, onFinish }: { onEnabled: () => void; onFinish: 
  * new authenticator has been accepted, so a half-finished setup locks nobody out.
  *
  * `available`: two-factor is off, so the button shows. Once it's on, the dialog stays open
- * until the backup codes have been seen.
+ * until the backup codes have been seen. `appName` (APP_NAME) labels the QR code and the codes.
  */
-export function EnableDialog({ available }: { available: boolean }) {
+export function EnableDialog({ available, appName }: { available: boolean; appName: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const finished = useRef(false);
@@ -179,6 +186,7 @@ export function EnableDialog({ available }: { available: boolean }) {
       ) : null}
       <DialogContent>
         <SetupPanel
+          appName={appName}
           onEnabled={() => {
             finished.current = true;
           }}
