@@ -17,11 +17,14 @@ export async function submitSignIn(page: Page, email: string, password: string):
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
-/** On the account security page, signed in as `email`. */
+/**
+ * On the profile page, signed in as `email`. Visible text only: Next keeps the profile pages
+ * visited before in the document, hidden, and each has the same header.
+ */
 export async function expectSignedIn(page: Page, email: string): Promise<void> {
   await expect(page).toHaveURL(`${AUTH_URL}/account/security`);
-  await expect(page.getByRole("heading", { level: 1, name: "Security" })).toBeVisible();
-  await expect(page.getByText(`Signed in as ${email}.`)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Profile settings" })).toBeVisible();
+  await expect(page.getByText(`Signed in as ${email}.`).filter({ visible: true })).toBeVisible();
 }
 
 /** On the sign-in page, with no session. */
@@ -74,4 +77,21 @@ export async function openDialogFromMenu(
     await menu.getByRole("menuitem", { name: item, exact: true }).click({ timeout: 2_000 });
     await expect(dialog).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
+}
+
+const SECURITY_TABS = {
+  Password: "/account/security",
+  "Two-factor": "/account/security/two-factor",
+  Sessions: "/account/security/sessions",
+} as const;
+
+/** Opens a tab of the profile pages from their nav (from /account/security if elsewhere). */
+export async function openSecurityTab(page: Page, tab: keyof typeof SECURITY_TABS): Promise<void> {
+  if (!page.url().startsWith(`${AUTH_URL}/account/security`)) await page.goto("/account/security");
+  const link = page
+    .getByRole("navigation", { name: "Profile settings" })
+    .getByRole("link", { name: tab, exact: true });
+  await link.click();
+  await expect(page).toHaveURL(`${AUTH_URL}${SECURITY_TABS[tab]}`);
+  await expect(link).toHaveAttribute("aria-current", "page");
 }

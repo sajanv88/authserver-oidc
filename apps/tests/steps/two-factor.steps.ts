@@ -7,6 +7,7 @@ import {
   expectSignedOut,
   field,
   openDialog,
+  openSecurityTab,
   submitAndWait,
   submitSignIn,
 } from "../support/ui";
@@ -54,6 +55,7 @@ Given("I am signed in with two-factor authentication on", async ({ page, world, 
 });
 
 When("I set up two-factor authentication with my authenticator app", async ({ page, world }) => {
+  await openSecurityTab(page, "Two-factor");
   const dialog = page.getByRole("dialog");
   await openDialog(page.getByRole("button", { name: "Set up two-factor" }), dialog);
   await field(dialog, "Your password").fill(me(world).password);
@@ -96,6 +98,7 @@ When("I enter the same backup code again", async ({ page, world }) => {
 });
 
 When("I turn off two-factor authentication with my password", async ({ page, world }) => {
+  await openSecurityTab(page, "Two-factor");
   const dialog = page.getByRole("dialog");
   await openDialog(page.getByRole("button", { name: "Turn off", exact: true }), dialog);
   await field(dialog, "Your password").fill(me(world).password);

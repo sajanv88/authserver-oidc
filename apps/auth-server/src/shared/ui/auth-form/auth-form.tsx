@@ -46,6 +46,8 @@ type SubmitButtonProps = {
   name?: string;
   value?: string;
   intent?: "primary" | "secondary" | "danger";
+  /** As wide as the form, as on the auth pages. A settings form's button fits its label. */
+  fill?: boolean;
   children: ReactNode;
 };
 
@@ -55,14 +57,15 @@ export function SubmitButton({
   name,
   value,
   intent = "primary",
+  fill = true,
   children,
 }: SubmitButtonProps) {
   return (
     <Button
       type="submit"
-      size="lg"
+      size={fill ? "lg" : "md"}
       intent={intent}
-      className="auth-form__submit"
+      className={fill ? "auth-form__submit" : undefined}
       disabled={pending}
       {...(name ? { name, value } : {})}
     >

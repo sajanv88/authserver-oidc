@@ -1,0 +1,46 @@
+@use "abstracts" as a;
+
+.security-layout {
+  display: grid;
+  gap: a.space(8);
+
+  &__body {
+    display: grid;
+    gap: a.space(6);
+
+    @include a.breakpoint("md") {
+      grid-template-columns: 12rem minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  // Radix puts the list in a div of its own inside the nav: a column stretches that div, and
+  // so the list, to the nav's width.
+  &__nav {
+    @include a.breakpoint("md") {
+      flex-direction: column;
+    }
+  }
+
+  // A row above the page on a phone, a column beside it from md, as wide as the column.
+  &__tabs {
+    @include a.breakpoint("md") {
+      flex: 1;
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__tab {
+    @include a.breakpoint("md") {
+      justify-content: flex-start;
+      inline-size: 100%;
+    }
+  }
+
+  &__content {
+    display: grid;
+    gap: a.space(6);
+    min-inline-size: 0;
+  }
+}

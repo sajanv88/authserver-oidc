@@ -3,6 +3,7 @@ import { countOAuthClients, db, listOAuthClients, type OAuthClientSummary } from
 import type { Auth } from "@/shared/auth/auth-config";
 import { oidcClientDefaults } from "@/shared/auth/oidc-client-defaults";
 import { requireAdmin } from "@/shared/auth/session";
+import { pageOffset, pageWindow } from "@/shared/validation/paging";
 import {
   CLIENTS_PER_PAGE,
   type CreateClientInput,
@@ -40,14 +41,12 @@ export function toClientRow(client: OAuthClientSummary): ClientRow {
  */
 export async function listClientsForAdmin(page: number): Promise<ClientsPage> {
   await requireAdmin(CLIENTS_PATH);
-  const total = await countOAuthClients(db);
-  const pageCount = Math.max(1, Math.ceil(total / CLIENTS_PER_PAGE));
-  const shown = Math.min(page, pageCount);
+  const window = pageWindow(page, await countOAuthClients(db), CLIENTS_PER_PAGE);
   const rows = await listOAuthClients(db, {
     limit: CLIENTS_PER_PAGE,
-    offset: (shown - 1) * CLIENTS_PER_PAGE,
+    offset: pageOffset(window),
   });
-  return { clients: rows.map(toClientRow), page: shown, pageCount, total };
+  return { ...window, clients: rows.map(toClientRow) };
 }
 
 /** The plugin's errors, as something the screen can say. */

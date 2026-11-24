@@ -1,0 +1,66 @@
+@use "abstracts" as a;
+
+.profile-header {
+  display: grid;
+  gap: a.space(5);
+  padding-block-end: a.space(6);
+  border-block-end: var(--nuv-border-width) solid var(--color-border);
+
+  &__who {
+    display: flex;
+    gap: a.space(4);
+    align-items: center;
+    min-inline-size: 0;
+  }
+
+  &__about {
+    display: grid;
+    gap: a.space(1);
+    min-inline-size: 0;
+  }
+
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2) a.space(3);
+    align-items: center;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    overflow-wrap: anywhere;
+  }
+
+  &__text {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  // In a row that wraps, so a phone doesn't give each fact a line of its own.
+  &__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(4) a.space(10);
+    margin: 0;
+  }
+
+  &__fact {
+    display: grid;
+    gap: a.space(1);
+  }
+
+  &__label {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  &__value {
+    margin: 0;
+    font-weight: var(--font-weight-medium);
+  }
+}

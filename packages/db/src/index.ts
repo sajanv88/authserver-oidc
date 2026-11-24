@@ -15,7 +15,13 @@ export {
   type OAuthClientRegistration,
   type OAuthClientSummary,
 } from "./queries/oauth-clients";
-export { getSessionToken, listActiveSessions, type SessionSummary } from "./queries/sessions";
+export {
+  countActiveSessions,
+  getSessionToken,
+  listActiveSessions,
+  type SessionListOptions,
+  type SessionSummary,
+} from "./queries/sessions";
 export {
   getUserSecurityByEmail,
   type UserAccess,

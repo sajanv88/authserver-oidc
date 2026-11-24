@@ -1,9 +1,11 @@
 // The account-security feature against the real auth configuration (PGlite): its form rules,
 // the requests ChangePasswordForm makes, and the server functions the session actions call.
+
 import * as v from "valibot";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
+import { initialsOf } from "./components/profile-header/profile-header";
 import { ChangePasswordSchema, crossFieldErrors, SessionIdSchema } from "./schemas/account";
 import { changePassword } from "./server/password";
 import { revokeSession, signOutEverywhere, toSessionRow } from "./server/sessions";
@@ -233,5 +235,16 @@ describe("the change-password action's server side", () => {
       }),
     });
     expect(session?.user.email).toBe("ada@example.com");
+  });
+});
+
+describe("the profile header's initials", () => {
+  it("takes the first and last name's first letters, or the email's first", () => {
+    expect(initialsOf({ name: "Ada Lovelace", email: "ada@example.com" })).toBe("AL");
+    expect(initialsOf({ name: "  grace brewster murray hopper ", email: "g@example.com" })).toBe(
+      "GH",
+    );
+    expect(initialsOf({ name: "Ada", email: "ada@example.com" })).toBe("A");
+    expect(initialsOf({ name: " ", email: "kj@example.com" })).toBe("K");
   });
 });
