@@ -9,6 +9,7 @@ import { captchaToken } from "@/shared/auth/captcha";
 import { requireAdmin } from "@/shared/auth/session";
 import { env } from "@/shared/config/env";
 import { turnstileHostnames, verifyTurnstileToken } from "@/shared/security/turnstile";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ClientIdSchema, CreateClientSchema } from "../schemas/client";
 import { CLIENTS_PATH, createClient, deleteClient, rotateClientSecret } from "../server/clients";
@@ -57,7 +58,11 @@ export async function createClientAction(
     return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
   }
 
-  const result = await createClient(getAuth(), await headers(), parsed.value);
+  const result = await traceFlow(
+    "admin.client.create",
+    async () => createClient(getAuth(), await headers(), parsed.value),
+    { "oauth.client.type": parsed.value.kind },
+  );
   if (!result.ok) {
     return result.problem === "invalid-redirect-uri"
       ? {
@@ -84,7 +89,11 @@ export async function rotateClientSecretAction(
   await requireAdmin(CLIENTS_PATH);
   const parsed = v.safeParse(ClientIdSchema, clientId);
   if (!parsed.success) return NOT_FOUND;
-  return rotateClientSecret(getAuth(), await headers(), parsed.output);
+  return traceFlow(
+    "admin.client.rotate_secret",
+    async () => rotateClientSecret(getAuth(), await headers(), parsed.output),
+    { "oauth.client.id": parsed.output },
+  );
 }
 
 export async function deleteClientAction(
@@ -93,7 +102,11 @@ export async function deleteClientAction(
   await requireAdmin(CLIENTS_PATH);
   const parsed = v.safeParse(ClientIdSchema, clientId);
   if (!parsed.success) return NOT_FOUND;
-  const result = await deleteClient(getAuth(), await headers(), parsed.output);
+  const result = await traceFlow(
+    "admin.client.delete",
+    async () => deleteClient(getAuth(), await headers(), parsed.output),
+    { "oauth.client.id": parsed.output },
+  );
   if (result.ok || result.problem === "not-found") refresh();
   return result.ok ? { ok: true } : result;
 }

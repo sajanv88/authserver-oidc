@@ -85,6 +85,11 @@ config:
   LOGO_URL: ""
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
+  # Traces (every request, each sign-in, sign-up, reset and admin step, Better Auth's endpoints
+  # and queries) and metrics (each step's outcome and duration, browsers' web vitals such as LCP)
+  # go to an OTLP/HTTP endpoint, such as your collector. Unset: nothing is exported, and
+  # browsers don't report web vitals.
+  # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318
   OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production
 
 existingSecret: auth-server-secrets

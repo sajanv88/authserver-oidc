@@ -7,6 +7,7 @@ import { signedOidcQuery } from "@/shared/auth/oidc-query";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth, continueTo } from "@/shared/auth/server-endpoint";
 import { redirectToSafePath } from "@/shared/auth/session";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { fieldsOf, text } from "@/shared/validation/form-data";
 import { LoginSchema } from "../schemas/login";
@@ -25,7 +26,11 @@ export async function signInAction(previous: LoginState, form: FormData): Promis
   const parsed = parseForm(LoginSchema, fieldsOf(form));
   if (!parsed.ok) return { status: "editing", attempt, email, errors: parsed.errors };
 
-  const outcome = await signIn(withCaptcha(callAuth, captchaToken(form)), parsed.value, oidcQuery);
+  const outcome = await traceFlow(
+    "auth.login",
+    () => signIn(withCaptcha(callAuth, captchaToken(form)), parsed.value, oidcQuery),
+    { "auth.oidc_flow": oidcQuery !== "" },
+  );
   switch (outcome.kind) {
     case "problem":
       return { status: "editing", attempt, email, errors: {}, problem: outcome.problem };

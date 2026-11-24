@@ -3,6 +3,7 @@
 import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { text } from "@/shared/validation/form-data";
 import { MagicLinkSchema } from "../schemas/magic-link";
@@ -19,11 +20,13 @@ export async function requestMagicLinkAction(
   const email = text(form, "email");
   const parsed = parseForm(MagicLinkSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
-  const outcome = await requestMagicLink(withCaptcha(callAuth, captchaToken(form)), {
-    email: parsed.value.email,
-    callbackURL: safeReturnPath(text(form, "callbackURL")),
-    errorCallbackURL: safeReturnPath(text(form, "errorCallbackURL")),
-  });
+  const outcome = await traceFlow("auth.magic_link.request", () =>
+    requestMagicLink(withCaptcha(callAuth, captchaToken(form)), {
+      email: parsed.value.email,
+      callbackURL: safeReturnPath(text(form, "callbackURL")),
+      errorCallbackURL: safeReturnPath(text(form, "errorCallbackURL")),
+    }),
+  );
   return outcome.kind === "sent"
     ? { status: "sent", attempt, email: parsed.value.email }
     : { status: "editing", attempt, email, formError: outcome.message };

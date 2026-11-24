@@ -3,6 +3,7 @@
 import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { text } from "@/shared/validation/form-data";
 import {
@@ -24,10 +25,12 @@ export async function requestResetAction(
   const email = text(form, "email");
   const parsed = parseForm(ForgotPasswordSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
-  const outcome = await requestReset(
-    withCaptcha(callAuth, captchaToken(form)),
-    parsed.value.email,
-    safeReturnPath(text(form, "next")),
+  const outcome = await traceFlow("auth.password_reset.request", () =>
+    requestReset(
+      withCaptcha(callAuth, captchaToken(form)),
+      parsed.value.email,
+      safeReturnPath(text(form, "next")),
+    ),
   );
   return outcome.kind === "sent"
     ? { status: "sent", attempt, email: parsed.value.email }
@@ -46,10 +49,12 @@ export async function resetPasswordAction(
   const errors = parsed.ok ? mismatchErrors(parsed.value) : parsed.errors;
   if (!parsed.ok || Object.keys(errors).length > 0) return { status: "editing", attempt, errors };
 
-  const outcome = await resetPassword(
-    withCaptcha(callAuth, captchaToken(form)),
-    text(form, "token"),
-    parsed.value.password,
+  const outcome = await traceFlow("auth.password_reset.complete", () =>
+    resetPassword(
+      withCaptcha(callAuth, captchaToken(form)),
+      text(form, "token"),
+      parsed.value.password,
+    ),
   );
   switch (outcome.kind) {
     case "done":

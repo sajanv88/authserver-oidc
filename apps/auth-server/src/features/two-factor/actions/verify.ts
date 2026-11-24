@@ -6,6 +6,7 @@ import { signedOidcQuery } from "@/shared/auth/oidc-query";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth, continueTo } from "@/shared/auth/server-endpoint";
 import { redirectToSafePath } from "@/shared/auth/session";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { fieldsOf, text } from "@/shared/validation/form-data";
 import {
@@ -27,14 +28,20 @@ export async function verifyAction(previous: VerifyState, form: FormData): Promi
   const parsed = parseForm(schema, fieldsOf(form));
   if (!parsed.ok) return { status: "editing", attempt, error: parsed.errors.code };
 
-  const outcome = await verifySecondFactor(
-    withCaptcha(callAuth, captchaToken(form)),
-    {
-      method: method.output,
-      code: parsed.value.code,
-      trustDevice: parsed.value.trustDevice ?? false,
-    },
-    signedOidcQuery(text(form, "oidcQuery")),
+  const oidcQuery = signedOidcQuery(text(form, "oidcQuery"));
+  const outcome = await traceFlow(
+    "auth.two_factor.verify",
+    () =>
+      verifySecondFactor(
+        withCaptcha(callAuth, captchaToken(form)),
+        {
+          method: method.output,
+          code: parsed.value.code,
+          trustDevice: parsed.value.trustDevice ?? false,
+        },
+        oidcQuery,
+      ),
+    { "auth.two_factor.method": method.output, "auth.oidc_flow": oidcQuery !== "" },
   );
   switch (outcome.kind) {
     case "field":

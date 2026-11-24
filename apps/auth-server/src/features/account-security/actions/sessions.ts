@@ -9,6 +9,7 @@ import * as v from "valibot";
 import { getAuth } from "@/shared/auth/auth";
 import { LOGIN_PATH } from "@/shared/auth/constants";
 import { requireSession } from "@/shared/auth/session";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { SessionIdSchema } from "../schemas/account";
 import { revokeSession, SECURITY_PATH, signOutEverywhere } from "../server/sessions";
 import type { SessionProblem } from "../types";
@@ -22,12 +23,14 @@ export async function revokeSessionAction(
   const session = await requireSession(SECURITY_PATH);
   const parsed = v.safeParse(SessionIdSchema, sessionId);
   if (!parsed.success) return { ok: false, problem: "not-found" };
-  const result = await revokeSession(
-    getAuth(),
-    await headers(),
-    db,
-    { userId: session.user.id, currentSessionId: session.session.id },
-    parsed.output,
+  const result = await traceFlow("account.session.revoke", async () =>
+    revokeSession(
+      getAuth(),
+      await headers(),
+      db,
+      { userId: session.user.id, currentSessionId: session.session.id },
+      parsed.output,
+    ),
   );
   if (result.ok || result.problem === "not-found") refresh();
   return result;
@@ -35,7 +38,10 @@ export async function revokeSessionAction(
 
 export async function signOutEverywhereAction(): Promise<{ ok: false }> {
   await requireSession(SECURITY_PATH);
-  if (!(await signOutEverywhere(getAuth(), await headers()))) return { ok: false };
+  const signedOut = await traceFlow("account.sign_out_everywhere", async () =>
+    signOutEverywhere(getAuth(), await headers()),
+  );
+  if (!signedOut) return { ok: false };
   // Every session is gone, this one too (its cookie was cleared): sign in again.
   redirect(LOGIN_PATH as Route);
 }
