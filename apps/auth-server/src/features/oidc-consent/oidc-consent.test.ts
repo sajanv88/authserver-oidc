@@ -29,11 +29,18 @@ describe("consent rules", () => {
   });
 
   it("says what an API scope lets the app do, but only for scopes this server offers", () => {
-    expect(consentScopes("openid crm billing", ["crm"])).toEqual([
+    expect(consentScopes("openid crm billing", { apiScopes: ["crm"] })).toEqual([
       expect.objectContaining({ scope: "openid" }),
       expect.objectContaining({ scope: "crm", title: "Act for you in crm" }),
     ]);
     expect(consentScopes("crm").map((s) => s.scope)).toEqual([]);
+  });
+
+  it("names the server as APP_NAME says, or Auth Server", () => {
+    expect(consentScopes("openid", { appName: "Acme ID" })[0]?.description).toBe(
+      "Your Acme ID account ID, so the app recognises you next time.",
+    );
+    expect(consentScopes("openid")[0]?.description).toContain("Your Auth Server account ID");
   });
 
   it("takes Allow or Deny, nothing else", () => {

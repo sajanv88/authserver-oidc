@@ -1,11 +1,12 @@
 import { Alert, AlertActions, AlertDescription, Button } from "@nuvui/react";
-import { APP_NAME } from "@/shared/config/app";
+import { env } from "@/shared/config/env";
 import { AuthCard } from "@/shared/ui/auth-card/auth-card";
 import type { ConsentPageContext } from "../types";
 import { ConsentForm } from "./consent-form/consent-form";
 import { ScopeList } from "./scope-list/scope-list";
 
 export function ConsentScreen(context: ConsentPageContext) {
+  const { appName } = env();
   switch (context.status) {
     case "invalid":
       return (
@@ -40,7 +41,7 @@ export function ConsentScreen(context: ConsentPageContext) {
       return (
         <AuthCard
           title={`Allow ${context.clientName} to use your account?`}
-          description={`${context.clientName} is asking for this from your ${APP_NAME} account:`}
+          description={`${context.clientName} is asking for this from your ${appName} account:`}
         >
           <ScopeList scopes={context.scopes} />
           <ConsentForm

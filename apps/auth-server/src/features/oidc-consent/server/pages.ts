@@ -9,7 +9,7 @@ import {
 import { getSession, redirectToSafePath } from "@/shared/auth/session";
 import { env } from "@/shared/config/env";
 import type { ConsentPageContext, ConsentRequest } from "../types";
-import { consentScopes } from "./scopes";
+import { consentScopes, type ScopeWording } from "./scopes";
 
 /**
  * The consent page's query, checked: Better Auth sends people here with the authorization
@@ -20,7 +20,7 @@ import { consentScopes } from "./scopes";
 export async function readConsentRequest(
   searchParams: SearchParamsInput,
   secret: string,
-  apiScopes: readonly string[] = [],
+  wording: ScopeWording = {},
 ): Promise<ConsentRequest> {
   const query = signedOidcQuery(searchParams);
   if (!query) return { status: "invalid" };
@@ -30,7 +30,7 @@ export async function readConsentRequest(
   return {
     status: "valid",
     clientId: params.get("client_id") ?? "",
-    scopes: consentScopes(params.get("scope"), apiScopes),
+    scopes: consentScopes(params.get("scope"), wording),
     restartUrl,
   };
 }
@@ -42,8 +42,11 @@ export async function readConsentRequest(
 export async function consentPageContext(
   searchParams: SearchParamsInput,
 ): Promise<ConsentPageContext> {
-  const { betterAuthSecret, oauth } = env();
-  const request = await readConsentRequest(searchParams, betterAuthSecret, oauth.apiScopes);
+  const { betterAuthSecret, oauth, appName } = env();
+  const request = await readConsentRequest(searchParams, betterAuthSecret, {
+    apiScopes: oauth.apiScopes,
+    appName,
+  });
   if (request.status !== "valid") return request;
 
   const session = await getSession();
