@@ -1,4 +1,3 @@
-import { ShieldCheckIcon } from "@nuvui/icons";
 import {
   Card,
   CardContent,
@@ -8,7 +7,8 @@ import {
   CardTitle,
 } from "@nuvui/react";
 import type { ReactNode } from "react";
-import { APP_NAME } from "@/shared/config/app";
+import { env } from "@/shared/config/env";
+import { BrandMark } from "@/shared/ui/brand-mark/brand-mark";
 import { AuthBackdrop } from "./auth-backdrop";
 import "./auth-card.scss";
 
@@ -22,13 +22,14 @@ type AuthCardProps = {
 };
 
 export function AuthCard({ title, description, children, footer }: AuthCardProps) {
+  const { appName, logoUrl } = env();
   return (
     <main className="auth-card" id="content">
       <AuthBackdrop>
         <div className="auth-card__inner">
           <p className="auth-card__brand">
-            <ShieldCheckIcon size={24} />
-            {APP_NAME}
+            <BrandMark logoUrl={logoUrl} size={24} logoSize={32} />
+            {appName}
           </p>
           <Card className="auth-card__card">
             <CardHeader>
