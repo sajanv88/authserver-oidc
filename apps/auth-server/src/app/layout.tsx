@@ -12,21 +12,38 @@ import "@/shared/styles/globals.scss";
 import { Toaster } from "@nuvui/react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { htmlAttributes } from "@/shared/appearance/appearance";
 import { readAppearance } from "@/shared/appearance/read-appearance";
-import { APP_NAME } from "@/shared/config/app";
 import { env } from "@/shared/config/env";
 import { NonceProvider } from "@/shared/ui/nonce-provider/nonce-provider";
 import { TurnstileProvider } from "@/shared/ui/turnstile/turnstile";
 
-export const metadata: Metadata = {
-  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  robots: { index: false, follow: false },
-};
+// The name is APP_NAME, read per request like everything else here (the layout already reads
+// the request's headers), so a deployment can rename the product without a rebuild.
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const { appName } = env();
+  return {
+    title: { default: appName, template: `%s · ${appName}` },
+    robots: { index: false, follow: false },
+  };
+}
 
 // Every response carries a fresh CSP nonce, so pages render per request instead of from a
 // prerendered shell.
 export const instant = false;
+
+/**
+ * Marks every route as rendered per request on purpose (Next 16's Cache Components rule), so
+ * the metadata above may wait for the request: otherwise a page that reads nothing from it
+ * would be reported as prerenderable with blocking metadata.
+ */
+async function RequestTime() {
+  await connection();
+  return null;
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const nonce = (await headers()).get("x-nonce") ?? "";
@@ -41,6 +58,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <Toaster />
           </TurnstileProvider>
         </NonceProvider>
+        <Suspense>
+          <RequestTime />
+        </Suspense>
       </body>
     </html>
   );

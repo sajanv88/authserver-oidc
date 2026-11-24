@@ -6,6 +6,3 @@
  * every auth page, in page titles and emails, and as the TOTP issuer.
  */
 export const DEFAULT_APP_NAME = "Auth Server";
-
-/** Temporary alias while the rest of the code moves to env().appName. */
-export const APP_NAME = DEFAULT_APP_NAME;
