@@ -1,6 +1,6 @@
 @use "abstracts" as a;
 
-.clients-pagination {
+.list-pagination {
   display: flex;
   flex-wrap: wrap;
   gap: a.space(3);

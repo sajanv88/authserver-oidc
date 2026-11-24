@@ -2,16 +2,21 @@ import { GridIcon } from "@nuvui/icons";
 import { Empty, EmptyActions, EmptyDescription, EmptyMedia, EmptyTitle } from "@nuvui/react";
 import { redirect } from "next/navigation";
 import * as v from "valibot";
+import { ListPagination } from "@/shared/ui/list-pagination/list-pagination";
 import { PageHeader } from "@/shared/ui/page-header/page-header";
-import { ClientsPageSchema } from "../schemas/client";
+import { PageNumberSchema } from "@/shared/validation/paging";
 import { listClientsForAdmin } from "../server/clients";
-import { ClientsPagination, clientsPageHref } from "./clients-pagination/clients-pagination";
 import { ClientsTable } from "./clients-table/clients-table";
 import { CreateClientDialog } from "./create-client-dialog/create-client-dialog";
 
+/** The address of a page of the client list; page 1 is the list's own. */
+function clientsPageHref(page: number) {
+  return page > 1 ? (`/admin/clients?page=${page}` as const) : ("/admin/clients" as const);
+}
+
 /** Checks the admin session itself. `page` is the list's `?page=`, as the URL has it. */
 export async function ClientsScreen({ page }: { page: string | string[] | undefined }) {
-  const requested = v.parse(ClientsPageSchema, page);
+  const requested = v.parse(PageNumberSchema, page);
   const { clients, ...pages } = await listClientsForAdmin(requested);
   // Past the end (the last client on the last page was deleted, or an old link): the last page.
   if (pages.page !== requested) redirect(clientsPageHref(pages.page));
@@ -25,7 +30,9 @@ export async function ClientsScreen({ page }: { page: string | string[] | undefi
       {clients.length > 0 ? (
         <>
           <ClientsTable clients={clients} />
-          {pages.pageCount > 1 ? <ClientsPagination {...pages} /> : null}
+          {pages.pageCount > 1 ? (
+            <ListPagination {...pages} things="clients" hrefFor={clientsPageHref} />
+          ) : null}
         </>
       ) : (
         <Empty>

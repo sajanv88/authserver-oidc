@@ -1,17 +1,13 @@
 import type { FieldErrors } from "@/shared/validation/field-errors";
+import type { PageWindow } from "@/shared/validation/paging";
 import type { CLIENT_KINDS, CreateClientField, UpdateClientField } from "./schemas/client";
 
 export type ClientKind = (typeof CLIENT_KINDS)[number];
 
-/** A row of the client list: what an admin needs to see, never the secret. */
 /** One page of the admin list. `page` is the one shown, which is at most `pageCount`. */
-export type ClientsPage = {
-  clients: ClientRow[];
-  page: number;
-  pageCount: number;
-  total: number;
-};
+export type ClientsPage = PageWindow & { clients: ClientRow[] };
 
+/** A row of the client list: what an admin needs to see, never the secret. */
 export type ClientRow = {
   clientId: string;
   name: string;

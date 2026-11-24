@@ -8,31 +8,40 @@ import {
   PaginationPrevious,
   paginationRange,
 } from "@nuvui/react";
+import type { Route } from "next";
 import Link from "next/link";
-import { CLIENTS_PER_PAGE } from "../../schemas/client";
-import type { ClientsPage } from "../../types";
-import "./clients-pagination.scss";
+import type { PageWindow } from "@/shared/validation/paging";
+import "./list-pagination.scss";
 
-/** The address of a page of the client list; page 1 is the list's own. */
-export function clientsPageHref(page: number) {
-  return page > 1 ? (`/admin/clients?page=${page}` as const) : ("/admin/clients" as const);
-}
+type ListPaginationProps = PageWindow & {
+  /** What the list holds, in the plural: "clients", "sessions". */
+  things: string;
+  /** The address of a page of the list. */
+  hrefFor: (page: number) => Route;
+};
 
-/** Links to the other pages of the list, and which clients this one shows. */
-export function ClientsPagination({ page, pageCount, total }: Omit<ClientsPage, "clients">) {
-  const first = (page - 1) * CLIENTS_PER_PAGE + 1;
-  const last = Math.min(page * CLIENTS_PER_PAGE, total);
+/** Links to the other pages of a list, as links, and which things this page shows. */
+export function ListPagination({
+  page,
+  pageCount,
+  total,
+  perPage,
+  things,
+  hrefFor,
+}: ListPaginationProps) {
+  const first = (page - 1) * perPage + 1;
+  const last = Math.min(page * perPage, total);
   return (
-    <div className="clients-pagination">
-      <p className="clients-pagination__summary">
-        {first}–{last} of {total} clients
+    <div className="list-pagination">
+      <p className="list-pagination__summary">
+        {first}–{last} of {total} {things}
       </p>
-      <Pagination aria-label="Pages of clients">
+      <Pagination aria-label={`Pages of ${things}`}>
         <PaginationList>
           <PaginationItem>
             {page > 1 ? (
               <PaginationPrevious asChild>
-                <Link href={clientsPageHref(page - 1)}>Previous</Link>
+                <Link href={hrefFor(page - 1)}>Previous</Link>
               </PaginationPrevious>
             ) : (
               <PaginationPrevious disabled />
@@ -42,7 +51,7 @@ export function ClientsPagination({ page, pageCount, total }: Omit<ClientsPage, 
             <PaginationItem key={entry}>
               {typeof entry === "number" ? (
                 <PaginationLink asChild active={entry === page}>
-                  <Link href={clientsPageHref(entry)} aria-label={`Page ${entry}`}>
+                  <Link href={hrefFor(entry)} aria-label={`Page ${entry}`}>
                     {entry}
                   </Link>
                 </PaginationLink>
@@ -54,7 +63,7 @@ export function ClientsPagination({ page, pageCount, total }: Omit<ClientsPage, 
           <PaginationItem>
             {page < pageCount ? (
               <PaginationNext asChild>
-                <Link href={clientsPageHref(page + 1)}>Next</Link>
+                <Link href={hrefFor(page + 1)}>Next</Link>
               </PaginationNext>
             ) : (
               <PaginationNext disabled />
