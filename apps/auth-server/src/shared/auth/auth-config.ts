@@ -6,7 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import type { OAuthApiConfig, ServerEnv } from "@/shared/config/env";
 import {
-  type EmailMessage,
+  type EmailContent,
   existingAccountTemplate,
   magicLinkTemplate,
   resetPasswordTemplate,
@@ -81,8 +81,11 @@ const RATE_LIMIT_RULES = {
 export type AuthDeps = {
   env: ServerEnv;
   database: Executor;
-  /** Must not make the caller wait (see sendEmailInBackground). */
-  sendEmail: (message: EmailMessage) => void;
+  /**
+   * Must not make the caller wait (see sendEmailInBackground): `email` is still rendering, and
+   * is sent after the response.
+   */
+  sendEmail: (to: string, email: Promise<EmailContent>) => void;
 };
 
 /** `http://` redirect URIs are allowed only in development, and only for the demo hosts. */
@@ -99,6 +102,8 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const insecureRedirects = allowInsecureRedirectUri(env);
   const hostnames = turnstileHostnames(env);
   const ssoProviders = ssoProviderConfig(env.social);
+  // Who the emails are from: the name, and the logo above it.
+  const brand = { appName: env.appName, logoUrl: env.logoUrl };
 
   return betterAuth({
     appName: env.appName,
@@ -125,24 +130,24 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       // Sign-up answers an existing address exactly like a new one; the owner gets this
       // instead, so "check your email" is true either way and they learn of the attempt.
       onExistingUserSignUp: async ({ user }) => {
-        sendEmail({
-          to: user.email,
-          ...existingAccountTemplate({
-            appName: env.appName,
+        sendEmail(
+          user.email,
+          existingAccountTemplate({
+            ...brand,
             loginUrl: `${env.betterAuthUrl}${AUTH_PAGES.login}`,
             resetUrl: `${env.betterAuthUrl}${AUTH_PAGES.forgotPassword}`,
           }),
-        });
+        );
       },
       sendResetPassword: async ({ user, url }) => {
-        sendEmail({
-          to: user.email,
-          ...resetPasswordTemplate({
-            appName: env.appName,
+        sendEmail(
+          user.email,
+          resetPasswordTemplate({
+            ...brand,
             url,
             expiresInMinutes: LIFETIMES.passwordReset / 60,
           }),
-        });
+        );
       },
     },
 
@@ -152,14 +157,14 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       autoSignInAfterVerification: true,
       expiresIn: LIFETIMES.emailVerification,
       sendVerificationEmail: async ({ user, url }) => {
-        sendEmail({
-          to: user.email,
-          ...verifyEmailTemplate({
-            appName: env.appName,
+        sendEmail(
+          user.email,
+          verifyEmailTemplate({
+            ...brand,
             url,
             expiresInMinutes: LIFETIMES.emailVerification / 60,
           }),
-        });
+        );
       },
     },
 
@@ -210,14 +215,14 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
           // No account: nothing to sign in to. Two-factor on: a magic link would bypass it,
           // because Better Auth only asks for the second factor after a password.
           if (!user || user.twoFactorEnabled) return;
-          sendEmail({
-            to: email,
-            ...magicLinkTemplate({
-              appName: env.appName,
+          sendEmail(
+            email,
+            magicLinkTemplate({
+              ...brand,
               url,
               expiresInMinutes: LIFETIMES.magicLink / 60,
             }),
-          });
+          );
         },
       }),
 

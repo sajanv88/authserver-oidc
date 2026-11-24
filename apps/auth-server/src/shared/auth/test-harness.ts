@@ -30,10 +30,17 @@ export const testEnv: ServerEnv = {
 export async function createHarness(overrides: Partial<ServerEnv> = {}) {
   const database = await createTestDb();
   const emails: EmailMessage[] = [];
+  // Rendered in order, after the response like the app's; each request waits for them, so a
+  // test reads the email its request sent.
+  let outbox: Promise<void> = Promise.resolve();
   const auth = createAuth({
     env: { ...testEnv, ...overrides },
     database,
-    sendEmail: (m) => emails.push(m),
+    sendEmail: (to, email) => {
+      outbox = outbox.then(async () => {
+        emails.push({ to, ...(await email) });
+      });
+    },
   });
 
   /** A browser: keeps cookies between requests, and always comes from the same client IP. */
@@ -75,6 +82,7 @@ export async function createHarness(overrides: Partial<ServerEnv> = {}) {
           redirect: "manual",
         }),
       );
+      await outbox;
       for (const cookie of response.headers.getSetCookie()) {
         const [pair = ""] = cookie.split(";");
         const index = pair.indexOf("=");
