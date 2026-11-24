@@ -5,8 +5,14 @@ import type { OAuthClientSummary } from "@repo/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
-import { CreateClientSchema, redirectUriLines } from "./schemas/client";
-import { createClient, deleteClient, rotateClientSecret, toClientRow } from "./server/clients";
+import { CreateClientSchema, redirectUriLines, UpdateClientSchema } from "./schemas/client";
+import {
+  createClient,
+  deleteClient,
+  rotateClientSecret,
+  toClientRow,
+  updateClient,
+} from "./server/clients";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 type Browser = ReturnType<Harness["browser"]>;
@@ -49,6 +55,31 @@ describe("create-client form rules", () => {
     expect(
       parseForm(CreateClientSchema, { name: "A", kind: "public", redirectUris: eleven }),
     ).toMatchObject({ ok: false, errors: { redirectUris: "Add at most 10 redirect URIs." } });
+  });
+
+  it("edits the name and redirect URIs with the same rules, and needs the client ID", () => {
+    expect(
+      parseForm(UpdateClientSchema, {
+        clientId: "abc",
+        name: " Renamed ",
+        redirectUris: "https://a.example.com/cb\nhttps://b.example.com/cb",
+      }),
+    ).toEqual({
+      ok: true,
+      value: {
+        clientId: "abc",
+        name: "Renamed",
+        redirectUris: ["https://a.example.com/cb", "https://b.example.com/cb"],
+      },
+    });
+    expect(parseForm(UpdateClientSchema, { clientId: "", name: "", redirectUris: "x" })).toEqual({
+      ok: false,
+      errors: {
+        clientId: expect.any(String),
+        name: "Give the app a name.",
+        redirectUris: expect.stringMatching(/in full/),
+      },
+    });
   });
 
   it("lists a client by kind, without its secret", () => {
@@ -220,6 +251,56 @@ describe("managing clients", () => {
     ).toEqual({ ok: false, problem: "invalid-redirect-uri" });
   });
 
+  it("lets any admin rename a client and change its redirect URIs, keeping its kind", async () => {
+    const created = await createClient(h.auth, first, {
+      name: "Before",
+      kind: "confidential",
+      redirectUris: [redirectUri],
+    });
+    if (!created.ok) throw new Error(created.problem);
+    const { clientId } = created.value;
+    const uris = [redirectUri, `${APP_ORIGIN}/oidc/callback-2`];
+
+    expect(
+      await updateClient(h.auth, second, { clientId, name: "After", redirectUris: uris }),
+    ).toEqual({ ok: true, value: null });
+    const { rows } = await h.sql(
+      "select name, redirect_uris, token_endpoint_auth_method, client_secret is not null as has_secret from oauth_clients where client_id = $1",
+      [clientId],
+    );
+    expect(rows).toEqual([
+      {
+        name: "After",
+        redirect_uris: uris,
+        token_endpoint_auth_method: "client_secret_basic",
+        has_secret: true,
+      },
+    ]);
+  });
+
+  it("refuses an edit with a non-loopback http:// redirect URI, or of a missing client", async () => {
+    const created = await createClient(h.auth, first, {
+      name: "Strict",
+      kind: "public",
+      redirectUris: [redirectUri],
+    });
+    if (!created.ok) throw new Error(created.problem);
+    expect(
+      await updateClient(h.auth, first, {
+        clientId: created.value.clientId,
+        name: "Strict",
+        redirectUris: ["http://evil.example.com/cb"],
+      }),
+    ).toEqual({ ok: false, problem: "invalid-redirect-uri" });
+    expect(
+      await updateClient(h.auth, first, {
+        clientId: "no-such-client",
+        name: "X",
+        redirectUris: [redirectUri],
+      }),
+    ).toEqual({ ok: false, problem: "not-found" });
+  });
+
   it("lets only admins create, rotate or delete", async () => {
     const created = await createClient(h.auth, first, {
       name: "Guarded",
@@ -231,6 +312,13 @@ describe("managing clients", () => {
     expect((await createClient(h.auth, user, input)).ok).toBe(false);
     expect((await rotateClientSecret(h.auth, user, created.value.clientId)).ok).toBe(false);
     expect((await deleteClient(h.auth, user, created.value.clientId)).ok).toBe(false);
+    const edit = { clientId: created.value.clientId, name: "Taken", redirectUris: [redirectUri] };
+    expect((await updateClient(h.auth, user, edit)).ok).toBe(false);
+    expect((await updateClient(h.auth, new Headers(), edit)).ok).toBe(false);
+    const { rows } = await h.sql("select name from oauth_clients where client_id = $1", [
+      created.value.clientId,
+    ]);
+    expect(rows).toEqual([{ name: "Guarded" }]);
     expect((await deleteClient(h.auth, new Headers(), created.value.clientId)).ok).toBe(false);
   });
 

@@ -28,6 +28,7 @@ export type AuthFlow =
   | "account.two_factor.disable"
   | "admin.client.create"
   | "admin.client.rotate_secret"
+  | "admin.client.update"
   | "admin.client.delete";
 
 /** Outcomes are metric attributes: short fixed words only, never text from a request. */

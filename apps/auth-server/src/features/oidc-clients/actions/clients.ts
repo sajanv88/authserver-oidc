@@ -11,14 +11,22 @@ import { env } from "@/shared/config/env";
 import { turnstileHostnames, verifyTurnstileToken } from "@/shared/security/turnstile";
 import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
-import { ClientIdSchema, CreateClientSchema } from "../schemas/client";
-import { CLIENTS_PATH, createClient, deleteClient, rotateClientSecret } from "../server/clients";
+import { ClientIdSchema, CreateClientSchema, UpdateClientSchema } from "../schemas/client";
+import {
+  CLIENTS_PATH,
+  createClient,
+  deleteClient,
+  rotateClientSecret,
+  updateClient,
+} from "../server/clients";
 import type {
   ClientCredentials,
   ClientProblem,
   ClientResult,
   CreateClientState,
   CreateClientValues,
+  UpdateClientState,
+  UpdateClientValues,
 } from "../types";
 
 // The admin's client actions. Each one: the admin session (Next has already checked the
@@ -33,6 +41,19 @@ function valuesFrom(formData: FormData): CreateClientValues {
   return { name: text("name"), kind: text("kind"), redirectUris: text("redirectUris") };
 }
 
+/**
+ * Turnstile, when it's on. These forms post to the plugin's server API, which the captcha
+ * plugin doesn't see, so the token is checked here.
+ */
+async function passesTurnstile(formData: FormData): Promise<boolean> {
+  const config = env();
+  if (!config.turnstile) return true;
+  return verifyTurnstileToken(config.turnstile, captchaToken(formData), turnstileHostnames(config));
+}
+
+const REDIRECT_URI_ADVICE =
+  "Use https:// addresses. http:// works only for localhost while developing.";
+
 export async function createClientAction(
   previous: CreateClientState,
   formData: FormData,
@@ -44,17 +65,7 @@ export async function createClientAction(
   const parsed = parseForm(CreateClientSchema, values);
   if (!parsed.ok) return { status: "editing", values, errors: parsed.errors, attempt };
 
-  // Turnstile, when it's on: this form posts to the plugin's server API, which the captcha
-  // plugin doesn't see, so the token is checked here.
-  const config = env();
-  if (
-    config.turnstile &&
-    !(await verifyTurnstileToken(
-      config.turnstile,
-      captchaToken(formData),
-      turnstileHostnames(config),
-    ))
-  ) {
+  if (!(await passesTurnstile(formData))) {
     return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
   }
 
@@ -69,10 +80,7 @@ export async function createClientAction(
           status: "editing",
           values,
           attempt,
-          errors: {
-            redirectUris:
-              "Use https:// addresses. http:// works only for localhost while developing.",
-          },
+          errors: { redirectUris: REDIRECT_URI_ADVICE },
         }
       : { status: "editing", values, attempt, formError: "The client wasn't created. Try again." };
   }
@@ -80,6 +88,58 @@ export async function createClientAction(
   refresh();
   return { status: "created", credentials: result.value };
 }
+
+export async function updateClientAction(
+  previous: UpdateClientState,
+  formData: FormData,
+): Promise<UpdateClientState> {
+  await requireAdmin(CLIENTS_PATH);
+  const field = (name: string) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  const values: UpdateClientValues = { name: field("name"), redirectUris: field("redirectUris") };
+  const attempt = previous.attempt + 1;
+
+  const parsed = parseForm(UpdateClientSchema, { ...values, clientId: field("clientId") });
+  if (!parsed.ok) {
+    // The client ID is a hidden field: wrong only if the page was tampered with.
+    const { clientId, ...errors } = parsed.errors;
+    return {
+      status: "editing",
+      values,
+      attempt,
+      errors,
+      ...(clientId ? { formError: UPDATE_FAILED } : {}),
+    };
+  }
+  if (!(await passesTurnstile(formData))) {
+    return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
+  }
+
+  const result = await traceFlow(
+    "admin.client.update",
+    async () => updateClient(getAuth(), await headers(), parsed.value),
+    { "oauth.client.id": parsed.value.clientId },
+  );
+  if (!result.ok) {
+    return result.problem === "invalid-redirect-uri"
+      ? { status: "editing", values, attempt, errors: { redirectUris: REDIRECT_URI_ADVICE } }
+      : { status: "editing", values, attempt, formError: UPDATE_PROBLEMS[result.problem] };
+  }
+
+  refresh();
+  return { status: "saved", name: parsed.value.name, attempt };
+}
+
+const UPDATE_FAILED = "The changes weren't saved. Try again.";
+
+const UPDATE_PROBLEMS: Record<Exclude<ClientProblem, "invalid-redirect-uri">, string> = {
+  "not-found": "That client no longer exists. Reload the page.",
+  "not-allowed": "This client wasn't made here, so it can't be changed here.",
+  "not-confidential": UPDATE_FAILED,
+  failed: UPDATE_FAILED,
+};
 
 const NOT_FOUND = { ok: false, problem: "not-found" } as const satisfies ClientResult<never>;
 

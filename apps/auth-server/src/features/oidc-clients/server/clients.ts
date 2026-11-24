@@ -3,7 +3,7 @@ import { db, listOAuthClients, type OAuthClientSummary } from "@repo/db";
 import type { Auth } from "@/shared/auth/auth-config";
 import { oidcClientDefaults } from "@/shared/auth/oidc-client-defaults";
 import { requireAdmin } from "@/shared/auth/session";
-import type { CreateClientInput } from "../schemas/client";
+import type { CreateClientInput, UpdateClientInput } from "../schemas/client";
 import type { ClientCredentials, ClientProblem, ClientResult, ClientRow } from "../types";
 
 // Managing OIDC clients through @better-auth/oauth-provider, which hashes the secrets and
@@ -38,6 +38,8 @@ function problemFrom(error: unknown): ClientProblem {
   }
   if (body?.error === "not_found") return "not-found";
   if (body?.error === "invalid_client") return "not-confidential";
+  const status = (error as { statusCode?: unknown } | null)?.statusCode;
+  if (status === 401 || status === 403) return "not-allowed";
   return "failed";
 }
 
@@ -72,6 +74,27 @@ export function createClient(
       clientId: client.client_id,
       clientSecret: client.client_secret,
     };
+  });
+}
+
+/**
+ * A client's new name and redirect URIs. The plugin checks the URIs as it does on create, and
+ * that the client is the admins'. Its kind, scopes and secret stay as they are.
+ */
+export function updateClient(
+  auth: Auth,
+  headers: Headers,
+  input: UpdateClientInput,
+): Promise<ClientResult<null>> {
+  return attempt(async () => {
+    await auth.api.adminUpdateOAuthClient({
+      headers,
+      body: {
+        client_id: input.clientId,
+        update: { client_name: input.name, redirect_uris: input.redirectUris },
+      },
+    });
+    return null;
   });
 }
 

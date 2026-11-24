@@ -25,11 +25,13 @@ import { type MouseEvent, useState } from "react";
 import { deleteClientAction, rotateClientSecretAction } from "../../actions/clients";
 import type { ClientProblem, ClientRow, ClientCredentials as Credentials } from "../../types";
 import { ClientCredentials } from "../client-credentials/client-credentials";
+import { EditClientDialog } from "../edit-client-dialog/edit-client-dialog";
 import "./client-actions.scss";
 
 const PROBLEMS: Record<ClientProblem, string> = {
   "not-found": "That client no longer exists. Reload the page.",
   "not-confidential": "A public client has no secret to rotate.",
+  "not-allowed": "This client wasn't made here, so it can't be changed here.",
   "invalid-redirect-uri": "That didn't work. Try again.",
   failed: "That didn't work. Try again in a moment.",
 };
@@ -168,6 +170,7 @@ function DeleteClient({ client }: { client: ClientRow }) {
 export function ClientActions({ client }: { client: ClientRow }) {
   return (
     <div className="client-actions">
+      <EditClientDialog client={client} />
       {client.kind === "confidential" ? <RotateSecret client={client} /> : null}
       <DeleteClient client={client} />
     </div>

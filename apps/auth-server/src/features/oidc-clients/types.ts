@@ -1,5 +1,5 @@
 import type { FieldErrors } from "@/shared/validation/field-errors";
-import type { CLIENT_KINDS, CreateClientField } from "./schemas/client";
+import type { CLIENT_KINDS, CreateClientField, UpdateClientField } from "./schemas/client";
 
 export type ClientKind = (typeof CLIENT_KINDS)[number];
 
@@ -22,7 +22,13 @@ export type ClientCredentials = {
 };
 
 /** What went wrong with a request to the plugin, in words for the screen to choose. */
-export type ClientProblem = "invalid-redirect-uri" | "not-found" | "not-confidential" | "failed";
+export type ClientProblem =
+  | "invalid-redirect-uri"
+  | "not-found"
+  | "not-confidential"
+  /** The plugin refused this admin: a client that isn't the admins' (registered another way). */
+  | "not-allowed"
+  | "failed";
 
 export type ClientResult<T> = { ok: true; value: T } | { ok: false; problem: ClientProblem };
 
@@ -39,3 +45,17 @@ export type CreateClientState =
       attempt: number;
     }
   | { status: "created"; credentials: ClientCredentials };
+
+/** The values typed into the edit form, sent back so a failed attempt keeps them. */
+export type UpdateClientValues = { name: string; redirectUris: string };
+
+export type UpdateClientState =
+  | {
+      status: "editing";
+      values: UpdateClientValues;
+      errors?: FieldErrors<UpdateClientField> | undefined;
+      formError?: string | undefined;
+      attempt: number;
+    }
+  /** Saved: the dialog closes and the list shows the new values. */
+  | { status: "saved"; name: string; attempt: number };
