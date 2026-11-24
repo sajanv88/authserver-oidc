@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildContentSecurityPolicy, createNonce } from "./csp";
+import { buildContentSecurityPolicy, createNonce, logoOrigin } from "./csp";
 
 function directives(policy: string): Map<string, string> {
   return new Map(
@@ -49,6 +49,21 @@ describe("content security policy", () => {
     expect(withTurnstile.get("frame-ancestors")).toBe("'none'");
     expect(withTurnstile.get("connect-src")).toBe("'self'");
     expect(production.has("frame-src")).toBe(false);
+  });
+
+  it("allows the logo's origin as an image source only when LOGO_URL is set", () => {
+    expect(production.get("img-src")).toBe("'self' blob: data:");
+    const origin = logoOrigin({ LOGO_URL: " https://cdn.example.com/brand/logo.svg?v=2 " });
+    expect(origin).toBe("https://cdn.example.com");
+    const withLogo = directives(
+      buildContentSecurityPolicy({ nonce: "abc123", isDev: false, logo: origin }),
+    );
+    expect(withLogo.get("img-src")).toBe("'self' blob: data: https://cdn.example.com");
+    expect(withLogo.get("script-src")).toBe(production.get("script-src"));
+
+    for (const LOGO_URL of [undefined, "", "logo.svg", "javascript:alert(1)", "data:image/png,x"]) {
+      expect(logoOrigin({ LOGO_URL })).toBeUndefined();
+    }
   });
 
   it("makes a fresh, 128-bit nonce each time", () => {

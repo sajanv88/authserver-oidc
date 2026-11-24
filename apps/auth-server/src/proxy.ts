@@ -5,6 +5,7 @@ import {
   buildContentSecurityPolicy,
   createNonce,
   isTurnstileConfigured,
+  logoOrigin,
 } from "@/shared/security/csp";
 
 // Runs before every document request.
@@ -32,6 +33,7 @@ export function proxy(request: NextRequest) {
     nonce,
     isDev: process.env.NODE_ENV === "development",
     turnstile: isTurnstileConfigured(process.env),
+    logo: logoOrigin(process.env),
   });
 
   const requestHeaders = new Headers(request.headers);

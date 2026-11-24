@@ -7,7 +7,8 @@
 //    Development allows inline styles for hot reloading.
 //  - style-src-attr 'unsafe-inline': nuvui components render some styles as style
 //    attributes on the server (nuvui's CSP guide). An attribute can't select other elements.
-//  - img-src blob: data:: nuvui's QR code download and file previews.
+//  - img-src blob: data:: nuvui's QR code download and file previews. With LOGO_URL set, and
+//    only then, the logo's origin too.
 //  - connect-src 'self': the auth forms only talk to this origin.
 //  - form-action 'self', frame-ancestors 'none', base-uri 'self', object-src 'none':
 //    no posting forms elsewhere, no framing (clickjacking on login and consent), no <base>
@@ -27,14 +28,28 @@ export function isTurnstileConfigured(source: Record<string, string | undefined>
   return Boolean(source.TURNSTILE_SITE_KEY?.trim() && source.TURNSTILE_SECRET_KEY?.trim());
 }
 
+/**
+ * The origin of LOGO_URL, for img-src, from the raw variables (like isTurnstileConfigured).
+ * Undefined when it's unset or isn't an http(s) URL: env() refuses those at startup.
+ */
+export function logoOrigin(source: Record<string, string | undefined>): string | undefined {
+  const value = source.LOGO_URL?.trim();
+  if (!value || !URL.canParse(value)) return undefined;
+  const url = new URL(value);
+  return url.protocol === "https:" || url.protocol === "http:" ? url.origin : undefined;
+}
+
 export function buildContentSecurityPolicy({
   nonce,
   isDev,
   turnstile = false,
+  logo,
 }: {
   nonce: string;
   isDev: boolean;
   turnstile?: boolean;
+  /** LOGO_URL's origin, allowed as an image source only when it's set. */
+  logo?: string | undefined;
 }): string {
   return [
     "default-src 'self'",
@@ -42,7 +57,7 @@ export function buildContentSecurityPolicy({
     ...(turnstile ? [`frame-src ${TURNSTILE_ORIGIN}`] : []),
     `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' blob: data:",
+    `img-src 'self' blob: data:${logo ? ` ${logo}` : ""}`,
     "font-src 'self'",
     "connect-src 'self'",
     "worker-src 'self' blob:",
