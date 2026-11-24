@@ -1,5 +1,5 @@
 Feature: Keep my account secure
-  On the security page, signed-in people change their password, and see and end the sessions
+  On the security pages, signed-in people change their password, and see and end the sessions
   their account has on each device.
 
   Scenario: Changing my password signs out my other devices
@@ -20,7 +20,7 @@ Feature: Keep my account secure
 
   Scenario: Seeing where I'm signed in
     Given I am signed in on this device and on another device
-    When I open my security page
+    When I open the sessions on my security page
     Then the list of sessions shows this device and one other
 
   Scenario: Signing out another device

@@ -5,6 +5,7 @@ import {
   expectSignedOut,
   field,
   openDialog,
+  openSecurityTab,
   submitAndWait,
   submitSignIn,
 } from "../support/ui";
@@ -50,13 +51,19 @@ When("I change my password, giving a wrong current password", async ({ page, wor
   await changePassword(page, `${me(world).password}-wrong`, newPerson().password);
 });
 
+When("I open the sessions on my security page", async ({ page }) => {
+  await openSecurityTab(page, "Sessions");
+});
+
 When("I sign out the other device from my security page", async ({ page }) => {
+  await openSecurityTab(page, "Sessions");
   // Only the other device's session has a button: this one is signed out from the menu.
   await sessions(page).getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByText(/^Signed out of /)).toBeVisible();
 });
 
 When("I sign out everywhere", async ({ page }) => {
+  await openSecurityTab(page, "Sessions");
   const dialog = page.getByRole("alertdialog");
   await openDialog(page.getByRole("button", { name: "Sign out everywhere" }), dialog);
   await dialog.getByRole("button", { name: "Sign out everywhere" }).click();
@@ -67,7 +74,7 @@ Then("I am told my password was changed", async ({ page }) => {
 });
 
 Then("I am still signed in on this device", async ({ page, world }) => {
-  await page.reload();
+  await page.goto("/account/security");
   await expectSignedIn(page, me(world).email);
 });
 
