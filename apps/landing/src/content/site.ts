@@ -7,7 +7,7 @@ export const OG_IMAGE = {
   path: "/og.png",
   width: 1200,
   height: 630,
-  alt: `${PRODUCT_NAME}: one sign-in for every app you ship. Self-hosted OpenID Connect on Next.js and Better Auth.`,
+  alt: `${PRODUCT_NAME}: the identity server you run yourself. Self-hosted OpenID Connect and OAuth 2.0 on Next.js and Better Auth.`,
 };
 
 export const REPO_URL = "https://github.com/sajanv88/authserver-oidc";
@@ -22,6 +22,7 @@ export const AUTHOR = {
 
 /** The sections the navigation bar and the footer link to, by their ids on the page. */
 export const SECTIONS = [
+  { id: "why", name: "Why" },
   { id: "features", name: "Features" },
   { id: "how-it-works", name: "How it works" },
   { id: "quick-start", name: "Quick start" },

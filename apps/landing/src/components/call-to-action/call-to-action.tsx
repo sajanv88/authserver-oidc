@@ -15,16 +15,16 @@ export function CallToAction() {
     <section className="call-to-action" aria-labelledby="call-to-action-title">
       <GradientBackground className="call-to-action__panel" scrim="soft" paused={paused}>
         <h2 className="call-to-action__title" id="call-to-action-title">
-          Own your sign-in
+          Run your own identity server
         </h2>
         <p className="call-to-action__text">
-          Clone it, run it on your machine, and sign in to the example app through it. Then connect
-          your own.
+          Clone it, run it on your machine and sign in to the example app through it. Then connect
+          your own apps, and deploy it with the Helm chart.
         </p>
         <div className="call-to-action__actions">
           <Button asChild size="lg">
             <a href="#quick-start">
-              Start the quick start
+              Get started
               <ArrowRightIcon size={16} />
             </a>
           </Button>
