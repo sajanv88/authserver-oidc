@@ -22,13 +22,15 @@ import { WebVitalsReporter } from "@/shared/telemetry/web-vitals-reporter";
 import { NonceProvider } from "@/shared/ui/nonce-provider/nonce-provider";
 import { TurnstileProvider } from "@/shared/ui/turnstile/turnstile";
 
-// The name is APP_NAME, read per request like everything else here (the layout already reads
-// the request's headers), so a deployment can rename the product without a rebuild.
+// The name is APP_NAME and the tab's icon LOGO_URL (else the shield in public/favicon.svg),
+// read per request like everything else here (the layout already reads the request's
+// headers), so a deployment can rebrand without a rebuild.
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
-  const { appName } = env();
+  const { appName, logoUrl } = env();
   return {
     title: { default: appName, template: `%s · ${appName}` },
+    icons: { icon: logoUrl ?? { url: "/favicon.svg", type: "image/svg+xml" } },
     robots: { index: false, follow: false },
   };
 }

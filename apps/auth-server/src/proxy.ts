@@ -53,7 +53,8 @@ export const config = {
     {
       // Documents only: not route handlers (/api/auth and /api/health included), static
       // files, image optimisation, or prefetches.
-      source: "/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+      source:
+        "/((?!api/|_next/static|_next/image|favicon.ico|favicon.svg|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
