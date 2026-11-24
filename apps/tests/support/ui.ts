@@ -55,3 +55,23 @@ export async function openDialog(trigger: Locator, dialog: Locator): Promise<voi
     await expect(dialog).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
 }
+
+/**
+ * Opens the menu behind `trigger`, chooses `item`, and waits for `dialog`. Tried again like
+ * openDialog; a menu left open by a try that didn't finish is closed first, since it covers
+ * the page and the trigger can't be pressed through it.
+ */
+export async function openDialogFromMenu(
+  page: Page,
+  trigger: Locator,
+  item: string,
+  dialog: Locator,
+): Promise<void> {
+  const menu = page.getByRole("menu");
+  await expect(async () => {
+    if (await menu.isVisible()) await page.keyboard.press("Escape");
+    await trigger.click();
+    await menu.getByRole("menuitem", { name: item, exact: true }).click({ timeout: 2_000 });
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+}
