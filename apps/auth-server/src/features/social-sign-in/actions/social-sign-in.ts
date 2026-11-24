@@ -5,6 +5,7 @@ import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { configuredSocialProviders } from "@/shared/auth/social-providers";
 import { env } from "@/shared/config/env";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { fieldsOf, text } from "@/shared/validation/form-data";
 import { SocialSignInSchema } from "../schemas/social-sign-in";
@@ -29,10 +30,15 @@ export async function socialSignInAction(
 
   const oidcQuery = signedOidcQuery(text(form, "oidcQuery"));
   const returnTo = safeReturnPath(text(form, "returnTo"));
-  const outcome = await startSocialSignIn(
-    callAuth,
-    { provider: provider.id, ...socialTargets(oidcQuery, returnTo) },
-    oidcQuery,
+  const outcome = await traceFlow(
+    "auth.social.start",
+    () =>
+      startSocialSignIn(
+        callAuth,
+        { provider: provider.id, ...socialTargets(oidcQuery, returnTo) },
+        oidcQuery,
+      ),
+    { "auth.provider": provider.id, "auth.oidc_flow": oidcQuery !== "" },
   );
   if (outcome.kind === "failed") return { status: "failed", attempt, message: outcome.message };
   return { status: "leaving", attempt, url: outcome.url, providerName: provider.name };

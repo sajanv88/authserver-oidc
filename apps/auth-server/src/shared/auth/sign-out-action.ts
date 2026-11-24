@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import { redirect } from "next/navigation";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { LOGIN_PATH } from "./constants";
 import { callAuth } from "./server-endpoint";
 
@@ -11,6 +12,6 @@ import { callAuth } from "./server-endpoint";
  * end, and the login page is still the right place.
  */
 export async function signOutAction(): Promise<void> {
-  await callAuth({ path: "/sign-out" });
+  await traceFlow("auth.sign_out", () => callAuth({ path: "/sign-out" }));
   redirect(LOGIN_PATH as Route);
 }

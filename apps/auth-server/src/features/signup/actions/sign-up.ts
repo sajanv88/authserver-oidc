@@ -3,6 +3,7 @@
 import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { safeReturnPath } from "@/shared/auth/return-path";
 import { callAuth } from "@/shared/auth/server-endpoint";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { text, texts } from "@/shared/validation/form-data";
 import { ResendVerificationSchema, SignUpSchema } from "../schemas/signup";
@@ -20,7 +21,9 @@ export async function signUpAction(previous: SignUpState, form: FormData): Promi
   const parsed = parseForm(SignUpSchema, { ...values, password: text(form, "password") });
   if (!parsed.ok) return { status: "editing", attempt, values, errors: parsed.errors };
 
-  const outcome = await signUp(withCaptcha(callAuth, captchaToken(form)), parsed.value, next);
+  const outcome = await traceFlow("auth.signup", () =>
+    signUp(withCaptcha(callAuth, captchaToken(form)), parsed.value, next),
+  );
   switch (outcome.kind) {
     case "sent":
       return { status: "sent", attempt, email: parsed.value.email };
@@ -39,10 +42,12 @@ export async function resendVerificationAction(
   const email = text(form, "email");
   const parsed = parseForm(ResendVerificationSchema, { email });
   if (!parsed.ok) return { status: "editing", attempt, email, error: parsed.errors.email };
-  const outcome = await resendVerification(
-    withCaptcha(callAuth, captchaToken(form)),
-    parsed.value.email,
-    safeReturnPath(text(form, "next")),
+  const outcome = await traceFlow("auth.signup.resend_verification", () =>
+    resendVerification(
+      withCaptcha(callAuth, captchaToken(form)),
+      parsed.value.email,
+      safeReturnPath(text(form, "next")),
+    ),
   );
   return outcome.kind === "sent"
     ? { status: "sent", attempt, email: parsed.value.email }

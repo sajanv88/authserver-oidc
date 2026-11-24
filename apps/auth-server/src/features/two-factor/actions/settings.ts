@@ -3,6 +3,7 @@
 import { captchaToken, withCaptcha } from "@/shared/auth/captcha";
 import { callAuth } from "@/shared/auth/server-endpoint";
 import { requireSession } from "@/shared/auth/session";
+import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { text } from "@/shared/validation/form-data";
 import { ConfirmTotpSchema, PasswordConfirmSchema } from "../schemas/two-factor";
@@ -31,9 +32,8 @@ export async function setupAction(previous: SetupStep, form: FormData): Promise<
   if (previous.step === "scan") {
     const parsed = parseForm(ConfirmTotpSchema, { code: text(form, "code") });
     if (!parsed.ok) return { ...previous, attempt, error: parsed.errors.code };
-    const confirmed = await confirmSetup(
-      withCaptcha(callAuth, captchaToken(form)),
-      parsed.value.code,
+    const confirmed = await traceFlow("account.two_factor.setup.confirm", () =>
+      confirmSetup(withCaptcha(callAuth, captchaToken(form)), parsed.value.code),
     );
     return confirmed.ok
       ? { step: "backup-codes", attempt, backupCodes: previous.backupCodes }
@@ -42,10 +42,8 @@ export async function setupAction(previous: SetupStep, form: FormData): Promise<
 
   const parsed = parseForm(PasswordConfirmSchema, { password: text(form, "password") });
   if (!parsed.ok) return { step: "password", attempt, error: parsed.errors.password };
-  const started = await startSetup(
-    withCaptcha(callAuth, captchaToken(form)),
-    parsed.value.password,
-    attempt,
+  const started = await traceFlow("account.two_factor.setup.start", () =>
+    startSetup(withCaptcha(callAuth, captchaToken(form)), parsed.value.password, attempt),
   );
   return started.ok
     ? { step: "scan", attempt, totpURI: started.totpURI, backupCodes: started.backupCodes }
@@ -60,10 +58,12 @@ export async function backupCodesAction(
   const attempt = previous.attempt + 1;
   const parsed = parseForm(PasswordConfirmSchema, { password: text(form, "password") });
   if (!parsed.ok) return { status: "password", attempt, error: parsed.errors.password };
-  const result = await regenerateBackupCodes(
-    withCaptcha(callAuth, captchaToken(form)),
-    parsed.value.password,
-    attempt,
+  const result = await traceFlow("account.two_factor.backup_codes", () =>
+    regenerateBackupCodes(
+      withCaptcha(callAuth, captchaToken(form)),
+      parsed.value.password,
+      attempt,
+    ),
   );
   return result.ok
     ? { status: "done", attempt, backupCodes: result.backupCodes }
@@ -75,10 +75,8 @@ export async function disableAction(previous: DisableState, form: FormData): Pro
   const attempt = previous.attempt + 1;
   const parsed = parseForm(PasswordConfirmSchema, { password: text(form, "password") });
   if (!parsed.ok) return { status: "password", attempt, error: parsed.errors.password };
-  const result = await disableTwoFactor(
-    withCaptcha(callAuth, captchaToken(form)),
-    parsed.value.password,
-    attempt,
+  const result = await traceFlow("account.two_factor.disable", () =>
+    disableTwoFactor(withCaptcha(callAuth, captchaToken(form)), parsed.value.password, attempt),
   );
   return result.ok ? { status: "done", attempt } : { status: "password", ...result.failure };
 }
