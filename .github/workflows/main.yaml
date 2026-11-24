@@ -60,7 +60,9 @@ jobs:
           provenance: mode=max
           sbom: true
           cache-from: type=gha,scope=${{ env.APP }}
-          cache-to: type=gha,mode=max,scope=${{ env.APP }}
+          # The cache is only a speed-up, exported after the image is pushed: a timeout from
+          # the Actions cache service (a 504) mustn't fail a build that has already published.
+          cache-to: type=gha,mode=max,scope=${{ env.APP }},ignore-error=true
       - name: Summary
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
