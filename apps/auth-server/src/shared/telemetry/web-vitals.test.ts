@@ -88,8 +88,36 @@ describe("receiveWebVitals", () => {
     expect((await receiveWebVitals(noOrigin, ORIGIN)).status).toBe(403);
   });
 
+  it("stops reading a body without a length, or longer than it says, past the cap", async () => {
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(new Uint8Array(1024).fill(32));
+      },
+    });
+    const chunked = new Request(`${ORIGIN}/api/vitals`, {
+      method: "POST",
+      headers: { origin: ORIGIN },
+      body: endless,
+      duplex: "half",
+    } as RequestInit);
+    expect((await receiveWebVitals(chunked, ORIGIN)).status).toBe(413);
+    expect(pulled).toBeLessThan(10);
+
+    // Multi-byte characters: the cap counts bytes, not characters.
+    const understated = post(`"${"é".repeat(2100)}"`, { "content-length": "10" });
+    expect((await receiveWebVitals(understated, ORIGIN)).status).toBe(413);
+  });
+
   it("refuses big bodies and anything that isn't a short list of vitals", async () => {
     expect((await receiveWebVitals(post("x".repeat(5000)), ORIGIN)).status).toBe(413);
+    expect(
+      (await receiveWebVitals(post([lcp], { "content-length": "99999" }), ORIGIN)).status,
+    ).toBe(413);
+    expect(
+      (await receiveWebVitals(post([lcp], { "content-length": "12abc" }), ORIGIN)).status,
+    ).toBe(413);
     expect((await receiveWebVitals(post("{not json"), ORIGIN)).status).toBe(400);
     expect((await receiveWebVitals(post([]), ORIGIN)).status).toBe(400);
     expect((await receiveWebVitals(post(Array(21).fill(lcp)), ORIGIN)).status).toBe(400);

@@ -57,6 +57,31 @@ function navigationTypeOf(value: string): string {
 }
 
 /**
+ * The body as text, or undefined once it passes `maxBytes`: reading stops there, so a big or
+ * endless body is never buffered.
+ */
+async function readAtMost(
+  stream: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<string | undefined> {
+  if (!stream) return "";
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel();
+      return undefined;
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
+/**
  * Handles one post to /api/vitals: 204 when recorded, 403 from another origin, 413 when too
  * big, 400 when it isn't a list of vitals. `ownOrigin` is the auth server's public origin.
  */
@@ -64,11 +89,13 @@ export async function receiveWebVitals(request: Request, ownOrigin: string): Pro
   if (request.headers.get("origin") !== new URL(ownOrigin).origin) {
     return new Response(null, { status: 403 });
   }
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+  const declared = request.headers.get("content-length");
+  if (declared !== null && !(/^\d+$/.test(declared) && Number(declared) <= MAX_BODY_BYTES)) {
     return new Response(null, { status: 413 });
   }
-  const body = await request.text();
-  if (body.length > MAX_BODY_BYTES) return new Response(null, { status: 413 });
+  // The header can be missing (chunked) or wrong, so the cap holds while reading too.
+  const body = await readAtMost(request.body, MAX_BODY_BYTES);
+  if (body === undefined) return new Response(null, { status: 413 });
 
   let json: unknown;
   try {
