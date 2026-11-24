@@ -19,6 +19,7 @@ import { firstInvalidField } from "@/shared/validation/field-errors";
 import { changePasswordAction } from "../../actions/password";
 import { CHANGE_PASSWORD_FIELDS } from "../../schemas/account";
 import type { ChangePasswordState } from "../../types";
+import "./change-password-form.scss";
 
 const INITIAL: ChangePasswordState = { attempt: 0, errors: {} };
 
@@ -53,25 +54,30 @@ export function ChangePasswordForm() {
         </FieldControl>
         <FieldError>{errors.currentPassword}</FieldError>
       </Field>
-      <Field required>
-        <FieldLabel>New password</FieldLabel>
-        <FieldControl>
-          <PasswordInput name="newPassword" autoComplete="new-password" />
-        </FieldControl>
-        <FieldDescription>At least {PASSWORD_MIN_LENGTH} characters.</FieldDescription>
-        <FieldError>{errors.newPassword}</FieldError>
-      </Field>
-      <Field required>
-        <FieldLabel>Type it again</FieldLabel>
-        <FieldControl>
-          <PasswordInput name="confirmPassword" autoComplete="new-password" />
-        </FieldControl>
-        <FieldError>{errors.confirmPassword}</FieldError>
-      </Field>
+      {/* The new password and its repeat side by side, once there's room for both. */}
+      <div className="change-password-form__pair">
+        <Field required>
+          <FieldLabel>New password</FieldLabel>
+          <FieldControl>
+            <PasswordInput name="newPassword" autoComplete="new-password" />
+          </FieldControl>
+          <FieldDescription>At least {PASSWORD_MIN_LENGTH} characters.</FieldDescription>
+          <FieldError>{errors.newPassword}</FieldError>
+        </Field>
+        <Field required>
+          <FieldLabel>Type it again</FieldLabel>
+          <FieldControl>
+            <PasswordInput name="confirmPassword" autoComplete="new-password" />
+          </FieldControl>
+          <FieldError>{errors.confirmPassword}</FieldError>
+        </Field>
+      </div>
       <Turnstile />
-      <SubmitButton pending={pending} pendingLabel="Changing…">
-        Change password
-      </SubmitButton>
+      <div className="change-password-form__actions">
+        <SubmitButton pending={pending} pendingLabel="Changing…" fill={false}>
+          Change password
+        </SubmitButton>
+      </div>
     </AuthForm>
   );
 }
