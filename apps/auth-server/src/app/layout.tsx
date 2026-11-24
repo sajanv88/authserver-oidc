@@ -17,6 +17,8 @@ import { Suspense } from "react";
 import { htmlAttributes } from "@/shared/appearance/appearance";
 import { readAppearance } from "@/shared/appearance/read-appearance";
 import { env } from "@/shared/config/env";
+import { metricsExportEnabled } from "@/shared/telemetry/config";
+import { WebVitalsReporter } from "@/shared/telemetry/web-vitals-reporter";
 import { NonceProvider } from "@/shared/ui/nonce-provider/nonce-provider";
 import { TurnstileProvider } from "@/shared/ui/turnstile/turnstile";
 
@@ -52,6 +54,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" {...htmlAttributes(appearance)}>
       <body>
+        {/* Browsers report web vitals only when there's somewhere to send them. */}
+        {metricsExportEnabled(process.env) && <WebVitalsReporter />}
         <NonceProvider nonce={nonce}>
           <TurnstileProvider siteKey={env().turnstile?.siteKey}>
             {children}
