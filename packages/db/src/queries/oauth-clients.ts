@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, count, desc, eq, inArray } from "drizzle-orm";
 import type { Executor } from "../executor";
 import { oauthClientResources } from "../schema/oauth-client-resources";
 import { type OAuthClient, oauthClients } from "../schema/oauth-clients";
@@ -40,6 +40,12 @@ export async function listOAuthClients(
     .orderBy(desc(oauthClients.createdAt), desc(oauthClients.id))
     .limit(limit)
     .offset(options.offset ?? 0);
+}
+
+/** How many clients there are, for paging through listOAuthClients. */
+export async function countOAuthClients(db: Executor): Promise<number> {
+  const [row] = await db.select({ total: count() }).from(oauthClients);
+  return row?.total ?? 0;
 }
 
 /** A client as the provisioning script compares it: what it is, and the APIs it may ask for. */

@@ -4,6 +4,7 @@ import { oauthClients } from "../schema/oauth-clients";
 import { oauthResources } from "../schema/oauth-resources";
 import { createTestDb } from "../testing/pglite";
 import {
+  countOAuthClients,
   findOAuthClientsByName,
   getOAuthClientPublicInfo,
   listOAuthClients,
@@ -49,6 +50,10 @@ describe("oauth client queries", () => {
     expect((await listOAuthClients(db, { limit: 1, offset: 1 })).map((c) => c.clientId)).toEqual([
       "second",
     ]);
+  });
+
+  it("countOAuthClients counts every client", async () => {
+    expect(await countOAuthClients(db)).toBe(3);
   });
 
   it("listOAuthClients never returns the secret", async () => {
