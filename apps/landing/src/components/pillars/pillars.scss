@@ -1,0 +1,37 @@
+@use "abstracts" as a;
+
+// Three across from md, one above another before that.
+.pillars {
+  display: grid;
+  gap: a.space(4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include a.breakpoint("md") {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: a.space(6);
+  }
+
+  // The link sits at the foot of each card, whatever the text above it.
+  &__card {
+    display: flex;
+    flex-direction: column;
+    block-size: 100%;
+  }
+
+  &__body {
+    flex: 1;
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    inline-size: a.space(10);
+    block-size: a.space(10);
+    margin-block-end: a.space(3);
+    border-radius: var(--radius-md);
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+}

@@ -21,7 +21,7 @@ const DISCOVERY = `{
   "backchannel_logout_supported": true
 }`;
 
-const HIGHLIGHTS = ["OpenID Connect", "Two-factor", "Docker and Helm"];
+const HIGHLIGHTS = ["OpenID Connect and OAuth 2.0", "Self-hosted", "Free in production"];
 
 export function Hero() {
   const [paused, setPaused] = useState(false);
@@ -40,17 +40,17 @@ export function Hero() {
               Open source · MIT
             </Badge>
             <h1 className="hero__title" id="hero-title">
-              <TextReveal lines={["One sign-in", "for every app you ship"]} />
+              <TextReveal lines={["The identity server", "you run yourself"]} />
             </h1>
             <p className="hero__lead">
-              A self-hosted OpenID Connect server on Next.js 16 and Better Auth. Accounts,
-              two-factor, consent and an admin for your apps, shipped as one Docker image with a
-              Helm chart.
+              OpenID Connect and OAuth 2.0 for your apps and APIs, on your domain and your database.
+              Accounts, two-factor, consent and an admin for your apps, shipped as one Docker image
+              with a Helm chart.
             </p>
             <div className="hero__actions">
               <Button asChild size="lg">
                 <a href="#quick-start">
-                  Run it locally
+                  Get started
                   <ArrowRightIcon size={16} />
                 </a>
               </Button>
