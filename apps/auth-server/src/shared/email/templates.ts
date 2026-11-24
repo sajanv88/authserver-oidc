@@ -1,4 +1,3 @@
-import { APP_NAME } from "../config/app";
 import type { EmailContent } from "./types";
 
 // Plain, unstyled emails: a sentence, the link, and what to do if it wasn't you. Every value
@@ -18,6 +17,8 @@ export function escapeHtml(value: string): string {
 }
 
 type Template = {
+  /** The product's name (APP_NAME): the sign-off, and the subject's suffix. */
+  appName: string;
   subject: string;
   intro: string;
   action: string;
@@ -25,9 +26,9 @@ type Template = {
   note: string;
 };
 
-function render({ subject, intro, action, url, note }: Template): EmailContent {
+function render({ appName, subject, intro, action, url, note }: Template): EmailContent {
   const ignore = "If you didn't ask for this, you can ignore this email.";
-  const text = [intro, "", `${action}:`, url, "", note, ignore, "", APP_NAME].join("\n");
+  const text = [intro, "", `${action}:`, url, "", note, ignore, "", appName].join("\n");
   const safeUrl = escapeHtml(url);
   const html = [
     "<!doctype html>",
@@ -36,10 +37,10 @@ function render({ subject, intro, action, url, note }: Template): EmailContent {
     `<p><a href="${safeUrl}">${escapeHtml(action)}</a></p>`,
     `<p>Or copy this address into your browser:<br>${safeUrl}</p>`,
     `<p>${escapeHtml(note)} ${escapeHtml(ignore)}</p>`,
-    `<p>${escapeHtml(APP_NAME)}</p>`,
+    `<p>${escapeHtml(appName)}</p>`,
     "</body></html>",
   ].join("\n");
-  return { subject: `${subject} · ${APP_NAME}`, text, html };
+  return { subject: `${subject} · ${appName}`, text, html };
 }
 
 const minutes = (value: number) => `${value} minute${value === 1 ? "" : "s"}`;
@@ -47,13 +48,16 @@ const minutes = (value: number) => `${value} minute${value === 1 ? "" : "s"}`;
 export function verifyEmailTemplate({
   url,
   expiresInMinutes,
+  appName,
 }: {
+  appName: string;
   url: string;
   expiresInMinutes: number;
 }): EmailContent {
   return render({
+    appName,
     subject: "Confirm your email address",
-    intro: `Confirm your email address to finish creating your ${APP_NAME} account.`,
+    intro: `Confirm your email address to finish creating your ${appName} account.`,
     action: "Confirm email address",
     url,
     note: `The link works once, for ${minutes(expiresInMinutes)}.`,
@@ -63,13 +67,16 @@ export function verifyEmailTemplate({
 export function resetPasswordTemplate({
   url,
   expiresInMinutes,
+  appName,
 }: {
+  appName: string;
   url: string;
   expiresInMinutes: number;
 }): EmailContent {
   return render({
+    appName,
     subject: "Reset your password",
-    intro: `Someone asked to reset the password for your ${APP_NAME} account.`,
+    intro: `Someone asked to reset the password for your ${appName} account.`,
     action: "Choose a new password",
     url,
     note: `The link works once, for ${minutes(expiresInMinutes)}. Resetting signs you out everywhere.`,
@@ -79,13 +86,16 @@ export function resetPasswordTemplate({
 export function magicLinkTemplate({
   url,
   expiresInMinutes,
+  appName,
 }: {
+  appName: string;
   url: string;
   expiresInMinutes: number;
 }): EmailContent {
   return render({
+    appName,
     subject: "Your sign-in link",
-    intro: `Use this link to sign in to ${APP_NAME}.`,
+    intro: `Use this link to sign in to ${appName}.`,
     action: "Sign in",
     url,
     note: `The link works once, for ${minutes(expiresInMinutes)}.`,
@@ -96,13 +106,16 @@ export function magicLinkTemplate({
 export function existingAccountTemplate({
   loginUrl,
   resetUrl,
+  appName,
 }: {
+  appName: string;
   loginUrl: string;
   resetUrl: string;
 }): EmailContent {
   return render({
+    appName,
     subject: "You already have an account",
-    intro: `Someone tried to create a ${APP_NAME} account with this email address, which already has one. No new account was made.`,
+    intro: `Someone tried to create a ${appName} account with this email address, which already has one. No new account was made.`,
     action: "Sign in",
     url: loginUrl,
     note: `Forgot your password? Choose a new one at ${resetUrl}.`,

@@ -4,7 +4,6 @@ import { createAuthAdapter, type Executor, getUserSecurityByEmail } from "@repo/
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
-import { APP_NAME } from "@/shared/config/app";
 import type { OAuthApiConfig, ServerEnv } from "@/shared/config/env";
 import {
   type EmailMessage,
@@ -102,7 +101,7 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const ssoProviders = ssoProviderConfig(env.social);
 
   return betterAuth({
-    appName: APP_NAME,
+    appName: env.appName,
     baseURL: env.betterAuthUrl,
     secret: env.betterAuthSecret,
     trustedOrigins: env.trustedOrigins,
@@ -129,6 +128,7 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         sendEmail({
           to: user.email,
           ...existingAccountTemplate({
+            appName: env.appName,
             loginUrl: `${env.betterAuthUrl}${AUTH_PAGES.login}`,
             resetUrl: `${env.betterAuthUrl}${AUTH_PAGES.forgotPassword}`,
           }),
@@ -137,7 +137,11 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       sendResetPassword: async ({ user, url }) => {
         sendEmail({
           to: user.email,
-          ...resetPasswordTemplate({ url, expiresInMinutes: LIFETIMES.passwordReset / 60 }),
+          ...resetPasswordTemplate({
+            appName: env.appName,
+            url,
+            expiresInMinutes: LIFETIMES.passwordReset / 60,
+          }),
         });
       },
     },
@@ -150,7 +154,11 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       sendVerificationEmail: async ({ user, url }) => {
         sendEmail({
           to: user.email,
-          ...verifyEmailTemplate({ url, expiresInMinutes: LIFETIMES.emailVerification / 60 }),
+          ...verifyEmailTemplate({
+            appName: env.appName,
+            url,
+            expiresInMinutes: LIFETIMES.emailVerification / 60,
+          }),
         });
       },
     },
@@ -204,13 +212,17 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
           if (!user || user.twoFactorEnabled) return;
           sendEmail({
             to: email,
-            ...magicLinkTemplate({ url, expiresInMinutes: LIFETIMES.magicLink / 60 }),
+            ...magicLinkTemplate({
+              appName: env.appName,
+              url,
+              expiresInMinutes: LIFETIMES.magicLink / 60,
+            }),
           });
         },
       }),
 
       twoFactor({
-        issuer: APP_NAME,
+        issuer: env.appName,
         backupCodeOptions: { amount: 10, length: 10, storeBackupCodes: "encrypted" },
       }),
 
