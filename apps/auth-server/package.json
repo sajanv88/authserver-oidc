@@ -37,10 +37,12 @@
     "nodemailer": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-email": "catalog:",
     "server-only": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {
+    "@react-email/ui": "catalog:",
     "@repo/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
