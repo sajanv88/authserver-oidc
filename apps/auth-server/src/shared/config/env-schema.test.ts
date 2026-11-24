@@ -239,4 +239,43 @@ describe("parseEnv", () => {
       "OAUTH_API_SCOPES must not list a scope twice",
     ]);
   });
+
+  it("calls the product Auth Server unless APP_NAME names it, on one line", () => {
+    for (const APP_NAME of [undefined, "", "   "]) {
+      const result = parseEnv({ ...valid, APP_NAME });
+      expect(result.ok && result.env.appName).toBe("Auth Server");
+    }
+    const named = parseEnv({ ...valid, APP_NAME: "  Acme ID  " });
+    expect(named.ok && named.env.appName).toBe("Acme ID");
+
+    // It goes into email subjects: a line break could add a header.
+    expect(errorsFor({ ...valid, APP_NAME: "Acme\r\nBcc: someone@example.com" })).toEqual([
+      "APP_NAME must be one line, without control characters",
+    ]);
+    expect(errorsFor({ ...valid, APP_NAME: "x".repeat(51) })).toEqual([
+      "APP_NAME must be at most 50 characters",
+    ]);
+  });
+
+  it("shows the shield unless LOGO_URL is a full URL, and https in production", () => {
+    for (const LOGO_URL of [undefined, "", "  "]) {
+      const result = parseEnv({ ...valid, LOGO_URL });
+      expect(result.ok && result.env.logoUrl).toBeUndefined();
+    }
+    const set = parseEnv({ ...valid, LOGO_URL: " https://cdn.example.com/logo.svg " });
+    expect(set.ok && set.env.logoUrl).toBe("https://cdn.example.com/logo.svg");
+
+    for (const LOGO_URL of [
+      "/logo.svg",
+      "javascript:alert(1)",
+      "https://user:pw@cdn.example.com/x",
+    ]) {
+      expect(errorsFor({ ...valid, LOGO_URL })).toEqual([
+        "LOGO_URL must be a full http(s) URL, such as https://cdn.example.com/logo.svg",
+      ]);
+    }
+    expect(errorsFor({ ...production, LOGO_URL: "http://cdn.example.com/logo.svg" })).toEqual([
+      "LOGO_URL must be https in production",
+    ]);
+  });
 });

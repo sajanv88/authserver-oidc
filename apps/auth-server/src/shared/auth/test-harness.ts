@@ -22,6 +22,8 @@ export const testEnv: ServerEnv = {
   turnstile: undefined,
   social: {},
   oauth: { resources: [], apiScopes: [] },
+  appName: "Auth Server",
+  logoUrl: undefined,
 };
 
 /** `overrides` change the configuration, e.g. `{ turnstile: … }` to turn the captcha on. */
