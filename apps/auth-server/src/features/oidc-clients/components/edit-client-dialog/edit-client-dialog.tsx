@@ -1,6 +1,5 @@
 "use client";
 
-import { EditIcon } from "@nuvui/icons";
 import {
   Alert,
   AlertDescription,
@@ -13,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   Field,
   FieldControl,
   FieldDescription,
@@ -25,12 +23,13 @@ import {
   toast,
 } from "@nuvui/react";
 import Form from "next/form";
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef } from "react";
 import { Turnstile } from "@/shared/ui/turnstile/turnstile";
 import { firstInvalidField } from "@/shared/validation/field-errors";
 import { updateClientAction } from "../../actions/clients";
 import { MAX_REDIRECT_URIS, UPDATE_CLIENT_FIELDS } from "../../schemas/client";
 import type { ClientRow, UpdateClientState } from "../../types";
+import type { MenuDialogProps } from "../client-actions/client-actions";
 import "./edit-client-dialog.scss";
 
 /**
@@ -54,9 +53,14 @@ function EditClientPanel({
   );
   const formRef = useRef<HTMLFormElement>(null);
   const formId = `edit-client-${client.clientId}`;
+  // The attempt already reported: the effect runs again while the dialog closes, and a save
+  // is announced once.
+  const reported = useRef(-1);
 
   useEffect(() => {
     if (state.status === "saved") {
+      if (reported.current === state.attempt) return;
+      reported.current = state.attempt;
       onSaved(state.name);
       return;
     }
@@ -143,22 +147,23 @@ function EditClientPanel({
   );
 }
 
-/** The Edit button of a row, and its dialog. */
-export function EditClientDialog({ client }: { client: ClientRow }) {
-  const [open, setOpen] = useState(false);
-  const saved = useCallback((name: string) => {
-    setOpen(false);
-    toast(`${name} was saved`, { intent: "success" });
-  }, []);
+/** A row's edit dialog, opened from its menu. */
+export function EditClientDialog({
+  client,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
+}: MenuDialogProps) {
+  const saved = useCallback(
+    (name: string) => {
+      onOpenChange(false);
+      toast(`${name} was saved`, { intent: "success" });
+    },
+    [onOpenChange],
+  );
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button intent="ghost" size="sm" aria-label={`Edit ${client.name}`}>
-          <EditIcon size={16} />
-          Edit
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <EditClientPanel client={client} onSaved={saved} />
       </DialogContent>
     </Dialog>

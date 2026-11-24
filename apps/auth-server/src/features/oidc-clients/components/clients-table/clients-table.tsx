@@ -54,14 +54,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <TableCell>
                 <ul className="clients-table__uris">
                   {client.redirectUris.map((uri) => (
-                    <li key={uri} className="clients-table__code">
+                    <li key={uri} className="clients-table__code" title={uri}>
                       {uri}
                     </li>
                   ))}
                 </ul>
               </TableCell>
               <TableCell>
-                <time dateTime={client.createdAt}>
+                <time className="clients-table__date" dateTime={client.createdAt}>
                   {created.format(new Date(client.createdAt))}
                 </time>
               </TableCell>

@@ -11,7 +11,7 @@ export function CopyClientId({ clientId, name }: { clientId: string; name: strin
   const codeRef = useRef<HTMLElement>(null);
   return (
     <span className="copy-client-id">
-      <code ref={codeRef} className="copy-client-id__code">
+      <code ref={codeRef} className="copy-client-id__code" title={clientId}>
         {clientId}
       </code>
       <Tooltip>
