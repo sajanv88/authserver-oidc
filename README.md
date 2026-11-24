@@ -76,6 +76,8 @@ Apps on the same parent domain can also read the shared session cookie instead o
    Keep `BETTER_AUTH_SECRET` the same for everything that uses the database: it encrypts the token-signing key stored there, and with another secret apps can't get tokens (the token endpoint answers 500). To change it, also delete the rows of the `jwks` table; a new key is made, and apps verify against it from `/jwks`.
 3. In `charts/auth-server/values-production.yaml`, set your domain and SMTP host and user.
    Optional: for Cloudflare Turnstile on the forms, set `TURNSTILE_SITE_KEY` there and add `TURNSTILE_SECRET_KEY` to the Secret.
+   Optional: to rename the product, set `APP_NAME` there (it's "Auth Server" otherwise): it's shown on every page, in titles, emails and authenticator apps.
+   Optional: for your logo instead of the shield, on the sign-in pages and in the signed-in pages' top bar, set `LOGO_URL` there to a full https URL. A square image looks best; it's shown at 32 px on the sign-in pages and 28 px in the top bar.
    Optional: for tokens for your own APIs, set `OAUTH_RESOURCES` and `OAUTH_API_SCOPES` there, then run `pnpm clients:provision` with that environment's settings (see [Tokens for your own APIs](#tokens-for-your-own-apis)).
    Optional: for social sign-in, set a provider's client ID there (`GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`, `GITHUB_CLIENT_ID`, or `SSO_NAME`, `SSO_DISCOVERY_URL` and `SSO_CLIENT_ID`) and its secret in the Secret. Register `https://auth.example.com/api/auth/callback/<google | microsoft | github | sso>` as the redirect URI with the provider.
 4. Sync the chart with Argo CD. Database migrations run automatically before each rollout.
