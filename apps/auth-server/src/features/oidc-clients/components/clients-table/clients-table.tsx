@@ -11,6 +11,7 @@ import {
 } from "@nuvui/table/table";
 import type { ClientRow } from "../../types";
 import { ClientActions } from "../client-actions/client-actions";
+import { CopyClientId } from "../copy-client-id/copy-client-id";
 import "./clients-table.scss";
 
 const created = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
@@ -43,7 +44,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 ) : null}
               </TableCell>
               <TableCell>
-                <code className="clients-table__code">{client.clientId}</code>
+                <CopyClientId clientId={client.clientId} name={client.name} />
               </TableCell>
               <TableCell>
                 <Badge intent={client.kind === "public" ? "neutral" : "primary"}>
@@ -53,14 +54,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               <TableCell>
                 <ul className="clients-table__uris">
                   {client.redirectUris.map((uri) => (
-                    <li key={uri} className="clients-table__code">
+                    <li key={uri} className="clients-table__code" title={uri}>
                       {uri}
                     </li>
                   ))}
                 </ul>
               </TableCell>
               <TableCell>
-                <time dateTime={client.createdAt}>
+                <time className="clients-table__date" dateTime={client.createdAt}>
                   {created.format(new Date(client.createdAt))}
                 </time>
               </TableCell>

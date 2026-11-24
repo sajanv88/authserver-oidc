@@ -1,0 +1,17 @@
+@use "abstracts" as a;
+
+.clients-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: a.space(3);
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: a.space(4);
+
+  &__summary {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+}

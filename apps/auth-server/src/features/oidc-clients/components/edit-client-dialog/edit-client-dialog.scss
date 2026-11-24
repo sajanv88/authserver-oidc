@@ -1,0 +1,8 @@
+@use "abstracts" as a;
+
+.edit-client-dialog {
+  &__form {
+    display: grid;
+    gap: a.space(5);
+  }
+}

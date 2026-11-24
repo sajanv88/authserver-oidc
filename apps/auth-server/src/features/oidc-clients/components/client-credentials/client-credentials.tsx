@@ -1,53 +1,15 @@
 "use client";
 
 import { CopyIcon } from "@nuvui/icons";
-import { Alert, AlertDescription, AlertTitle, Button, toast } from "@nuvui/react";
+import { Alert, AlertDescription, AlertTitle, Button } from "@nuvui/react";
 import { useRef } from "react";
 import type { ClientCredentials as Credentials } from "../../types";
+import { copyWithToast } from "../copy-text";
 import "./client-credentials.scss";
-
-function selectContents(element: HTMLElement): Selection | null {
-  const selection = window.getSelection();
-  if (!selection) return null;
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  selection.removeAllRanges();
-  selection.addRange(range);
-  return selection;
-}
-
-/**
- * Copies `text`, shown in `element`. The Clipboard API exists only in a secure context (HTTPS
- * or localhost), and local development runs on http://*.localtest.me, so there the text is
- * selected and copied with the older copy command. Left selected if that fails too.
- */
-async function copyText(text: string, element: HTMLElement | null): Promise<boolean> {
-  if (window.isSecureContext && navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  const selection = element ? selectContents(element) : null;
-  if (!selection) return false;
-  const copied = document.execCommand("copy");
-  if (copied) selection.removeAllRanges();
-  return copied;
-}
 
 function CopyableValue({ value, label }: { value: string; label: string }) {
   const codeRef = useRef<HTMLElement>(null);
-  async function copy() {
-    if (await copyText(value, codeRef.current)) {
-      toast(`${label} copied`, { intent: "success" });
-    } else {
-      toast(`Couldn't copy. Select the ${label.toLowerCase()} and copy it yourself.`, {
-        intent: "warning",
-      });
-    }
-  }
+  const copy = () => copyWithToast(value, label, codeRef.current);
   return (
     <>
       <code ref={codeRef} className="client-credentials__code">

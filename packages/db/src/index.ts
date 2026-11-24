@@ -7,6 +7,7 @@ export { type Db, db } from "./client";
 export type { Executor } from "./executor";
 export { getSignInMethods, type SignInMethods } from "./queries/accounts";
 export {
+  countOAuthClients,
   findOAuthClientsByName,
   getOAuthClientPublicInfo,
   listOAuthClients,

@@ -148,9 +148,9 @@ config:
   # The product's name on every page, in titles, emails and authenticator apps (one line, up
   # to 50 characters). Empty for "Auth Server".
   APP_NAME: ""
-  # Your logo instead of the shield, on every page (32 px, 28 px in the top bar): a full https URL; a square
-  # image looks best. Empty, or an image that fails to load, shows the shield. Its origin is
-  # allowed in the CSP.
+  # Your logo instead of the shield, on every page (32 px, 28 px in the top bar) and as the
+  # browser tab's icon: a full https URL; a square image looks best. Empty, or an image that
+  # fails to load, shows the shield. Its origin is allowed in the CSP.
   LOGO_URL: ""
   # Connections per pod; replicas × this must stay under the database's limit.
   DATABASE_POOL_MAX: "10"

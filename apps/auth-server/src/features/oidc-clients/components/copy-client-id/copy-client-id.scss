@@ -1,0 +1,26 @@
+@use "abstracts" as a;
+
+.copy-client-id {
+  display: flex;
+  gap: a.space(1);
+  align-items: center;
+
+  // One line, cut short: the start is enough to tell clients apart, the button copies it all,
+  // and the whole ID is still the text (selection, screen readers).
+  &__code {
+    min-inline-size: 0;
+    max-inline-size: 12ch;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Only an icon: square, as tall as it's wide.
+  &__button {
+    --nuv-button-padding-inline: 0;
+
+    flex-shrink: 0;
+  }
+}

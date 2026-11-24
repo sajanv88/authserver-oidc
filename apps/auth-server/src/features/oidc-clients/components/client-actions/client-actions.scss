@@ -1,10 +1,8 @@
-@use "abstracts" as a;
-
 .client-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: a.space(2);
-  justify-content: flex-end;
+  // Only an icon: square, as tall as it's wide.
+  &__trigger {
+    --nuv-button-padding-inline: 0;
+  }
 
   &__problem {
     margin: 0;

@@ -6,10 +6,18 @@
     font-weight: var(--font-weight-medium);
   }
 
+  // One line each, cut short; the edit dialog shows them whole.
   &__code {
+    max-inline-size: 32ch;
+    overflow: hidden;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
-    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__date {
+    white-space: nowrap;
   }
 
   &__uris {

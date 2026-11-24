@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { DataTable } from "playwright-bdd";
 import { APP_URL, AUTH_URL, adminCredentials } from "../support/env";
 import { createAccount } from "../support/people";
-import { expectSignedIn, field, openDialog, submitSignIn } from "../support/ui";
+import { expectSignedIn, field, openDialog, openDialogFromMenu, submitSignIn } from "../support/ui";
 import { Given, me, Then, When, type World } from "./fixtures";
 
 type Client = NonNullable<World["client"]>;
@@ -15,6 +15,11 @@ function clientOf(world: World): Client {
 
 function clientRow(page: Page, client: Client): Locator {
   return page.getByRole("row").filter({ hasText: client.clientId });
+}
+
+/** The button that opens a row's menu: Edit, Rotate secret, Delete. */
+function actionsOf(page: Page, client: Client): Locator {
+  return clientRow(page, client).getByRole("button", { name: `Actions for ${client.name}` });
 }
 
 /** The values in the credentials list of a dialog: client ID, then the secret if any. */
@@ -91,20 +96,14 @@ When("I close the dialog", async ({ page }) => {
 When("I rotate its secret", async ({ page, world }) => {
   const client = clientOf(world);
   const confirm = page.getByRole("alertdialog");
-  await openDialog(
-    clientRow(page, client).getByRole("button", { name: `Rotate the secret of ${client.name}` }),
-    confirm,
-  );
+  await openDialogFromMenu(page, actionsOf(page, client), "Rotate secret", confirm);
   await confirm.getByRole("button", { name: "Rotate secret" }).click();
 });
 
 When("I delete it", async ({ page, world }) => {
   const client = clientOf(world);
   const confirm = page.getByRole("alertdialog");
-  await openDialog(
-    clientRow(page, client).getByRole("button", { name: `Delete ${client.name}` }),
-    confirm,
-  );
+  await openDialogFromMenu(page, actionsOf(page, client), "Delete", confirm);
   await confirm.getByRole("button", { name: "Delete client" }).click();
   // Exact: the toast's live region repeats it as "Notification …".
   await expect(page.getByText(`${client.name} was deleted`, { exact: true })).toBeVisible();
