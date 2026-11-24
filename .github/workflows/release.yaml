@@ -2,6 +2,7 @@
 # publishes the Helm chart to GHCR as OCI, and creates the GitHub Release.
 #
 # Ritual: merge to main → wait for main.yaml to go green → git tag vX.Y.Z && git push origin vX.Y.Z
+# (a merge that changed only what isn't in the image starts no main.yaml run: tag it as it is).
 name: Release
 
 on:
@@ -54,13 +55,42 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Retag the image built by main.yaml
+      - name: Find the image for this commit
+        id: source
         run: |
-          source_ref="${IMAGE}:sha-${GITHUB_SHA::7}"
-          if ! docker buildx imagetools inspect "${source_ref}" > /dev/null 2>&1; then
-            echo "::error::${source_ref} doesn't exist. Let main.yaml finish for ${GITHUB_SHA::7}, then re-run this workflow. Nothing is rebuilt here."
-            exit 1
-          fi
+          # What main.yaml's paths-ignore leaves out of the image; keep the two alike.
+          in_image() {
+            case "$1" in
+              apps/landing/* | apps/example-client/* | apps/tests/* | *.md |                 .github/workflows/pages.yaml | .github/workflows/e2e.yaml) return 1 ;;
+              *) return 0 ;;
+            esac
+          }
+          # This commit's image, or else the nearest one before it on main, if nothing that goes
+          # into the image has changed since (main.yaml skipped the commits in between).
+          for commit in $(git rev-list --first-parent --max-count=50 "${GITHUB_SHA}"); do
+            if ! docker buildx imagetools inspect "${IMAGE}:sha-${commit::7}" > /dev/null 2>&1; then
+              continue
+            fi
+            while read -r path; do
+              if [[ -n "${path}" ]] && in_image "${path}"; then
+                echo "::error::${path} changed after ${commit::7}, the last commit with an image, so ${GITHUB_SHA::7} needs its own. Let main.yaml finish for it, then re-run this workflow. Nothing is rebuilt here."
+                exit 1
+              fi
+            done <<< "$(git diff --name-only "${commit}" "${GITHUB_SHA}")"
+            if [[ "${commit}" != "${GITHUB_SHA}" ]]; then
+              echo "::notice::${GITHUB_SHA::7} changed nothing in the image since ${commit::7}: releasing that commit's image."
+            fi
+            echo "ref=${IMAGE}:sha-${commit::7}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          done
+          echo "::error::No image for ${GITHUB_SHA::7} or the 50 commits before it on main. Let main.yaml finish, then re-run this workflow."
+          exit 1
+
+      - name: Retag the image built by main.yaml
+        env:
+          SOURCE_REF: ${{ steps.source.outputs.ref }}
+        run: |
+          source_ref="${SOURCE_REF}"
           # Manifest-level copy: keeps both architectures, the provenance and the SBOM.
           docker buildx imagetools create \
             --tag "${IMAGE}:${GITHUB_REF_NAME}" \

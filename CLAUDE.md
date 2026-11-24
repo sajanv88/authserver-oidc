@@ -88,13 +88,13 @@ charts/auth-server/          Helm chart, one per app
 ## Delivery
 
 PR → `pr.yaml` checks (Biome, stylelint, typecheck, build, Docker build + health check, helm lint + kubeconform). Nothing is published.
-Merge to `main` → `main.yaml` builds the image once (amd64 + arm64) and pushes `ghcr.io/sajanv88/auth-server:sha-<short-sha>` and `:main`.
-Tag `vX.Y.Z` → `release.yaml` retags that commit's image as `:vX.Y.Z` and `:latest` (no rebuild), pushes the chart to `oci://ghcr.io/sajanv88/charts/auth-server` at `X.Y.Z`, and creates the GitHub Release.
+Merge to `main` → `main.yaml` builds the image once (amd64 + arm64) and pushes `ghcr.io/sajanv88/auth-server:sha-<short-sha>` and `:main`, unless the push changed only what isn't in the image (its `paths-ignore`: `apps/landing`, `apps/example-client`, `apps/tests`, `pages.yaml`, `e2e.yaml`, Markdown); `workflow_dispatch` builds main's head by hand.
+Tag `vX.Y.Z` → `release.yaml` retags that commit's image as `:vX.Y.Z` and `:latest` (no rebuild; for a commit `main.yaml` skipped, the nearest earlier image on main, and only if nothing in the image changed since: `in_image()` mirrors the `paths-ignore`), pushes the chart to `oci://ghcr.io/sajanv88/charts/auth-server` at `X.Y.Z`, and creates the GitHub Release.
 Argo CD syncs the chart from the OCI registry (production) or from `charts/auth-server` in git.
 
 Deploying: the chart's ConfigMap carries every non-secret setting the app validates at startup (`BETTER_AUTH_URL`, `COOKIE_DOMAIN`, `TRUSTED_ORIGINS`, `TRUSTED_PROXIES` = the ingress pods, `EMAIL_*`, `SMTP_HOST/PORT/USER`, `TURNSTILE_SITE_KEY`, the sign-in providers' client IDs, `MICROSOFT_TENANT_ID`, `SSO_NAME`, `SSO_DISCOVERY_URL`, `OAUTH_RESOURCES`, `OAUTH_API_SCOPES`, `APP_NAME`, `LOGO_URL`, and `OTEL_*`); one existing Secret named by `existingSecret` holds `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD`, plus `TURNSTILE_SECRET_KEY` when Turnstile is on and each configured provider's `*_CLIENT_SECRET` (the chart never creates it; rendering fails without the name). The migrate Job reads only `DATABASE_URL` from it.
 
-Release ritual: merge to main → wait for `main.yaml` to go green → `git tag vX.Y.Z && git push origin vX.Y.Z`. Never edit `version`/`appVersion` in `Chart.yaml`; the release sets them.
+Release ritual: merge to main → wait for `main.yaml` to go green (a merge it skipped can be tagged at once) → `git tag vX.Y.Z && git push origin vX.Y.Z`. Never edit `version`/`appVersion` in `Chart.yaml`; the release sets them.
 
 ## Which skill applies
 

@@ -1,10 +1,23 @@
 # Builds the image once per commit on main and pushes it to GHCR as sha-<short-sha> and main.
 # Never `latest`: that tag belongs to releases. The chart is published only by release.yaml.
+#
+# A push that changes only what isn't in the image (the landing page, the example client, the
+# end-to-end tests, their workflows, Markdown) builds nothing: release.yaml then releases the
+# image of the last commit that was built. Keep paths-ignore and release.yaml's in_image() alike.
 name: Main
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - apps/landing/**
+      - apps/example-client/**
+      - apps/tests/**
+      - .github/workflows/pages.yaml
+      - .github/workflows/e2e.yaml
+      - "**.md"
+  # Builds the image for main's head by hand, for a commit that skipped it.
+  workflow_dispatch:
 
 permissions:
   contents: read
