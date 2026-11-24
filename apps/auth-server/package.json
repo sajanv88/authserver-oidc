@@ -23,6 +23,7 @@
     "@nuvui/table": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/api-logs": "catalog:",
+    "@opentelemetry/exporter-metrics-otlp-proto": "catalog:",
     "@opentelemetry/instrumentation": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-logs": "catalog:",
