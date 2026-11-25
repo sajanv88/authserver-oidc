@@ -9,8 +9,8 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@nuvui/react";
-import type { DeviceKind, SessionRow } from "../../types";
-import { RevokeSessionButton } from "./session-actions";
+import type { ReactNode } from "react";
+import type { DeviceKind, SessionRow } from "@/shared/auth/devices";
 import "./session-list.scss";
 
 const ICONS: Record<DeviceKind, typeof LaptopIcon> = {
@@ -30,18 +30,26 @@ function At({ iso }: { iso: string }) {
   return <time dateTime={iso}>{when.format(new Date(iso))} UTC</time>;
 }
 
+/**
+ * Where an account is signed in: a row per session, with the device, the address and when.
+ * `actionFor` puts something at the end of a row (My profile's "Sign out"); the row's title
+ * has the id it's given, to name that control.
+ */
 export function SessionList({
   sessions,
   labelledBy,
+  actionFor,
 }: {
   sessions: SessionRow[];
   labelledBy: string;
+  actionFor?: ((session: SessionRow, titleId: string) => ReactNode) | undefined;
 }) {
   return (
     <ItemGroup variant="outline" aria-labelledby={labelledBy}>
       {sessions.map((session) => {
         const Icon = ICONS[session.device.kind];
         const titleId = `session-${session.id}`;
+        const action = actionFor?.(session, titleId);
         return (
           <Item key={session.id}>
             <ItemMedia variant="icon">
@@ -62,15 +70,7 @@ export function SessionList({
                 <At iso={session.lastActiveAt} />
               </ItemDescription>
             </ItemContent>
-            {session.current ? null : (
-              <ItemActions>
-                <RevokeSessionButton
-                  sessionId={session.id}
-                  label={session.device.label}
-                  labelledBy={titleId}
-                />
-              </ItemActions>
-            )}
+            {action ? <ItemActions>{action}</ItemActions> : null}
           </Item>
         );
       })}

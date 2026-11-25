@@ -5,14 +5,13 @@ import {
   type Executor,
   getSessionToken,
   listActiveSessions,
-  type SessionSummary,
 } from "@repo/db";
 import { SECURITY_PAGES } from "@/shared/auth/account-pages";
 import type { Auth } from "@/shared/auth/auth-config";
+import { toSessionRow } from "@/shared/auth/devices";
 import { requireSession } from "@/shared/auth/session";
 import { pageOffset, pageWindow } from "@/shared/validation/paging";
-import type { SessionProblem, SessionRow, SessionsPage } from "../types";
-import { describeDevice } from "./user-agent";
+import type { SessionProblem, SessionsPage } from "../types";
 
 // The account's sessions. Listing reads the database directly (Better Auth's list-sessions
 // only answers for sessions less than a day old); revoking goes through Better Auth, which
@@ -20,17 +19,6 @@ import { describeDevice } from "./user-agent";
 
 /** Sessions on one page of the list. */
 export const SESSIONS_PER_PAGE = 10;
-
-export function toSessionRow(session: SessionSummary, currentId: string): SessionRow {
-  return {
-    id: session.id,
-    device: describeDevice(session.userAgent),
-    ipAddress: session.ipAddress,
-    signedInAt: session.createdAt.toISOString(),
-    lastActiveAt: session.updatedAt.toISOString(),
-    current: session.id === currentId,
-  };
-}
 
 /**
  * One page of the signed-in user's sessions: this one first, then the most recently used. A

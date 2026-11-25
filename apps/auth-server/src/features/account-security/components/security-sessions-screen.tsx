@@ -10,12 +10,12 @@ import { redirect } from "next/navigation";
 import * as v from "valibot";
 import { SECURITY_PAGES } from "@/shared/auth/account-pages";
 import { ListPagination } from "@/shared/ui/list-pagination/list-pagination";
+import { SessionList } from "@/shared/ui/session-list/session-list";
 import { PageNumberSchema } from "@/shared/validation/paging";
 import { listSessionsForAccount } from "../server/sessions";
 import type { AccountUser } from "../types";
 import { SecurityLayout } from "./security-layout/security-layout";
-import { SignOutEverywhereButton } from "./session-list/session-actions";
-import { SessionList } from "./session-list/session-list";
+import { RevokeSessionButton, SignOutEverywhereButton } from "./session-list/session-actions";
 
 /** The address of a page of the session list; page 1 is the list's own. */
 function sessionsPageHref(page: number) {
@@ -52,7 +52,19 @@ export async function SecuritySessionsScreen({
           </CardAction>
         </CardHeader>
         <CardContent>
-          <SessionList sessions={sessions} labelledBy="sessions-heading" />
+          <SessionList
+            sessions={sessions}
+            labelledBy="sessions-heading"
+            actionFor={(session, titleId) =>
+              session.current ? null : (
+                <RevokeSessionButton
+                  sessionId={session.id}
+                  label={session.device.label}
+                  labelledBy={titleId}
+                />
+              )
+            }
+          />
           {pages.pageCount > 1 ? (
             <ListPagination {...pages} things="sessions" hrefFor={sessionsPageHref} />
           ) : null}
