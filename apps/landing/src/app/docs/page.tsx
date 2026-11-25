@@ -40,6 +40,7 @@ const contents: TableOfContentsItem[] = [
   { id: "security-defaults", title: "On by default", depth: 2 },
   { id: "security-yours", title: "Yours to set", depth: 2 },
   { id: "security-users", title: "What your users get", depth: 2 },
+  { id: "security-admins", title: "Managing people", depth: 2 },
   { id: "email", title: "Email over SMTP" },
   { id: "email-tls", title: "Encrypted, always", depth: 2 },
   { id: "image", title: "The production image" },
