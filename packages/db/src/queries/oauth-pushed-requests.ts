@@ -12,20 +12,26 @@ export type NewPushedRequest = {
   expiresAt: Date;
 };
 
+/** Drops the requests that expired unused: done on every push and every use. */
+async function dropExpired(db: Executor, now: Date): Promise<void> {
+  await db.delete(oauthPushedRequests).where(lte(oauthPushedRequests.expiresAt, now));
+}
+
 /** Stores a pushed request, and drops the ones that expired unused. */
 export async function createPushedRequest(
   db: Executor,
   request: NewPushedRequest,
   now: Date = new Date(),
 ): Promise<void> {
-  await db.delete(oauthPushedRequests).where(lte(oauthPushedRequests.expiresAt, now));
+  await dropExpired(db, now);
   await db.insert(oauthPushedRequests).values(request);
 }
 
 /**
  * The parameters pushed under this request_uri, if `clientId` pushed them and they haven't
  * expired, deleted in the same statement so they're used once. A request_uri sent with another
- * client's id is left alone: it's refused, and doesn't spend the real client's request.
+ * client's id is left alone: it's refused, and doesn't spend the real client's request. The
+ * ones that expired unused are dropped too, so none outlive their minute for long.
  */
 export async function consumePushedRequest(
   db: Executor,
@@ -42,5 +48,6 @@ export async function consumePushedRequest(
       ),
     )
     .returning({ parameters: oauthPushedRequests.parameters });
+  await dropExpired(db, now);
   return row?.parameters;
 }

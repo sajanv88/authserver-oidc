@@ -38,15 +38,22 @@ describe("pushed authorization requests", () => {
     );
   });
 
-  it("doesn't hand back an expired request, and drops it on the next push", async () => {
+  it("doesn't hand back an expired request, and drops it on the next push or use", async () => {
     await createPushedRequest(
       db,
       { requestUriHash: "h2", clientId: "app", parameters, expiresAt: seconds(60) },
       now,
     );
+    await createPushedRequest(
+      db,
+      { requestUriHash: "h2b", clientId: "app", parameters, expiresAt: seconds(30) },
+      now,
+    );
     expect(
       await consumePushedRequest(db, { requestUriHash: "h2", clientId: "app" }, seconds(61)),
     ).toBe(undefined);
+    // That use swept both expired rows, the one it asked for and the other.
+    expect(await db.select().from(oauthPushedRequests)).toEqual([]);
     await createPushedRequest(
       db,
       { requestUriHash: "h3", clientId: "app", parameters, expiresAt: seconds(200) },
