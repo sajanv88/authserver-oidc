@@ -1,5 +1,6 @@
 import {
   type Executor,
+  findOAuthClientsByName,
   getUserSecurityByEmail,
   listOAuthClients,
   updateUserAccess,
@@ -14,12 +15,14 @@ import { oidcClientDefaults } from "@/shared/auth/oidc-client-defaults";
 
 export type SeedInput = {
   admin: { email: string; password: string; name: string };
-  client: { name: string; redirectUri: string };
+  /** `postLogoutRedirectUri`: where the example returns after signing out here too. */
+  client: { name: string; redirectUri: string; postLogoutRedirectUri: string };
 };
 
 export type SeedResult = {
   admin: { email: string; status: "created" | "existing" };
-  client: { clientId: string; status: "created" | "existing" };
+  /** "updated": it existed without the post-logout address, which was added. */
+  client: { clientId: string; status: "created" | "existing" | "updated" };
 };
 
 /** A problem the person running the seed can fix; its message says how. */
@@ -66,9 +69,30 @@ export async function seed(auth: Auth, database: Executor, input: SeedInput): Pr
         client.name === input.client.name && client.redirectUris.includes(input.client.redirectUri),
     );
     if (existing) {
+      // Seeded before the example signed out here too: add its post-logout address.
+      const registration = (await findOAuthClientsByName(database, input.client.name)).find(
+        (client) => client.clientId === existing.clientId,
+      );
+      const afterLogout = registration?.postLogoutRedirectUris ?? [];
+      if (afterLogout.includes(input.client.postLogoutRedirectUri)) {
+        return {
+          admin: { email, status: adminStatus },
+          client: { clientId: existing.clientId, status: "existing" },
+        };
+      }
+      await auth.api.adminUpdateOAuthClient({
+        headers: session,
+        body: {
+          client_id: existing.clientId,
+          update: {
+            enable_end_session: true,
+            post_logout_redirect_uris: [...afterLogout, input.client.postLogoutRedirectUri],
+          },
+        },
+      });
       return {
         admin: { email, status: adminStatus },
-        client: { clientId: existing.clientId, status: "existing" },
+        client: { clientId: existing.clientId, status: "updated" },
       };
     }
     const client = await auth.api.adminCreateOAuthClient({
@@ -77,6 +101,7 @@ export async function seed(auth: Auth, database: Executor, input: SeedInput): Pr
         ...oidcClientDefaults(),
         client_name: input.client.name,
         redirect_uris: [input.client.redirectUri],
+        post_logout_redirect_uris: [input.client.postLogoutRedirectUri],
         // Public, like the example: PKCE only, no secret to keep.
         token_endpoint_auth_method: "none",
       },

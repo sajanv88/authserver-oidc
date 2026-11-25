@@ -5,7 +5,9 @@ type GrantType = "authorization_code" | "client_credentials" | "refresh_token";
 /**
  * What every app that signs people in is registered with, whoever registers it (the admin
  * screen, the seed, the provisioning script): the code flow with PKCE required, refresh
- * tokens, and the OpenID Connect scopes plus any API scopes it was given.
+ * tokens, the OpenID Connect scopes plus any API scopes it was given, and RP-initiated logout:
+ * the app may send someone to the end-session endpoint to sign out here too, and its ID
+ * tokens carry the `sid` that request names. Without it the plugin refuses that request.
  */
 export function oidcClientDefaults(apiScopes: readonly string[] = []) {
   const grantTypes: GrantType[] = ["authorization_code", "refresh_token"];
@@ -14,6 +16,7 @@ export function oidcClientDefaults(apiScopes: readonly string[] = []) {
     grant_types: grantTypes,
     response_types: responseTypes,
     require_pkce: true,
+    enable_end_session: true,
     scope: [...OIDC_SCOPES, ...apiScopes].join(" "),
   };
 }

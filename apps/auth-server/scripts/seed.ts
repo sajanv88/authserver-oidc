@@ -27,16 +27,20 @@ async function main(): Promise<void> {
   const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase() || "admin@localtest.me";
   const appUrl = process.env.EXAMPLE_APP_URL?.trim() || "http://app.localtest.me:3001";
   const redirectUri = `${new URL(appUrl).origin}/oidc/callback`;
+  // The example's home page: where it comes back to after signing out here too.
+  const postLogoutRedirectUri = `${new URL(appUrl).origin}/`;
 
   // No emails from the seed: the admin is confirmed directly.
   const auth = createAuth({ env: parsed.env, database: db, sendEmail: () => undefined });
   const result = await seed(auth, db, {
     admin: { email, password, name: "Admin" },
-    client: { name: "Example app", redirectUri },
+    client: { name: "Example app", redirectUri, postLogoutRedirectUri },
   });
 
   say(`Admin ${result.admin.email}: ${result.admin.status} (verified, role admin).`);
-  say(`Example app client: ${result.client.status}. Redirect URI ${redirectUri}`);
+  say(
+    `Example app client: ${result.client.status}. Redirect URI ${redirectUri}, after sign-out ${postLogoutRedirectUri}`,
+  );
   say(`For apps/example-client, put this in .env:\n  EXAMPLE_CLIENT_ID=${result.client.clientId}`);
 }
 

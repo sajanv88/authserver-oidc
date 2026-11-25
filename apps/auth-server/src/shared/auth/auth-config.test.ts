@@ -1017,3 +1017,149 @@ describe("pushed authorization requests (RFC 9126)", () => {
     expect(await json(response)).toMatchObject({ error });
   });
 });
+
+describe("RP-initiated logout (the end-session endpoint)", () => {
+  const ip = "203.0.113.80";
+  const afterLogout = `${APP_ORIGIN}/`;
+  let h: Harness;
+  let adminHeaders: Headers;
+  let app: { client_id: string };
+  let noLogout: { client_id: string };
+
+  beforeAll(async () => {
+    h = await createHarness();
+    const admin = await verifiedUser(h, "logout-admin@example.com", ip);
+    await h.sql("update users set role = 'admin' where email = $1", ["logout-admin@example.com"]);
+    adminHeaders = cookieHeaders(admin.jar);
+    // As the admin screen and the seed make them: the defaults turn the endpoint on.
+    app = await h.auth.api.adminCreateOAuthClient({
+      headers: adminHeaders,
+      body: {
+        ...oidcClientDefaults(),
+        client_name: "Logout app",
+        redirect_uris: [redirectUri],
+        post_logout_redirect_uris: [afterLogout],
+        token_endpoint_auth_method: "none",
+        skip_consent: true,
+      },
+    });
+    noLogout = await h.auth.api.adminCreateOAuthClient({
+      headers: adminHeaders,
+      body: {
+        ...oidcClientDefaults(),
+        enable_end_session: false,
+        client_name: "No logout",
+        redirect_uris: [redirectUri],
+        token_endpoint_auth_method: "none",
+        skip_consent: true,
+      },
+    });
+  });
+
+  let people = 0;
+
+  /** Signs a new person in to `clientId`; their browser and the ID token the app gets. */
+  async function signedInToApp(clientId: string, email: string) {
+    // Each from their own address: sign-up is rate limited per client IP.
+    people += 1;
+    const browser = await verifiedUser(h, email, `198.51.100.${100 + people}`);
+    const verifier = randomBytes(32).toString("base64url");
+    const authorize = await browser.request(
+      "GET",
+      `/api/auth/oauth2/authorize?${authorizeQuery(clientId, { verifier })}`,
+    );
+    const code = new URL(authorize.headers.get("location") ?? "", BASE_URL).searchParams.get(
+      "code",
+    );
+    expect(code).toBeTruthy();
+    const token = await browser.request("POST", "/api/auth/oauth2/token", {
+      form: {
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code: code ?? "",
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      },
+    });
+    expect(token.status).toBe(200);
+    return { browser, idToken: String((await json(token)).id_token) };
+  }
+
+  /** The app sends the browser to the end-session endpoint: a top-level navigation. */
+  function endSession(
+    browser: ReturnType<Harness["browser"]>,
+    params: Record<string, string>,
+  ): Promise<Response> {
+    return browser.request("GET", `/api/auth/oauth2/end-session?${new URLSearchParams(params)}`, {
+      headers: { accept: "text/html", "sec-fetch-mode": "navigate" },
+    });
+  }
+
+  async function signedIn(browser: ReturnType<Harness["browser"]>): Promise<boolean> {
+    const response = await browser.request("GET", "/api/auth/get-session");
+    return (await response.json()) !== null;
+  }
+
+  it("is advertised in discovery", async () => {
+    const config = await h.auth.api.getOpenIdConfig();
+    expect(config.end_session_endpoint).toBe(`${BASE_URL}/api/auth/oauth2/end-session`);
+  });
+
+  it("puts the session id in the ID token, for the hint", async () => {
+    const { idToken } = await signedInToApp(app.client_id, "logout-sid@example.com");
+    const jwks = await json(await h.browser(ip).request("GET", "/api/auth/jwks"));
+    const { payload } = await jwtVerify(
+      idToken,
+      createLocalJWKSet(jwks as unknown as Parameters<typeof createLocalJWKSet>[0]),
+      { issuer: BASE_URL, audience: app.client_id },
+    );
+    expect(payload.sid).toEqual(expect.any(String));
+  });
+
+  it("ends the session here and returns to the app's registered address, with its state", async () => {
+    const { browser, idToken } = await signedInToApp(app.client_id, "logout-ok@example.com");
+    expect(await signedIn(browser)).toBe(true);
+
+    const response = await endSession(browser, {
+      id_token_hint: idToken,
+      post_logout_redirect_uri: afterLogout,
+      state: "back-home",
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(`${afterLogout}?state=back-home`);
+    expect(await signedIn(browser)).toBe(false);
+  });
+
+  it("never returns to an address the app didn't register, but still signs out", async () => {
+    const { browser, idToken } = await signedInToApp(app.client_id, "logout-elsewhere@example.com");
+    const response = await endSession(browser, {
+      id_token_hint: idToken,
+      post_logout_redirect_uri: "https://evil.example/",
+    });
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain(
+      "The requested post-logout redirect was not registered.",
+    );
+    expect(await signedIn(browser)).toBe(false);
+  });
+
+  it("asks first when there's no hint, so another site can't sign people out", async () => {
+    const { browser } = await signedInToApp(app.client_id, "logout-nohint@example.com");
+    const response = await endSession(browser, { client_id: app.client_id });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Confirm logout");
+    expect(await signedIn(browser)).toBe(true);
+  });
+
+  it("refuses an app that isn't allowed to end sessions, and keeps the session", async () => {
+    const { browser, idToken } = await signedInToApp(noLogout.client_id, "logout-no@example.com");
+    const response = await endSession(browser, {
+      id_token_hint: idToken,
+      post_logout_redirect_uri: afterLogout,
+    });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("location")).toBeNull();
+    expect(await signedIn(browser)).toBe(true);
+  });
+});
