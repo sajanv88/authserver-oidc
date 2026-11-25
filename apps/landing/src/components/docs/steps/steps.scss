@@ -1,0 +1,58 @@
+@use "abstracts" as a;
+
+// Each step's number in a circle, with a line down to the next one.
+.steps {
+  display: grid;
+  gap: a.space(6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+
+  &__step {
+    position: relative;
+    display: grid;
+    gap: a.space(3);
+    padding-inline-start: a.space(12);
+    counter-increment: step;
+  }
+
+  &__step::before {
+    content: counter(step);
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    display: grid;
+    place-items: center;
+    inline-size: a.space(8);
+    block-size: a.space(8);
+    border: var(--nuv-border-width) solid var(--color-border);
+    border-radius: var(--radius-full);
+    background-color: var(--color-muted);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    inset-block: a.space(10) calc(-1 * #{a.space(4)});
+    inset-inline-start: a.space(4);
+    border-inline-start: var(--nuv-border-width) solid var(--color-border);
+  }
+
+  &__title {
+    margin: 0;
+    padding-block-start: a.space(1);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__body {
+    display: grid;
+    gap: a.space(3);
+    min-inline-size: 0;
+  }
+}

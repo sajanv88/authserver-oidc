@@ -1,0 +1,14 @@
+// A word of code in a sentence.
+.inline-code {
+  padding: 0.1em 0.35em;
+  border: var(--nuv-border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+.data-table {
+  font-size: var(--text-sm);
+}
