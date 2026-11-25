@@ -54,6 +54,12 @@ export type BackupCodesState =
   | ({ status: "password" } & PasswordAttempt)
   | { status: "done"; attempt: number; backupCodes: string[] };
 
+/** Going on with an app's sign-in once required two-factor is on. */
+export type ContinueSignInState =
+  | { status: "ready"; attempt: number; notYet?: boolean | undefined }
+  /** On to the app's redirect URI, on another site. */
+  | { status: "leaving"; attempt: number; url: string };
+
 /** Turning two-factor off, after the password. */
 export type DisableState =
   | ({ status: "password" } & PasswordAttempt)

@@ -16,7 +16,7 @@ import "./security-password-screen.scss";
 
 /** /account/security: the password, and the providers linked to the account. */
 export async function SecurityPasswordScreen({ user }: { user: AccountUser }) {
-  const methods = await signInMethodsForAccount();
+  const methods = await signInMethodsForAccount("password");
   const others = new Intl.ListFormat("en", { type: "conjunction" }).format(methods.providers);
   return (
     <SecurityLayout user={user} active="password">
