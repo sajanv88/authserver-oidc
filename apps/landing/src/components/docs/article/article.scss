@@ -1,0 +1,132 @@
+@use "abstracts" as a;
+
+// One column on a phone. From lg, the guide and the list of its headings beside it.
+.article {
+  display: grid;
+  gap: a.space(10);
+  max-inline-size: var(--app-content-max-width);
+  margin-inline: auto;
+  padding: a.space(10) a.space(4) a.space(20);
+  color: var(--color-foreground);
+
+  @include a.breakpoint("lg") {
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: a.space(16);
+    padding: a.space(16) a.space(8) a.space(24);
+  }
+
+  &__main {
+    display: grid;
+    gap: a.space(14);
+    align-content: start;
+    min-inline-size: 0;
+    max-inline-size: 48rem;
+  }
+
+  &__head {
+    display: grid;
+    gap: a.space(3);
+  }
+
+  &__kicker {
+    margin: 0;
+    color: var(--color-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  &__lead {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    text-wrap: pretty;
+  }
+
+  // The list behind a button is for a narrow screen only.
+  &__drawer {
+    @include a.breakpoint("lg") {
+      display: none;
+    }
+  }
+
+  &__toggle {
+    justify-content: space-between;
+    inline-size: 100%;
+  }
+
+  &__contents {
+    padding-block-start: a.space(3);
+  }
+
+  // A part: its heading, then paragraphs, steps, code and pictures, evenly spaced.
+  &__section {
+    display: grid;
+    gap: a.space(5);
+    min-inline-size: 0;
+    line-height: var(--leading-relaxed);
+  }
+
+  &__heading {
+    margin: 0;
+    padding-block-start: a.space(6);
+    border-block-start: var(--nuv-border-width) solid var(--color-border);
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 1.875rem);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+    scroll-margin-block-start: var(--app-scroll-offset);
+  }
+
+  &__subheading {
+    margin: a.space(2) 0 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-snug);
+    scroll-margin-block-start: var(--app-scroll-offset);
+  }
+
+  &__text {
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  &__list {
+    display: grid;
+    gap: a.space(2);
+    margin: 0;
+    padding-inline-start: a.space(5);
+  }
+
+  // The list beside the guide, which stays in view while the guide scrolls.
+  &__side {
+    display: none;
+
+    @include a.breakpoint("lg") {
+      position: sticky;
+      inset-block-start: calc(var(--app-scroll-offset) + #{a.space(2)});
+      display: grid;
+      gap: a.space(3);
+      align-content: start;
+      align-self: start;
+      max-block-size: calc(100dvh - var(--app-scroll-offset) - #{a.space(8)});
+      overflow-y: auto;
+    }
+  }
+
+  &__label {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+}

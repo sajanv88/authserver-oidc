@@ -1,0 +1,22 @@
+@use "abstracts" as a;
+
+.shot {
+  display: grid;
+  gap: a.space(2);
+  margin: 0;
+
+  &--narrow {
+    max-inline-size: 32rem;
+  }
+
+  &__zoom {
+    border: var(--nuv-border-width) solid var(--color-border);
+    background-color: var(--color-surface);
+  }
+
+  &__caption {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+}
