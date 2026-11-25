@@ -15,6 +15,7 @@ export type AuthFlow =
   | "auth.password_reset.complete"
   | "auth.magic_link.request"
   | "auth.two_factor.verify"
+  | "auth.two_factor.continue"
   | "auth.social.start"
   | "auth.consent"
   | "auth.consent.switch_account"
@@ -29,7 +30,14 @@ export type AuthFlow =
   | "admin.client.create"
   | "admin.client.rotate_secret"
   | "admin.client.update"
-  | "admin.client.delete";
+  | "admin.client.delete"
+  | "admin.user.disable"
+  | "admin.user.enable"
+  | "admin.user.sign_out"
+  | "admin.user.role"
+  | "admin.user.two_factor.require"
+  | "admin.user.two_factor.reset"
+  | "admin.user.delete";
 
 /** Outcomes are metric attributes: short fixed words only, never text from a request. */
 const OUTCOME = /^[a-z][a-z0-9_-]{0,39}$/;

@@ -1,0 +1,8 @@
+@use "abstracts" as a;
+
+.disable-dialog {
+  &__form {
+    display: grid;
+    gap: a.space(5);
+  }
+}

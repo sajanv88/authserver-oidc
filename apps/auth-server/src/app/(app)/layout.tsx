@@ -18,7 +18,10 @@ export default async function SignedInLayout({ children }: { children: ReactNode
   const links: ShellLink[] = [
     { href: "/account/security", label: "My profile" },
     ...(session.user.role === "admin"
-      ? [{ href: "/admin/clients", label: "OIDC clients" } satisfies ShellLink]
+      ? ([
+          { href: "/admin/users", label: "Users" },
+          { href: "/admin/clients", label: "OIDC clients" },
+        ] satisfies ShellLink[])
       : []),
   ];
 

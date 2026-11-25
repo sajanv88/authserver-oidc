@@ -1,15 +1,9 @@
-import { Avatar, AvatarFallback, AvatarImage, Badge } from "@nuvui/react";
+import { Badge } from "@nuvui/react";
+import { UserAvatar } from "@/shared/ui/user-avatar/user-avatar";
 import type { AccountUser } from "../../types";
 import "./profile-header.scss";
 
 const joined = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
-
-/** Up to two initials from the name, or the email's first letter when there's no name. */
-export function initialsOf({ name, email }: Pick<AccountUser, "name" | "email">): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? [words[0], words.at(-1)] : [words[0] ?? email];
-  return letters.map((word) => (word ?? "").charAt(0).toUpperCase()).join("");
-}
 
 /**
  * The top of the profile pages: who's signed in, and the facts the tabs below change. The
@@ -32,10 +26,7 @@ export function ProfileHeader({
   return (
     <header className="profile-header">
       <div className="profile-header__who">
-        <Avatar size="lg">
-          {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-          <AvatarFallback aria-hidden="true">{initialsOf(user)}</AvatarFallback>
-        </Avatar>
+        <UserAvatar user={user} size="lg" />
         <div className="profile-header__about">
           <div className="profile-header__heading">
             <h1 className="profile-header__title">{name}</h1>

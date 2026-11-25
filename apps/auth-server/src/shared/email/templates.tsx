@@ -1,5 +1,17 @@
 import type { ReactElement } from "react";
 import { render, toPlainText } from "react-email";
+import AccountDeleted, {
+  type AccountDeletedProps,
+  accountDeletedSubject,
+} from "./emails/account-deleted";
+import AccountDisabled, {
+  type AccountDisabledProps,
+  accountDisabledSubject,
+} from "./emails/account-disabled";
+import AccountEnabled, {
+  type AccountEnabledProps,
+  accountEnabledSubject,
+} from "./emails/account-enabled";
 import ExistingAccount, {
   type ExistingAccountProps,
   existingAccountSubject,
@@ -9,6 +21,10 @@ import ResetPassword, {
   type ResetPasswordProps,
   resetPasswordSubject,
 } from "./emails/reset-password";
+import TwoFactorReset, {
+  type TwoFactorResetProps,
+  twoFactorResetSubject,
+} from "./emails/two-factor-reset";
 import VerifyEmail, { type VerifyEmailProps, verifyEmailSubject } from "./emails/verify-email";
 import type { EmailContent } from "./types";
 
@@ -44,4 +60,20 @@ export function magicLinkTemplate(props: MagicLinkProps): Promise<EmailContent> 
 
 export function existingAccountTemplate(props: ExistingAccountProps): Promise<EmailContent> {
   return renderEmail(existingAccountSubject, props.appName, <ExistingAccount {...props} />);
+}
+
+export function accountDisabledTemplate(props: AccountDisabledProps): Promise<EmailContent> {
+  return renderEmail(accountDisabledSubject, props.appName, <AccountDisabled {...props} />);
+}
+
+export function accountEnabledTemplate(props: AccountEnabledProps): Promise<EmailContent> {
+  return renderEmail(accountEnabledSubject, props.appName, <AccountEnabled {...props} />);
+}
+
+export function twoFactorResetTemplate(props: TwoFactorResetProps): Promise<EmailContent> {
+  return renderEmail(twoFactorResetSubject, props.appName, <TwoFactorReset {...props} />);
+}
+
+export function accountDeletedTemplate(props: AccountDeletedProps): Promise<EmailContent> {
+  return renderEmail(accountDeletedSubject, props.appName, <AccountDeleted {...props} />);
 }

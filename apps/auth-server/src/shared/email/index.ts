@@ -6,9 +6,13 @@ import type { EmailContent, EmailMessage, EmailProvider } from "./types";
 
 export type { Brand } from "./components/email-layout";
 export {
+  accountDeletedTemplate,
+  accountDisabledTemplate,
+  accountEnabledTemplate,
   existingAccountTemplate,
   magicLinkTemplate,
   resetPasswordTemplate,
+  twoFactorResetTemplate,
   verifyEmailTemplate,
 } from "./templates";
 export type { EmailContent, EmailMessage, EmailProvider } from "./types";

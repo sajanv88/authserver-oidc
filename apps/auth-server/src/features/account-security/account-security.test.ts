@@ -4,8 +4,8 @@
 import * as v from "valibot";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createHarness, linkIn } from "@/shared/auth/test-harness";
+import { initialsOf } from "@/shared/ui/user-avatar/user-avatar";
 import { parseForm } from "@/shared/validation/field-errors";
-import { initialsOf } from "./components/profile-header/profile-header";
 import { ChangePasswordSchema, crossFieldErrors, SessionIdSchema } from "./schemas/account";
 import { changePassword } from "./server/password";
 import { revokeSession, signOutEverywhere, toSessionRow } from "./server/sessions";
