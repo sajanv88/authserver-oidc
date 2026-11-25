@@ -1,15 +1,6 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  Item,
-  ItemContent,
-  ItemMedia,
-  Separator,
-  Skeleton,
-  VisuallyHidden,
-} from "@nuvui/react";
+import { Card, CardContent, CardHeader, Separator, Skeleton, VisuallyHidden } from "@nuvui/react";
 import type { ReactNode } from "react";
+import { RowsSkeleton } from "@/shared/ui/list-skeleton/list-skeleton";
 import { UserBreadcrumb } from "../user-header/user-header";
 import "../user-screen.scss";
 import "./user-skeletons.scss";
@@ -17,30 +8,8 @@ import "./user-skeletons.scss";
 // Placeholders in the shape of what's loading, built from the same parts, so nothing jumps when
 // it arrives. The gray boxes are hidden from screen readers; aria-busy and a status say it.
 
-/** Rows shaped like a session list's, or the settings rows. */
-function Rows({ count, label }: { count: number; label?: string | undefined }) {
-  return (
-    <div aria-busy="true" className="user-skeletons__rows">
-      {label ? <VisuallyHidden role="status">{label}</VisuallyHidden> : null}
-      {Array.from({ length: count }, (_, index) => (
-        // Placeholders with nothing to tell apart but their place.
-        // biome-ignore lint/suspicious/noArrayIndexKey: fixed list, never reordered
-        <Item key={index} variant="outline" aria-hidden="true">
-          <ItemMedia>
-            <Skeleton className="user-skeletons__icon" />
-          </ItemMedia>
-          <ItemContent>
-            <Skeleton shape="text" className="user-skeletons__line--title" />
-            <Skeleton shape="text" className="user-skeletons__line--text" />
-          </ItemContent>
-        </Item>
-      ))}
-    </div>
-  );
-}
-
 export function SessionRowsSkeleton() {
-  return <Rows count={3} label="Loading the sessions" />;
+  return <RowsSkeleton count={3} label="Loading the sessions" />;
 }
 
 export function HistorySkeleton() {
@@ -103,10 +72,10 @@ export function UserScreenSkeleton() {
       <div className="user-screen__columns">
         <div className="user-screen__main">
           <CardSkeleton>
-            <Rows count={2} />
+            <RowsSkeleton count={2} />
           </CardSkeleton>
           <CardSkeleton>
-            <Rows count={3} />
+            <RowsSkeleton count={3} />
           </CardSkeleton>
         </div>
         <CardSkeleton>

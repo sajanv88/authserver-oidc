@@ -119,8 +119,8 @@ export function Security() {
       </p>
       <Shot
         src={adminUser}
-        alt="A user's admin page: their name, email, joined and last-active dates, two-factor and status, then cards for Access (Disable, Sign out everywhere), Two-factor authentication (Require two-factor), Role (Make admin) and Delete the account, and the history below."
-        caption="One person's page under Users. Every action asks first, and the history keeps what admins did."
+        alt="Ada Lovelace's admin page: her name, email and status, when she joined and was last active, the devices she's signed in on and her two-factor. Below, where she's signed in (Safari on macOS and Chrome on Android) with Sign out everywhere; Manage the account, with rows for access, two-factor, a lost phone and her role; the danger zone with Delete; and beside them the history of what admins changed."
+        caption="One person's page under Users: where they're signed in, what can be changed, and what admins already did. Every action asks first."
       />
     </Section>
   );

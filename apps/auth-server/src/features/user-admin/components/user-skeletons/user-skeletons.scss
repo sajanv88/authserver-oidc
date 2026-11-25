@@ -2,17 +2,6 @@
 
 // Sizes match what each placeholder stands for, so nothing moves when it arrives.
 .user-skeletons {
-  &__rows {
-    display: grid;
-    gap: a.space(2);
-  }
-
-  // The square ItemMedia draws behind an icon.
-  &__icon {
-    --nuv-skeleton-width: 2.25rem;
-    --nuv-skeleton-height: 2.25rem;
-  }
-
   // A large avatar.
   &__avatar {
     --nuv-skeleton-width: 3.5rem;

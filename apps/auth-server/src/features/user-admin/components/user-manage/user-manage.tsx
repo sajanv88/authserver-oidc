@@ -71,9 +71,7 @@ function twoFactorText(user: UserProfile): string {
       ? "On, and required."
       : "Required, not set up yet: they're sent to set it up.";
   }
-  return user.twoFactor === "on"
-    ? "On, by their choice."
-    : "Off.";
+  return user.twoFactor === "on" ? "On, by their choice." : "Off.";
 }
 
 /** Access, two-factor and role: what an admin changes most. Not shown on their own account. */
@@ -170,7 +168,7 @@ export function UserManage({ user, name }: Props) {
                 />
               }
             >
-              For a lost phone: they set it up again.
+              Reset two-factor, and they set it up again.
             </Row>
           ) : null}
 
@@ -203,9 +201,7 @@ export function UserManage({ user, name }: Props) {
               )
             }
           >
-            {user.role === "admin"
-              ? "An admin."
-              : "A user."}
+            {user.role === "admin" ? "An admin." : "A user."}
           </Row>
         </ItemGroup>
       </CardContent>

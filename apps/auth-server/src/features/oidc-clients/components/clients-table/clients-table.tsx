@@ -14,6 +14,16 @@ import { ClientActions } from "../client-actions/client-actions";
 import { CopyClientId } from "../copy-client-id/copy-client-id";
 import "./clients-table.scss";
 
+/** The table's headings, in order; the loading skeleton shows the same. */
+export const CLIENT_COLUMNS = [
+  "Name",
+  "Client ID",
+  "Kind",
+  "Redirect URIs",
+  "Created",
+  "Actions",
+] as const;
+
 const created = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 
 /** The clients, newest first. */
@@ -24,12 +34,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
         <TableCaption visuallyHidden>OIDC clients, newest first</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Client ID</TableHead>
-            <TableHead>Kind</TableHead>
-            <TableHead>Redirect URIs</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead align="end">Actions</TableHead>
+            {CLIENT_COLUMNS.map((column) => (
+              <TableHead key={column} align={column === "Actions" ? "end" : "start"}>
+                {column}
+              </TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
