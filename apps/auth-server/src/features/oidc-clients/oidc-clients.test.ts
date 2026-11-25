@@ -3,6 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { OAuthClientSummary } from "@repo/db";
 import { beforeAll, describe, expect, it } from "vitest";
+import { allowInsecureRedirectUri } from "@/shared/auth/auth-config";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
 import { CreateClientSchema, redirectUriLines, UpdateClientSchema } from "./schemas/client";
@@ -251,6 +252,36 @@ describe("managing clients", () => {
     ).toEqual({ ok: false, problem: "invalid-redirect-uri" });
   });
 
+  it("takes http:// redirect URIs on this machine while developing, never a LAN address", async () => {
+    for (const uri of [
+      "http://localhost:5173/callback",
+      "http://127.0.0.1:8080/callback",
+      "http://[::1]:3000/callback",
+    ]) {
+      const created = await createClient(h.auth, first, {
+        name: "Dev server",
+        kind: "public",
+        redirectUris: [uri],
+      });
+      expect(created.ok, uri).toBe(true);
+    }
+    expect(
+      await createClient(h.auth, first, {
+        name: "LAN",
+        kind: "public",
+        redirectUris: ["http://192.168.1.5:3000/callback"],
+      }),
+    ).toEqual({ ok: false, problem: "invalid-redirect-uri" });
+  });
+
+  it("says a request without an admin session isn't allowed", async () => {
+    const input = { name: "Signed out", kind: "public" as const, redirectUris: [redirectUri] };
+    expect(await createClient(h.auth, new Headers(), input)).toEqual({
+      ok: false,
+      problem: "not-allowed",
+    });
+  });
+
   it("lets any admin rename a client and change its redirect URIs, keeping its kind", async () => {
     const created = await createClient(h.auth, first, {
       name: "Before",
@@ -354,5 +385,32 @@ describe("managing clients", () => {
       ok: false,
       problem: "not-found",
     });
+  });
+});
+
+describe("http:// redirect URIs", () => {
+  it("are refused in production", () => {
+    expect(allowInsecureRedirectUri({ isProduction: true })).toBeUndefined();
+  });
+
+  it("are allowed while developing on this machine and the demo hosts only", () => {
+    const allowed = allowInsecureRedirectUri({ isProduction: false });
+    if (!allowed) throw new Error("expected a check in development");
+    for (const uri of [
+      "http://localhost:5173/cb",
+      "http://127.0.0.1/cb",
+      "http://[::1]:3000/cb",
+      "http://app.localtest.me:3001/cb",
+    ]) {
+      expect(allowed(new URL(uri)), uri).toBe(true);
+    }
+    for (const uri of [
+      "http://192.168.1.5/cb",
+      "http://example.com/cb",
+      "http://localhost.evil.com/cb",
+      "http://localtest.me.evil.com/cb",
+    ]) {
+      expect(allowed(new URL(uri)), uri).toBe(false);
+    }
   });
 });

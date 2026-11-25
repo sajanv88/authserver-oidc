@@ -90,10 +90,20 @@ export type AuthDeps = {
   sendEmail: (to: string, email: Promise<EmailContent>) => void;
 };
 
-/** `http://` redirect URIs are allowed only in development, and only for the demo hosts. */
-function allowInsecureRedirectUri(env: ServerEnv) {
+/** Loopback hosts, as `URL.hostname` writes them. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * `http://` redirect URIs are allowed only in development: on this machine (localhost, where a
+ * dev server such as Vite's runs) and on the demo hosts (*.localtest.me). Production takes
+ * https only.
+ */
+export function allowInsecureRedirectUri(env: Pick<ServerEnv, "isProduction">) {
   if (env.isProduction) return undefined;
-  return (url: URL) => url.hostname === "localtest.me" || url.hostname.endsWith(".localtest.me");
+  return (url: URL) =>
+    LOOPBACK_HOSTS.has(url.hostname) ||
+    url.hostname === "localtest.me" ||
+    url.hostname.endsWith(".localtest.me");
 }
 
 /**

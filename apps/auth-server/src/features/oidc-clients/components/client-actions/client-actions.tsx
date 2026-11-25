@@ -35,9 +35,10 @@ import "./client-actions.scss";
 const PROBLEMS: Record<ClientProblem, string> = {
   "not-found": "That client no longer exists. Reload the page.",
   "not-confidential": "A public client has no secret to rotate.",
-  "not-allowed": "This client wasn't made here, so it can't be changed here.",
-  "invalid-redirect-uri": "That didn't work. Try again.",
-  failed: "That didn't work. Try again in a moment.",
+  "not-allowed":
+    "This client can't be changed here: your admin session may have ended (sign in again), or it wasn't made here.",
+  "invalid-redirect-uri": "That didn't work. Reload the page and try again.",
+  failed: "The server refused. The reason is in its log.",
 };
 
 /** A dialog opened from the row's menu: it has no trigger of its own. */
