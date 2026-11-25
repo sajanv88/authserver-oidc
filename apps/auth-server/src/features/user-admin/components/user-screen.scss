@@ -5,119 +5,21 @@
   gap: a.space(6);
   grid-template-columns: minmax(0, 1fr);
 
-  &__back {
-    display: inline-flex;
-    gap: a.space(1.5);
-    align-items: center;
-    justify-self: start;
-    border-radius: var(--radius-sm);
-    color: var(--color-muted-foreground);
-    font-size: var(--text-sm);
-    font-weight: var(--font-weight-medium);
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-
-    @include a.focus-ring;
-  }
-
-  &__header {
+  // One column on a phone and a tablet; the history beside the rest from lg.
+  &__columns {
     display: grid;
-    gap: a.space(5);
-    padding-block-end: a.space(6);
-    border-block-end: var(--nuv-border-width) solid var(--color-border);
-  }
+    gap: a.space(6);
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
 
-  &__who {
-    display: flex;
-    gap: a.space(4);
-    align-items: center;
-    min-inline-size: 0;
-  }
-
-  &__about {
-    display: grid;
-    gap: a.space(1);
-    min-inline-size: 0;
-  }
-
-  &__heading {
-    display: flex;
-    flex-wrap: wrap;
-    gap: a.space(2) a.space(3);
-    align-items: center;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    overflow-wrap: anywhere;
-  }
-
-  &__email {
-    margin: 0;
-    color: var(--color-muted-foreground);
-    overflow-wrap: anywhere;
-  }
-
-  // In a row that wraps, so a phone doesn't give each fact a line of its own.
-  &__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: a.space(4) a.space(10);
-    margin: 0;
-  }
-
-  &__fact {
-    display: grid;
-    gap: a.space(1);
-  }
-
-  &__label {
-    color: var(--color-muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  &__value {
-    margin: 0;
-    font-weight: var(--font-weight-medium);
-  }
-
-  &__cards {
-    display: grid;
-    gap: a.space(4);
-
-    @include a.breakpoint("md") {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    @include a.breakpoint("lg") {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
     }
   }
 
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: a.space(2);
-  }
-
-  // The heading says what kind of card this is; the border only repeats it.
-  &__danger {
-    --nuv-card-border: var(--color-danger);
-  }
-
-  &__history {
+  &__main {
     display: grid;
-    gap: a.space(4);
-  }
-
-  &__section-title {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-semibold);
-  }
-
-  &__none {
-    margin: 0;
-    color: var(--color-muted-foreground);
+    gap: a.space(6);
+    min-inline-size: 0;
   }
 }

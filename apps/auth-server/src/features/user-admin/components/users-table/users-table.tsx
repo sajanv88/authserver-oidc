@@ -1,4 +1,4 @@
-import { Badge } from "@nuvui/react";
+import { Badge, Skeleton } from "@nuvui/react";
 import {
   Table,
   TableBody,
@@ -16,22 +16,61 @@ import type { UserRow } from "../../types";
 import { dayFormat, StatusBadge, TwoFactorBadge } from "../user-badges";
 import "./users-table.scss";
 
+const COLUMNS = ["Person", "Role", "Status", "Two-factor", "Last active", "Joined"] as const;
+
+function Headings() {
+  return (
+    <TableHeader>
+      <TableRow>
+        {COLUMNS.map((column) => (
+          <TableHead key={column}>{column}</TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+  );
+}
+
+/** The table's shape while it loads, hidden from screen readers (the page says it's loading). */
+export function UsersTableSkeleton({ rows }: { rows: number }) {
+  return (
+    <div aria-hidden="true">
+      <TableContainer>
+        <Table>
+          <Headings />
+          <TableBody>
+            {Array.from({ length: rows }, (_, row) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholders, never reordered
+              <TableRow key={row}>
+                <TableCell>
+                  <span className="users-table__person">
+                    <Skeleton shape="circle" className="users-table__avatar-skeleton" />
+                    <span className="users-table__who">
+                      <Skeleton shape="text" className="users-table__skeleton--name" />
+                      <Skeleton shape="text" className="users-table__skeleton--email" />
+                    </span>
+                  </span>
+                </TableCell>
+                {COLUMNS.slice(1).map((column) => (
+                  <TableCell key={column}>
+                    <Skeleton shape="text" className="users-table__skeleton--cell" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  );
+}
+
 /** The users, newest first. Each name opens the user's page. */
 export function UsersTable({ users }: { users: UserRow[] }) {
   return (
     <TableContainer aria-label="Users">
       <Table>
         <TableCaption visuallyHidden>Users, newest first</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Person</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Two-factor</TableHead>
-            <TableHead>Last active</TableHead>
-            <TableHead>Joined</TableHead>
-          </TableRow>
-        </TableHeader>
+        <Headings />
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>

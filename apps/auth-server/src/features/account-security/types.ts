@@ -1,3 +1,4 @@
+import type { SessionRow } from "@/shared/auth/devices";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import type { PageWindow } from "@/shared/validation/paging";
 import type { ChangePasswordField } from "./schemas/account";
@@ -10,21 +11,6 @@ export type AccountUser = {
   createdAt: Date;
   role?: string | null | undefined;
   twoFactorEnabled?: boolean | null | undefined;
-};
-
-export type DeviceKind = "phone" | "tablet" | "computer" | "unknown";
-
-/** A row of the session list: never the token. */
-export type SessionRow = {
-  id: string;
-  device: { kind: DeviceKind; label: string };
-  ipAddress: string | null;
-  /** ISO 8601. */
-  signedInAt: string;
-  /** ISO 8601: Better Auth moves it when it extends the session. */
-  lastActiveAt: string;
-  /** The session this page was opened with. */
-  current: boolean;
 };
 
 /** One page of the session list. `page` is the one shown, which is at most `pageCount`. */

@@ -43,4 +43,24 @@
     color: var(--color-muted-foreground);
     white-space: nowrap;
   }
+
+  // A small avatar's size.
+  &__avatar-skeleton {
+    --nuv-skeleton-width: 2rem;
+    --nuv-skeleton-height: 2rem;
+
+    flex: none;
+  }
+
+  &__skeleton--name {
+    inline-size: 60%;
+  }
+
+  &__skeleton--email {
+    inline-size: 85%;
+  }
+
+  &__skeleton--cell {
+    inline-size: 4.5rem;
+  }
 }

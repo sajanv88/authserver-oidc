@@ -2,6 +2,9 @@ import * as v from "valibot";
 
 export const USERS_PER_PAGE = 10;
 
+/** Sessions on one page of a user's admin page. */
+export const USER_SESSIONS_PER_PAGE = 10;
+
 export const USER_STATUSES = ["active", "disabled", "unconfirmed"] as const;
 
 export const ROLES = ["user", "admin"] as const;

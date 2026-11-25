@@ -1,0 +1,64 @@
+@use "abstracts" as a;
+
+// Sizes match what each placeholder stands for, so nothing moves when it arrives.
+.user-skeletons {
+  // A large avatar.
+  &__avatar {
+    --nuv-skeleton-width: 3.5rem;
+    --nuv-skeleton-height: 3.5rem;
+
+    flex: none;
+  }
+
+  &__marker {
+    --nuv-skeleton-width: 0.75rem;
+    --nuv-skeleton-height: 0.75rem;
+
+    flex: none;
+    margin-block-start: a.space(1);
+  }
+
+  &__history {
+    display: grid;
+    gap: a.space(5);
+  }
+
+  &__event {
+    display: flex;
+    gap: a.space(3);
+  }
+
+  &__lines {
+    display: grid;
+    flex: 1;
+    gap: a.space(1);
+    min-inline-size: 0;
+  }
+
+  &__name {
+    inline-size: 12rem;
+    max-inline-size: 100%;
+    font-size: var(--text-2xl);
+  }
+
+  &__crumb {
+    inline-size: 8rem;
+  }
+
+  &__line--heading {
+    inline-size: 40%;
+    font-size: var(--text-lg);
+  }
+
+  &__line--title {
+    inline-size: 50%;
+  }
+
+  &__line--text {
+    inline-size: 80%;
+  }
+
+  &__line--short {
+    inline-size: 35%;
+  }
+}

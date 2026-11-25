@@ -2,6 +2,8 @@
 
 import { LogOutIcon } from "@nuvui/icons";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -96,9 +98,9 @@ export function SignOutEverywhereButton() {
           given to apps isn't changed.
         </AlertDialogDescription>
         {problem ? (
-          <p role="alert" className="session-list__problem">
-            {problem}
-          </p>
+          <Alert intent="danger">
+            <AlertDescription>{problem}</AlertDescription>
+          </Alert>
         ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={working}>Stay signed in</AlertDialogCancel>

@@ -1,4 +1,5 @@
 import type { AdminActionKind, UserRole, UserStatus } from "@repo/db";
+import type { SessionRow } from "@/shared/auth/devices";
 import type { FieldErrors } from "@/shared/validation/field-errors";
 import type { PageWindow } from "@/shared/validation/paging";
 import type { DeleteUserField, DisableUserField } from "./schemas/users";
@@ -48,10 +49,12 @@ export type UserProfile = UserRow & {
   /** Required because they're an admin and the server requires it of every admin. */
   twoFactorRequiredAsAdmin: boolean;
   activeSessions: number;
-  history: HistoryEntry[];
   /** The admin looking at the page: they can't act on their own account here. */
   isSelf: boolean;
 };
+
+/** One page of the sessions on a user's admin page. */
+export type UserSessionsPage = PageWindow & { sessions: SessionRow[] };
 
 /** What stopped an admin action, for the screen to say. */
 export type AdminProblem =

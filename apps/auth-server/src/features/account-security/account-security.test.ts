@@ -3,13 +3,13 @@
 
 import * as v from "valibot";
 import { beforeAll, describe, expect, it } from "vitest";
+import { describeDevice, toSessionRow } from "@/shared/auth/devices";
 import { createHarness, linkIn } from "@/shared/auth/test-harness";
 import { initialsOf } from "@/shared/ui/user-avatar/user-avatar";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ChangePasswordSchema, crossFieldErrors, SessionIdSchema } from "./schemas/account";
 import { changePassword } from "./server/password";
-import { revokeSession, signOutEverywhere, toSessionRow } from "./server/sessions";
-import { describeDevice } from "./server/user-agent";
+import { revokeSession, signOutEverywhere } from "./server/sessions";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 type Browser = ReturnType<Harness["browser"]>;
@@ -86,6 +86,8 @@ describe("account-security rules", () => {
       current: true,
     });
     expect(toSessionRow(summary, "s2").current).toBe(false);
+    // An admin looking at someone else's sessions: none of them is "this device".
+    expect(toSessionRow(summary).current).toBe(false);
     // The id a "Sign out" button sends: a uuid, nothing else.
     expect(v.is(SessionIdSchema, "0f8fad5b-d9cb-469f-a165-70867728950e")).toBe(true);
     expect(v.is(SessionIdSchema, "' or 1=1 --")).toBe(false);

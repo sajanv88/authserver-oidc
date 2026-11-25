@@ -1,0 +1,24 @@
+@use "abstracts" as a;
+
+.list-skeleton {
+  display: grid;
+  gap: a.space(2);
+
+  // The square ItemMedia draws behind an icon.
+  &__icon {
+    --nuv-skeleton-width: 2.25rem;
+    --nuv-skeleton-height: 2.25rem;
+  }
+
+  &__title {
+    inline-size: 50%;
+  }
+
+  &__text {
+    inline-size: 80%;
+  }
+
+  &__cell {
+    inline-size: 5rem;
+  }
+}

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -15,7 +17,6 @@ import {
 import { type MouseEvent, type ReactNode, useState } from "react";
 import { ADMIN_PROBLEMS } from "../../problems";
 import type { AdminResult } from "../../types";
-import "./confirm-action.scss";
 
 type ConfirmActionProps = {
   /** The page's server action, with the user's id (and anything else) bound to it. */
@@ -74,15 +75,17 @@ export function ConfirmAction({
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button intent={intent}>{label}</Button>
+        <Button intent={intent} size="sm">
+          {label}
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent size="sm">
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
         {problem ? (
-          <p role="alert" className="confirm-action__problem">
-            {problem}
-          </p>
+          <Alert intent="danger">
+            <AlertDescription>{problem}</AlertDescription>
+          </Alert>
         ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={running}>Cancel</AlertDialogCancel>

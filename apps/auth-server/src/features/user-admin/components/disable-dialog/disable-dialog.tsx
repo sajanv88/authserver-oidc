@@ -120,7 +120,9 @@ export function DisableDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {available ? (
         <DialogTrigger asChild>
-          <Button intent="danger">Disable</Button>
+          <Button intent="danger" size="sm">
+            Disable
+          </Button>
         </DialogTrigger>
       ) : null}
       <DialogContent>

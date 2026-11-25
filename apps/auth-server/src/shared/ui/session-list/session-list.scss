@@ -1,0 +1,7 @@
+@use "abstracts" as a;
+
+.session-list {
+  &__badge {
+    margin-inline-start: a.space(2);
+  }
+}

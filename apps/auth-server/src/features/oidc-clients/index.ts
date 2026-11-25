@@ -1,1 +1,1 @@
-export { ClientsScreen } from "./components/clients-screen";
+export { ClientsScreen, ClientsScreenSkeleton } from "./components/clients-screen";
