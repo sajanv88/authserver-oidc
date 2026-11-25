@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { connection, type NextRequest, NextResponse } from "next/server";
+import * as v from "valibot";
 import { OIDC_SCOPES } from "@/shared/config/app";
 import { env } from "@/shared/config/env";
 import type { ExampleEnv } from "@/shared/config/env-schema";
@@ -15,6 +16,7 @@ import {
   unsealSession,
 } from "./app-session";
 import { discover } from "./discovery";
+import { endSessionUrl } from "./end-session";
 import { remoteKeys, verifyIdToken } from "./id-token";
 import { challengeFor, randomToken, sameString } from "./pkce";
 import { exchangeCode, refreshTokens, revokeRefreshToken, type TokenResponse } from "./tokens";
@@ -58,6 +60,7 @@ function toSession(tokens: TokenResponse, claims: AppSession["claims"]): AppSess
     accessToken: tokens.access_token,
     accessTokenExpiresAt: Math.floor(Date.now() / 1000) + (tokens.expires_in ?? 0),
     ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+    ...(tokens.id_token ? { idToken: tokens.id_token } : {}),
   };
 }
 
@@ -191,7 +194,12 @@ export async function refreshSession(request: NextRequest): Promise<NextResponse
     response.cookies.set(
       names.session,
       await sealSession(
-        next.refreshToken ? next : { ...next, refreshToken: session.refreshToken },
+        {
+          ...next,
+          // The server may not send these again: keep what we had.
+          ...(next.refreshToken ? {} : { refreshToken: session.refreshToken }),
+          ...(next.idToken || !session.idToken ? {} : { idToken: session.idToken }),
+        },
         config.sessionSecret,
       ),
       sessionCookie(config),
@@ -205,23 +213,38 @@ export async function refreshSession(request: NextRequest): Promise<NextResponse
   }
 }
 
-/** POST /oidc/logout: forgets this app's session and revokes its refresh token. */
+/** Which of the sign-out buttons was pressed; this app only unless it says otherwise. */
+const SignOutSchema = v.object({
+  where: v.optional(v.picklist(["app", "everywhere"]), "app"),
+});
+
+/**
+ * POST /oidc/logout: forgets this app's session and revokes its refresh token. With
+ * `where=everywhere`, then sends the browser to the auth server to sign out there too, which
+ * comes back to the home page.
+ */
 export async function signOut(request: NextRequest): Promise<NextResponse> {
   const config = env();
   if (!fromThisApp(request, config)) return new NextResponse(null, { status: 403 });
+  const form = v.safeParse(SignOutSchema, Object.fromEntries(await request.formData()));
+  const where = form.success ? form.output.where : "app";
   const names = cookieNames(config.isProduction);
   const session = await unsealSession(
     request.cookies.get(names.session)?.value,
     config.sessionSecret,
   );
+  const discovery = await discover(config.authServerUrl);
   if (session?.refreshToken) {
-    await revokeRefreshToken(
-      await discover(config.authServerUrl),
-      client(config),
-      session.refreshToken,
-    );
+    await revokeRefreshToken(discovery, client(config), session.refreshToken);
   }
-  const response = home(config);
+  const response =
+    where === "everywhere" && session?.idToken && discovery.end_session_endpoint
+      ? // 303: the browser follows a POST with a GET.
+        NextResponse.redirect(
+          endSessionUrl(discovery.end_session_endpoint, config, session.idToken),
+          303,
+        )
+      : home(config);
   response.cookies.set(names.session, "", { path: "/", maxAge: 0 });
   return response;
 }

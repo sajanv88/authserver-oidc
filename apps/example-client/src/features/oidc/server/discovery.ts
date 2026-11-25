@@ -10,6 +10,8 @@ const DiscoverySchema = v.object({
   userinfo_endpoint: v.pipe(v.string(), v.url()),
   jwks_uri: v.pipe(v.string(), v.url()),
   revocation_endpoint: v.optional(v.pipe(v.string(), v.url())),
+  /** RP-initiated logout: where to send someone to sign out of the auth server too. */
+  end_session_endpoint: v.optional(v.pipe(v.string(), v.url())),
 });
 
 export type Discovery = v.InferOutput<typeof DiscoverySchema>;
