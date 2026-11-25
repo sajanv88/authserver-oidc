@@ -8,6 +8,7 @@ export * from "./oauth-client-assertions";
 export * from "./oauth-client-resources";
 export * from "./oauth-clients";
 export * from "./oauth-consents";
+export * from "./oauth-pushed-requests";
 export * from "./oauth-refresh-tokens";
 export * from "./oauth-resources";
 export * from "./rate-limits";

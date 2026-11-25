@@ -798,3 +798,215 @@ describe("APIs: resources, API scopes, client credentials, back-channel logout",
     expect(payload.nonce).toBeUndefined();
   });
 });
+
+describe("pushed authorization requests (RFC 9126)", () => {
+  const ip = "203.0.113.70";
+  const callback = `${APP_ORIGIN}/api/auth/callback`;
+  /** A client, and how it sends its secret: in the Authorization header unless `post`. */
+  type Credentials = { client_id: string; client_secret?: string | undefined; post?: boolean };
+  let h: Harness;
+  let user: Awaited<ReturnType<typeof verifiedUser>>;
+  let app: Credentials;
+  let other: Credentials;
+  let spa: Credentials;
+  let poster: Credentials;
+
+  beforeAll(async () => {
+    h = await createHarness();
+    const admin = await verifiedUser(h, "par-admin@example.com", ip);
+    await h.sql("update users set role = 'admin' where email = $1", ["par-admin@example.com"]);
+    const headers = cookieHeaders(admin.jar);
+    user = await verifiedUser(h, "par-user@example.com", "203.0.113.71");
+    // First-party apps (no consent screen), so an authorize request answers with a code.
+    const body = { ...oidcClientDefaults(), redirect_uris: [callback], skip_consent: true };
+    app = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: { ...body, client_name: "PAR web", token_endpoint_auth_method: "client_secret_basic" },
+    });
+    other = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: {
+        ...body,
+        client_name: "PAR other",
+        token_endpoint_auth_method: "client_secret_basic",
+      },
+    });
+    spa = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: { ...body, client_name: "PAR SPA", token_endpoint_auth_method: "none" },
+    });
+    const posted = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: { ...body, client_name: "PAR post", token_endpoint_auth_method: "client_secret_post" },
+    });
+    poster = { ...posted, post: true };
+  });
+
+  /** A server-to-server POST, as an app's backend makes it: a form, no Origin, no cookies. */
+  function post(path: string, form: Record<string, string>, credentials?: Credentials) {
+    const headers = new Headers({
+      "content-type": "application/x-www-form-urlencoded",
+      "x-forwarded-for": "198.51.100.70",
+    });
+    if (credentials?.client_secret && credentials.post) {
+      form.client_secret = credentials.client_secret;
+    } else if (credentials?.client_secret) {
+      const basic = `${credentials.client_id}:${credentials.client_secret}`;
+      headers.set("authorization", `Basic ${Buffer.from(basic).toString("base64")}`);
+    }
+    return h.auth.handler(
+      new Request(`${BASE_URL}/api/auth${path}`, {
+        method: "POST",
+        headers,
+        body: new URLSearchParams(form).toString(),
+      }),
+    );
+  }
+
+  /** The authorization parameters an app would push, with its PKCE verifier. */
+  function parameters(clientId: string, overrides: Record<string, string> = {}) {
+    const verifier = randomBytes(32).toString("base64url");
+    const form: Record<string, string> = {
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: callback,
+      scope: "openid email",
+      state: "par-state",
+      nonce: "par-nonce",
+      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+      code_challenge_method: "S256",
+      ...overrides,
+    };
+    // An empty override takes the parameter away.
+    for (const [name, value] of Object.entries(form)) if (value === "") delete form[name];
+    return { form, verifier };
+  }
+
+  async function push(credentials: Credentials, overrides: Record<string, string> = {}) {
+    const { form, verifier } = parameters(credentials.client_id, overrides);
+    const response = await post("/oauth2/par", form, credentials);
+    expect(response.status).toBe(201);
+    const body = await json(response);
+    return { requestUri: String(body.request_uri), verifier, body, response };
+  }
+
+  /** The browser's step: /oauth2/authorize with only client_id and request_uri. */
+  async function authorize(clientId: string, requestUri: string) {
+    const query = new URLSearchParams({ client_id: clientId, request_uri: requestUri });
+    const response = await user.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    return new URL(response.headers.get("location") ?? "", BASE_URL);
+  }
+
+  it("advertises the endpoint in both discovery documents", async () => {
+    const advertised = {
+      pushed_authorization_request_endpoint: `${BASE_URL}/api/auth/oauth2/par`,
+      require_pushed_authorization_requests: false,
+    };
+    expect(await h.auth.api.getOpenIdConfig()).toMatchObject(advertised);
+    expect(await h.auth.api.getOAuthServerConfig()).toMatchObject(advertised);
+  });
+
+  it("sends a browser that isn't signed in to /login with the pushed request, signed", async () => {
+    const { requestUri } = await push(app);
+    const query = new URLSearchParams({ client_id: app.client_id, request_uri: requestUri });
+    const response = await h
+      .browser("203.0.113.72")
+      .request("GET", `/api/auth/oauth2/authorize?${query}`);
+    const location = new URL(response.headers.get("location") ?? "", BASE_URL);
+    expect(location.pathname).toBe("/login");
+    // The pushed parameters, which the sign-in pages carry on with, as for any other request.
+    expect(location.searchParams.get("redirect_uri")).toBe(callback);
+    expect(location.searchParams.get("state")).toBe("par-state");
+    expect(location.searchParams.get("sig")).toBeTruthy();
+    expect(location.searchParams.has("request_uri")).toBe(false);
+  });
+
+  it("signs the user in from a request_uri, and the code works with the pushed PKCE", async () => {
+    const { requestUri, verifier, body, response } = await push(app);
+    expect(requestUri).toMatch(/^urn:ietf:params:oauth:request_uri:[\w-]{43}$/);
+    expect(body.expires_in).toBe(60);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+
+    const location = await authorize(app.client_id, requestUri);
+    expect(`${location.origin}${location.pathname}`).toBe(callback);
+    expect(location.searchParams.get("state")).toBe("par-state");
+    const code = location.searchParams.get("code") ?? "";
+    expect(code).toBeTruthy();
+
+    const token = await post(
+      "/oauth2/token",
+      { grant_type: "authorization_code", code, redirect_uri: callback, code_verifier: verifier },
+      app,
+    );
+    expect(token.status).toBe(200);
+    expect(await json(token)).toMatchObject({ token_type: "Bearer", id_token: expect.any(String) });
+  });
+
+  it("takes a public client's push with its client_id alone", async () => {
+    const { requestUri } = await push(spa);
+    const location = await authorize(spa.client_id, requestUri);
+    expect(location.searchParams.get("code")).toBeTruthy();
+  });
+
+  it("uses a request_uri once", async () => {
+    const { requestUri } = await push(app);
+    expect((await authorize(app.client_id, requestUri)).searchParams.get("code")).toBeTruthy();
+    const again = await authorize(app.client_id, requestUri);
+    expect(again.searchParams.get("code")).toBeNull();
+    expect(again.searchParams.get("error")).toBe("invalid_request_uri");
+  });
+
+  it("refuses another client's request_uri, without spending it", async () => {
+    const { requestUri } = await push(app);
+    const stolen = await authorize(other.client_id, requestUri);
+    expect(stolen.searchParams.get("error")).toBe("invalid_request_uri");
+    expect((await authorize(app.client_id, requestUri)).searchParams.get("code")).toBeTruthy();
+  });
+
+  it("refuses an expired request_uri, and one it didn't issue", async () => {
+    const { requestUri } = await push(app);
+    await h.sql("update oauth_pushed_requests set expires_at = now() - interval '1 second'");
+    expect((await authorize(app.client_id, requestUri)).searchParams.get("error")).toBe(
+      "invalid_request_uri",
+    );
+    const made = await authorize(app.client_id, "urn:ietf:params:oauth:request_uri:made-up");
+    expect(made.searchParams.get("error")).toBe("invalid_request_uri");
+  });
+
+  it("keeps only a hash of the request_uri, and no client credentials", async () => {
+    // client_secret_post: the secret is one of the form's fields, and must not be kept with them.
+    const { requestUri } = await push(poster);
+    const { rows } = await h.sql(
+      "select request_uri_hash, parameters from oauth_pushed_requests order by created_at desc limit 1",
+    );
+    const row = rows[0] as { request_uri_hash: string; parameters: Record<string, string> };
+    expect(row.request_uri_hash).not.toContain(requestUri.split(":").at(-1));
+    expect(row.parameters).not.toHaveProperty("client_secret");
+    expect(row.parameters.client_id).toBe(poster.client_id);
+  });
+
+  it("authenticates the client as the token endpoint does", async () => {
+    const { form } = parameters(app.client_id);
+    const wrong = await post("/oauth2/par", form, { ...app, client_secret: "not-the-secret" });
+    expect(wrong.status).toBe(401);
+    expect(await json(wrong)).toMatchObject({ error: "invalid_client" });
+    const none = await post("/oauth2/par", form);
+    expect(none.status).toBeGreaterThanOrEqual(400);
+    expect(await json(none)).toMatchObject({ error: "invalid_client" });
+  });
+
+  it.each([
+    ["no PKCE", { code_challenge: "", code_challenge_method: "" }, "invalid_request"],
+    ["plain PKCE", { code_challenge_method: "plain" }, "invalid_request"],
+    ["an unregistered redirect_uri", { redirect_uri: `${APP_ORIGIN}/other` }, "invalid_request"],
+    ["a scope it wasn't given", { scope: "openid admin" }, "invalid_scope"],
+    ["another response_type", { response_type: "token" }, "unsupported_response_type"],
+    ["a request_uri", { request_uri: "urn:ietf:params:oauth:request_uri:x" }, "invalid_request"],
+    ["another client's id", { client_id: "someone-else" }, "invalid_request"],
+  ])("refuses a push with %s", async (_, overrides, error) => {
+    const { form } = parameters(app.client_id, overrides);
+    const response = await post("/oauth2/par", form, app);
+    expect(response.status).toBe(400);
+    expect(await json(response)).toMatchObject({ error });
+  });
+});

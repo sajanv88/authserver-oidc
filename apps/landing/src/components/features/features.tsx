@@ -34,7 +34,7 @@ const FEATURES = [
   {
     Icon: PlugIcon,
     title: "OpenID Connect",
-    text: "Authorization code with PKCE, rotating refresh tokens, discovery, a consent screen and token revocation.",
+    text: "Authorization code with PKCE, pushed authorization requests, rotating refresh tokens, discovery, a consent screen and token revocation.",
   },
   {
     Icon: ServerIcon,

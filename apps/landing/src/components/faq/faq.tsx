@@ -19,7 +19,7 @@ const QUESTIONS = [
     id: "flows",
     question: "Which OAuth and OIDC flows does it support?",
     answer:
-      "The authorization code flow with PKCE (S256) for apps that sign people in, refresh tokens that rotate, and client credentials for services that call your APIs. No implicit flow and no device flow: they're the ones that go wrong.",
+      "The authorization code flow with PKCE (S256) for apps that sign people in, refresh tokens that rotate, and client credentials for services that call your APIs. An app can push its authorization request from its server first (PAR, RFC 9126): it's authenticated and checked before the user sees anything, and the browser carries only a one-time request_uri. No implicit flow and no device flow: they're the ones that go wrong.",
   },
   {
     id: "clients",

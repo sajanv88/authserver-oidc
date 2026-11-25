@@ -13,6 +13,7 @@ const DISCOVERY = `{
   "issuer": "https://auth.example.com",
   "authorization_endpoint": "https://auth.example.com/api/auth/oauth2/authorize",
   "token_endpoint": "https://auth.example.com/api/auth/oauth2/token",
+  "pushed_authorization_request_endpoint": "https://auth.example.com/api/auth/oauth2/par",
   "userinfo_endpoint": "https://auth.example.com/api/auth/oauth2/userinfo",
   "jwks_uri": "https://auth.example.com/jwks",
   "scopes_supported": ["openid", "profile", "email", "offline_access"],
