@@ -20,7 +20,10 @@ export const AUTHOR = {
   website: "https://sajankumarv.com",
 };
 
-/** The sections the navigation bar and the footer link to, by their ids on the page. */
+/** The step-by-step guide, at /docs. */
+export const DOCS_PATH = "/docs";
+
+/** The sections the navigation bar and the footer link to, by their ids on the home page. */
 export const SECTIONS = [
   { id: "why", name: "Why" },
   { id: "features", name: "Features" },
