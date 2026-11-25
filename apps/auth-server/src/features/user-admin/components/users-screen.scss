@@ -4,4 +4,9 @@
   display: grid;
   gap: a.space(6);
   grid-template-columns: minmax(0, 1fr);
+
+  // As tall as the search and status fields above the list.
+  &__filter-skeleton {
+    --nuv-skeleton-height: 4.5rem;
+  }
 }

@@ -1,5 +1,12 @@
 import { UsersIcon } from "@nuvui/icons";
-import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@nuvui/react";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+  Skeleton,
+  VisuallyHidden,
+} from "@nuvui/react";
 import { redirect } from "next/navigation";
 import * as v from "valibot";
 import { ListPagination } from "@/shared/ui/list-pagination/list-pagination";
@@ -9,10 +16,31 @@ import { usersHref } from "../paths";
 import { SearchSchema, StatusFilterSchema } from "../schemas/users";
 import { listUsersForAdmin } from "../server/pages";
 import { UsersFilter } from "./users-filter/users-filter";
-import { UsersTable } from "./users-table/users-table";
+import { UsersTable, UsersTableSkeleton } from "./users-table/users-table";
 import "./users-screen.scss";
 
 type Query = string | string[] | undefined;
+
+function UsersHeader() {
+  return (
+    <PageHeader
+      title="Users"
+      description="Everyone with an account here. Open someone to disable or enable them, sign them out, require two-factor, change their role or delete them."
+    />
+  );
+}
+
+/** The list while it loads: the route's loading.tsx. */
+export function UsersScreenSkeleton() {
+  return (
+    <div className="users-screen" aria-busy="true">
+      <VisuallyHidden role="status">Loading the users</VisuallyHidden>
+      <UsersHeader />
+      <Skeleton className="users-screen__filter-skeleton" aria-hidden="true" />
+      <UsersTableSkeleton rows={5} />
+    </div>
+  );
+}
 
 /** /admin/users. Checks the admin session itself. The query is the URL's, as it has it. */
 export async function UsersScreen({ page, q, status }: { page: Query; q: Query; status: Query }) {
@@ -28,10 +56,7 @@ export async function UsersScreen({ page, q, status }: { page: Query; q: Query; 
 
   return (
     <div className="users-screen">
-      <PageHeader
-        title="Users"
-        description="Everyone with an account here. Open someone to disable or enable them, sign them out, require two-factor, change their role or delete them."
-      />
+      <UsersHeader />
       <UsersFilter search={search} status={pages.status} />
       {users.length > 0 ? (
         <>

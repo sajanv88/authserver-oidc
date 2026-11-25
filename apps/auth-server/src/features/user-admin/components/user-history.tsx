@@ -1,4 +1,14 @@
+import { ClockIcon } from "@nuvui/icons";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
   Timeline,
   TimelineContent,
   TimelineDescription,
@@ -8,8 +18,12 @@ import {
   TimelineTitle,
 } from "@nuvui/react";
 import type { AdminActionKind } from "@repo/db";
+import { Suspense } from "react";
+import { SectionBoundary } from "@/shared/ui/section-boundary/section-boundary";
+import { userHistoryForAdmin } from "../server/pages";
 import type { HistoryEntry } from "../types";
 import { momentFormat } from "./user-badges";
+import { HistorySkeleton } from "./user-skeletons/user-skeletons";
 
 /** What happened, in words: the marker's color only repeats it. */
 function titleOf(entry: HistoryEntry): string {
@@ -36,7 +50,7 @@ const INTENT: Partial<Record<AdminActionKind, "danger" | "success" | "warning">>
 };
 
 /** What admins did to this account, newest first. */
-export function UserHistory({ entries, name }: { entries: HistoryEntry[]; name: string }) {
+function UserHistory({ entries, name }: { entries: HistoryEntry[]; name: string }) {
   return (
     <Timeline aria-label={`What admins did to ${name}'s account`}>
       {entries.map((entry) => (
@@ -52,5 +66,45 @@ export function UserHistory({ entries, name }: { entries: HistoryEntry[]; name: 
         </TimelineItem>
       ))}
     </Timeline>
+  );
+}
+
+/** The timeline, which waits for the database: the card around it doesn't. */
+async function HistoryEntries({ userId, name }: { userId: string; name: string }) {
+  const entries = await userHistoryForAdmin(userId);
+  if (entries.length === 0) {
+    return (
+      <Empty>
+        <EmptyMedia>
+          <ClockIcon />
+        </EmptyMedia>
+        <EmptyTitle asChild>
+          <h3>Nothing yet</h3>
+        </EmptyTitle>
+        <EmptyDescription>No admin has changed this account.</EmptyDescription>
+      </Empty>
+    );
+  }
+  return <UserHistory entries={entries} name={name} />;
+}
+
+/** What admins did to the account, and who: "who disabled this?" months later. */
+export function UserHistoryCard({ userId, name }: { userId: string; name: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle asChild>
+          <h2>History</h2>
+        </CardTitle>
+        <CardDescription>What admins changed, newest first.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SectionBoundary what="the history">
+          <Suspense fallback={<HistorySkeleton />}>
+            <HistoryEntries userId={userId} name={name} />
+          </Suspense>
+        </SectionBoundary>
+      </CardContent>
+    </Card>
   );
 }

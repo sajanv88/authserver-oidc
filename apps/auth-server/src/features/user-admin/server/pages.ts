@@ -5,6 +5,7 @@ import {
   countUsers,
   db,
   getUserDetail,
+  listActiveSessions,
   listAdminActions,
   listUsers,
   type UserStatus,
@@ -12,13 +13,21 @@ import {
   userStatus,
 } from "@repo/db";
 import { notFound } from "next/navigation";
+import { toSessionRow } from "@/shared/auth/devices";
 import { requireAdmin } from "@/shared/auth/session";
 import { twoFactorRequired } from "@/shared/auth/two-factor-policy";
 import { env } from "@/shared/config/env";
 import { pageOffset, pageWindow } from "@/shared/validation/paging";
 import { USERS_PATH, userPath } from "../paths";
-import { USERS_PER_PAGE } from "../schemas/users";
-import type { HistoryEntry, TwoFactorState, UserProfile, UserRow, UsersPage } from "../types";
+import { USER_SESSIONS_PER_PAGE, USERS_PER_PAGE } from "../schemas/users";
+import type {
+  HistoryEntry,
+  TwoFactorState,
+  UserProfile,
+  UserRow,
+  UserSessionsPage,
+  UsersPage,
+} from "../types";
 
 function policy() {
   return { requiredForAdmins: env().twoFactorRequiredForAdmins };
@@ -79,10 +88,7 @@ export async function userProfileForAdmin(id: string): Promise<UserProfile> {
   const user = await getUserDetail(db, id);
   if (!user) notFound();
   const now = new Date();
-  const [activeSessions, history] = await Promise.all([
-    countActiveSessions(db, id, now),
-    listAdminActions(db, id),
-  ]);
+  const activeSessions = await countActiveSessions(db, id, now);
   const disabled = userStatus(user, now) === "disabled";
   return {
     ...toUserRow(user, now),
@@ -91,7 +97,29 @@ export async function userProfileForAdmin(id: string): Promise<UserProfile> {
     twoFactorRequired: user.twoFactorRequired,
     twoFactorRequiredAsAdmin: user.role === "admin" && policy().requiredForAdmins,
     activeSessions,
-    history: history.map(toHistoryEntry),
     isSelf: session.user.id === id,
   };
+}
+
+/**
+ * One page of where a user is signed in, most recently used first. A page past the end is the
+ * last one, so the caller can send the browser there. Checks the admin session itself.
+ */
+export async function userSessionsForAdmin(id: string, page: number): Promise<UserSessionsPage> {
+  await requireAdmin(userPath(id));
+  const now = new Date();
+  const window = pageWindow(page, await countActiveSessions(db, id, now), USER_SESSIONS_PER_PAGE);
+  const rows = await listActiveSessions(db, id, {
+    limit: USER_SESSIONS_PER_PAGE,
+    offset: pageOffset(window),
+    now,
+  });
+  // No row is "this device": the admin is looking at someone else's sessions.
+  return { ...window, sessions: rows.map((row) => toSessionRow(row)) };
+}
+
+/** What admins did to a user's account, newest first. Checks the admin session itself. */
+export async function userHistoryForAdmin(id: string): Promise<HistoryEntry[]> {
+  await requireAdmin(userPath(id));
+  return (await listAdminActions(db, id)).map(toHistoryEntry);
 }

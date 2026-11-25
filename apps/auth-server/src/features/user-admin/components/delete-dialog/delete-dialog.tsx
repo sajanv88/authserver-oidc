@@ -102,7 +102,9 @@ export function DeleteDialog({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button intent="danger">Delete</Button>
+        <Button intent="danger" size="sm">
+          Delete
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogTitle>Delete {name}?</AlertDialogTitle>

@@ -1,0 +1,13 @@
+@use "abstracts" as a;
+
+.user-manage {
+  // Enable sits beside Disable's (hidden) dialog: room between them if both ever show.
+  &__actions {
+    gap: a.space(2);
+  }
+
+  // The heading says what kind of card this is; the border only repeats it.
+  &__danger {
+    --nuv-card-border: var(--color-danger);
+  }
+}

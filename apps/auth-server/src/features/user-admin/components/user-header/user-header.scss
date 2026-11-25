@@ -1,0 +1,72 @@
+@use "abstracts" as a;
+
+.user-header {
+  &__body {
+    display: grid;
+    gap: a.space(5);
+  }
+
+  &__who {
+    display: flex;
+    gap: a.space(4);
+    align-items: center;
+    min-inline-size: 0;
+  }
+
+  &__about {
+    display: grid;
+    gap: a.space(1);
+    min-inline-size: 0;
+  }
+
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2) a.space(3);
+    align-items: center;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    overflow-wrap: anywhere;
+  }
+
+  &__email {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  // Two to a row on a phone, all four in one from sm.
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: a.space(4) a.space(6);
+    margin: 0;
+
+    @include a.breakpoint("sm") {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  &__fact {
+    display: grid;
+    gap: a.space(1);
+    align-content: start;
+    justify-items: start;
+  }
+
+  &__label {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  &__value {
+    margin: 0;
+    font-weight: var(--font-weight-medium);
+  }
+}
