@@ -136,6 +136,21 @@ When("I sign out of the example app", async ({ page }) => {
   await expect(page.getByText("This app has no session of its own yet.")).toBeVisible();
 });
 
+When("I sign out of the example app and of the auth server", async ({ page }) => {
+  await page.getByRole("button", { name: "Sign out of the auth server too" }).click();
+});
+
+Then("I am back on the example app, signed out", async ({ page }) => {
+  // Through the auth server's end-session endpoint, then to the registered address.
+  await expect(page).toHaveURL(`${APP_URL}/`);
+  await expect(page.getByText("This app has no session of its own yet.")).toBeVisible();
+});
+
+Then("I am signed out of the auth server", async ({ page }) => {
+  await page.goto(`${AUTH_URL}/account/security`);
+  await expect(page).toHaveURL(new RegExp(`^${AUTH_URL}/login\\?`));
+});
+
 When("the example app refreshes its tokens", async ({ page }) => {
   await page.getByRole("button", { name: "Refresh the tokens" }).click();
 });
