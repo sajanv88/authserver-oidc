@@ -1,0 +1,554 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0b229cb9-d9f5-4e37-86db-6ba736af14f2",
+  "prevIds": [
+    "8307650f-dd18-4f6d-8618-87f8dbe5894a"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "admin_action_kind"
+      ],
+      "writes": [
+        "s|enum|public.admin_action_kind",
+        "n|enum|public.admin_action_kind",
+        "e|enum|public.admin_action_kind",
+        "n|type|public.admin_action_kind"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "admin_actions"
+      ],
+      "writes": [
+        "s|tbl|public.admin_actions",
+        "n|tbl|public.admin_actions",
+        "e|tbl|public.admin_actions",
+        "n|rel|public.admin_actions",
+        "n|type|public.admin_actions",
+        "n|rel|public.admin_actions_pkey"
+      ],
+      "reads": [
+        "n|sch|public",
+        "n|enum|public.admin_action_kind"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "sessions",
+        "impersonated_by"
+      ],
+      "writes": [
+        "s|col|public.sessions.impersonated_by",
+        "n|col|public.sessions.impersonated_by",
+        "e|col|public.sessions.impersonated_by"
+      ],
+      "reads": [
+        "n|tbl|public.sessions",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "two_factor_required"
+      ],
+      "writes": [
+        "s|col|public.users.two_factor_required",
+        "n|col|public.users.two_factor_required",
+        "e|col|public.users.two_factor_required"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "banned"
+      ],
+      "writes": [
+        "s|col|public.users.banned",
+        "n|col|public.users.banned",
+        "e|col|public.users.banned"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "ban_reason"
+      ],
+      "writes": [
+        "s|col|public.users.ban_reason",
+        "n|col|public.users.ban_reason",
+        "e|col|public.users.ban_reason"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "ban_expires"
+      ],
+      "writes": [
+        "s|col|public.users.ban_expires",
+        "n|col|public.users.ban_expires",
+        "e|col|public.users.ban_expires"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "admin_actions",
+        "admin_actions_target_user_id_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.admin_actions_target_user_id_created_at_idx",
+        "n|idx|public.admin_actions_target_user_id_created_at_idx",
+        "e|idx|public.admin_actions_target_user_id_created_at_idx",
+        "n|rel|public.admin_actions_target_user_id_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.admin_actions",
+        "n|sch|public",
+        "n|col|public.admin_actions.target_user_id",
+        "n|col|public.admin_actions.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "admin_actions",
+        "admin_actions_actor_user_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.admin_actions_actor_user_id_idx",
+        "n|idx|public.admin_actions_actor_user_id_idx",
+        "e|idx|public.admin_actions_actor_user_id_idx",
+        "n|rel|public.admin_actions_actor_user_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.admin_actions",
+        "n|sch|public",
+        "n|col|public.admin_actions.actor_user_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "admin_actions"
+      ],
+      "writes": [
+        "s|fk|public.admin_actions.admin_actions_actor_user_id_users_id_fkey",
+        "n|fk|public.admin_actions.admin_actions_actor_user_id_users_id_fkey",
+        "e|fk|public.admin_actions.admin_actions_actor_user_id_users_id_fkey",
+        "n|con|public.admin_actions.admin_actions_actor_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.admin_actions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.admin_actions.actor_user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "sessions"
+      ],
+      "writes": [
+        "s|fk|public.sessions.sessions_impersonated_by_users_id_fkey",
+        "n|fk|public.sessions.sessions_impersonated_by_users_id_fkey",
+        "e|fk|public.sessions.sessions_impersonated_by_users_id_fkey",
+        "n|con|public.sessions.sessions_impersonated_by_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sessions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.sessions.impersonated_by",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "admin_actions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "admin_action_kind",
+        "values": [
+          "user.disable",
+          "user.enable",
+          "user.sign_out",
+          "user.delete",
+          "user.role",
+          "user.two_factor.require",
+          "user.two_factor.unrequire",
+          "user.two_factor.reset"
+        ],
+        "entityType": "enums"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "action",
+        "type": "admin_action_kind",
+        "typeSchema": "public",
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "target_user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "actor_user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "actor_client_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "detail",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sessions",
+        "name": "impersonated_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "users",
+        "name": "two_factor_required",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "users",
+        "name": "banned",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "users",
+        "name": "ban_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "users",
+        "name": "ban_expires",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "admin_actions_target_user_id_created_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "target_user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "admin_actions_actor_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "actor_user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "admin_actions_actor_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "actor_user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sessions",
+        "name": "sessions_impersonated_by_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "impersonated_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "admin_actions",
+        "name": "admin_actions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

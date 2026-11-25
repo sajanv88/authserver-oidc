@@ -2,6 +2,7 @@
 // and so does defineRelations. Column helpers (_columns.ts) are deliberately not exported.
 
 export * from "./accounts";
+export * from "./admin-actions";
 export * from "./jwks";
 export * from "./oauth-access-tokens";
 export * from "./oauth-client-assertions";

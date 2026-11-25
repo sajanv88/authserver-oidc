@@ -2,7 +2,9 @@ import { index, snakeCase, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createdAt, timestamptz, updatedAt } from "./_columns";
 import { users } from "./users";
 
-// Better Auth model "session". The token is what the session cookie carries.
+// Better Auth model "session". The token is what the session cookie carries. `impersonatedBy`
+// is the admin plugin's: impersonation is turned off (its endpoints are disabled), so it stays
+// null, but the plugin's model has it.
 export const sessions = snakeCase.table(
   "sessions",
   {
@@ -14,6 +16,7 @@ export const sessions = snakeCase.table(
     expiresAt: timestamptz().notNull(),
     ipAddress: text(),
     userAgent: text(),
+    impersonatedBy: uuid().references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
