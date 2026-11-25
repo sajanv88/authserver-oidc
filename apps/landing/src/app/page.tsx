@@ -18,7 +18,10 @@ import { Why } from "@/components/why/why";
 
 export default function Home() {
   return (
-    <>
+    // One element at the root, not a fragment: on a navigation Next scrolls the new page's
+    // root into view, and with the bar, the page and the footer side by side it scrolled to
+    // each in turn, ending at the footer. One box is scrolled to its top.
+    <div>
       <SkipLink />
       <SiteHeader />
       <main id="content">
@@ -38,6 +41,6 @@ export default function Home() {
         <CallToAction />
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
