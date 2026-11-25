@@ -62,12 +62,20 @@ function problemFrom(error: unknown): ClientProblem {
   return "failed";
 }
 
+/** The plugin's status and error code, for the log: no values the admin typed. */
+function refusal(error: unknown): string {
+  const failure = error as { statusCode?: unknown; body?: { error?: unknown; code?: unknown } };
+  return `status ${String(failure?.statusCode)}, ${String(failure?.body?.error ?? failure?.body?.code)}`;
+}
+
 async function attempt<T>(run: () => Promise<T>): Promise<ClientResult<T>> {
   try {
     return { ok: true, value: await run() };
   } catch (error) {
     const problem = problemFrom(error);
+    // Every refusal is in the log, so a form that says "try again" can always be explained.
     if (problem === "failed") console.error("oidc-clients: the plugin refused", error);
+    else console.warn(`oidc-clients: refused as ${problem} (${refusal(error)})`);
     return { ok: false, problem };
   }
 }

@@ -274,6 +274,14 @@ describe("managing clients", () => {
     ).toEqual({ ok: false, problem: "invalid-redirect-uri" });
   });
 
+  it("says a request without an admin session isn't allowed", async () => {
+    const input = { name: "Signed out", kind: "public" as const, redirectUris: [redirectUri] };
+    expect(await createClient(h.auth, new Headers(), input)).toEqual({
+      ok: false,
+      problem: "not-allowed",
+    });
+  });
+
   it("lets any admin rename a client and change its redirect URIs, keeping its kind", async () => {
     const created = await createClient(h.auth, first, {
       name: "Before",

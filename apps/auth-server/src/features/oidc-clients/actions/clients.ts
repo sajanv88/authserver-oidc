@@ -51,8 +51,21 @@ async function passesTurnstile(formData: FormData): Promise<boolean> {
   return verifyTurnstileToken(config.turnstile, captchaToken(formData), turnstileHostnames(config));
 }
 
-const REDIRECT_URI_ADVICE =
-  "Use https:// addresses. http:// works only for localhost while developing.";
+/** What a redirect URI may be, where this server runs. */
+function redirectUriAdvice(): string {
+  return env().isProduction
+    ? "Use https:// addresses, with no #fragment."
+    : "Use https:// addresses, with no #fragment. While developing, http:// works on localhost, 127.0.0.1 and *.localtest.me.";
+}
+
+/** Why a client wasn't created, in words an admin can act on. */
+const CREATE_PROBLEMS: Record<Exclude<ClientProblem, "invalid-redirect-uri">, string> = {
+  "not-allowed":
+    "Only an admin can create clients, and this session isn't one any more. Sign in again.",
+  "not-found": "The client wasn't created. Reload the page and try again.",
+  "not-confidential": "The client wasn't created. Reload the page and try again.",
+  failed: "The server couldn't create the client. The reason is in its log.",
+};
 
 export async function createClientAction(
   previous: CreateClientState,
@@ -80,9 +93,9 @@ export async function createClientAction(
           status: "editing",
           values,
           attempt,
-          errors: { redirectUris: REDIRECT_URI_ADVICE },
+          errors: { redirectUris: redirectUriAdvice() },
         }
-      : { status: "editing", values, attempt, formError: "The client wasn't created. Try again." };
+      : { status: "editing", values, attempt, formError: CREATE_PROBLEMS[result.problem] };
   }
 
   refresh();
@@ -110,7 +123,9 @@ export async function updateClientAction(
       values,
       attempt,
       errors,
-      ...(clientId ? { formError: UPDATE_FAILED } : {}),
+      ...(clientId
+        ? { formError: "The changes weren't saved. Reload the page and try again." }
+        : {}),
     };
   }
   if (!(await passesTurnstile(formData))) {
@@ -124,7 +139,7 @@ export async function updateClientAction(
   );
   if (!result.ok) {
     return result.problem === "invalid-redirect-uri"
-      ? { status: "editing", values, attempt, errors: { redirectUris: REDIRECT_URI_ADVICE } }
+      ? { status: "editing", values, attempt, errors: { redirectUris: redirectUriAdvice() } }
       : { status: "editing", values, attempt, formError: UPDATE_PROBLEMS[result.problem] };
   }
 
@@ -132,11 +147,12 @@ export async function updateClientAction(
   return { status: "saved", name: parsed.value.name, attempt };
 }
 
-const UPDATE_FAILED = "The changes weren't saved. Try again.";
+const UPDATE_FAILED = "The server couldn't save the changes. The reason is in its log.";
 
 const UPDATE_PROBLEMS: Record<Exclude<ClientProblem, "invalid-redirect-uri">, string> = {
   "not-found": "That client no longer exists. Reload the page.",
-  "not-allowed": "This client wasn't made here, so it can't be changed here.",
+  "not-allowed":
+    "This client can't be changed here: your admin session may have ended (sign in again), or it wasn't made here.",
   "not-confidential": UPDATE_FAILED,
   failed: UPDATE_FAILED,
 };
