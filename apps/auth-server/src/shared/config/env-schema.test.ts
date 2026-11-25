@@ -240,6 +240,19 @@ describe("parseEnv", () => {
     ]);
   });
 
+  it("requires two-factor of admins only when TWO_FACTOR_REQUIRED_FOR_ADMINS is true", () => {
+    for (const TWO_FACTOR_REQUIRED_FOR_ADMINS of [undefined, "", "false"]) {
+      const result = parseEnv({ ...valid, TWO_FACTOR_REQUIRED_FOR_ADMINS });
+      expect(result.ok && result.env.twoFactorRequiredForAdmins).toBe(false);
+    }
+    const on = parseEnv({ ...valid, TWO_FACTOR_REQUIRED_FOR_ADMINS: "true" });
+    expect(on.ok && on.env.twoFactorRequiredForAdmins).toBe(true);
+    // A typo must not turn a security setting off without a word.
+    expect(errorsFor({ ...valid, TWO_FACTOR_REQUIRED_FOR_ADMINS: "yes" })).toEqual([
+      'TWO_FACTOR_REQUIRED_FOR_ADMINS must be "true" or "false"',
+    ]);
+  });
+
   it("calls the product Auth Server unless APP_NAME names it, on one line", () => {
     for (const APP_NAME of [undefined, "", "   "]) {
       const result = parseEnv({ ...valid, APP_NAME });

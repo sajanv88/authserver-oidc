@@ -44,7 +44,7 @@ describe("auth configuration", () => {
     it("sends a verification email and starts no session", async () => {
       const browser = h.browser(ip);
       const response = await browser.request("POST", "/api/auth/sign-up/email", {
-        json: { email: "new@example.com", password, name: "New", role: "admin" },
+        json: { email: "new@example.com", password, name: "New" },
       });
       const body = await json(response);
       expect(response.status).toBe(200);
@@ -52,11 +52,18 @@ describe("auth configuration", () => {
       expect(browser.jar.size).toBe(0);
       expect(h.emails.at(-1)?.to).toBe("new@example.com");
       expect(h.emails.at(-1)?.subject).toContain("Confirm your email address");
+      const { rows } = await h.sql("select role from users where email = $1", ["new@example.com"]);
+      expect(rows).toEqual([{ role: "user" }]);
     });
 
     it("never lets sign-up set the role", async () => {
-      const { rows } = await h.sql("select role from users where email = $1", ["new@example.com"]);
-      expect(rows).toEqual([{ role: "user" }]);
+      const response = await h.browser("203.0.113.90").request("POST", "/api/auth/sign-up/email", {
+        json: { email: "sneaky@example.com", password, name: "Sneaky", role: "admin" },
+      });
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({ code: "FIELD_NOT_ALLOWED" });
+      const { rows } = await h.sql("select 1 from users where email = $1", ["sneaky@example.com"]);
+      expect(rows).toEqual([]);
     });
 
     it("answers a sign-up for an existing email exactly like a new one, and tells the owner", async () => {

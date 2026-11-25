@@ -76,6 +76,10 @@ config:
   # Scopes for those APIs (crm, booking…), offered beside openid, profile, email and
   # offline_access, separated by commas or spaces.
   OAUTH_API_SCOPES: ""
+  # "true": every admin must have two-factor authentication on. An admin without it is sent
+  # to set it up first, before any other page or app. Admins can also require it of anyone
+  # on the Users screens.
+  TWO_FACTOR_REQUIRED_FOR_ADMINS: "false"
   # The product's name on every page, in titles, emails and authenticator apps (one line, up
   # to 50 characters). Empty for "Auth Server".
   APP_NAME: ""

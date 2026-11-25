@@ -1,3 +1,4 @@
+import { DISABLED_ACCOUNT_TEXT } from "@/shared/auth/auth-errors";
 import { TWO_FACTOR_REQUIRED_ERROR } from "@/shared/auth/social-two-factor-guard";
 import type { SocialProblem } from "../types";
 
@@ -25,6 +26,8 @@ const PROBLEMS: Record<string, SocialProblem> = {
     text: "That account didn't share an email address, and we need one. Try another way to sign in.",
   },
   access_denied: { text: "Sign-in was cancelled. Choose a way to sign in." },
+  // The admin plugin refused the session: the account is disabled.
+  BANNED_USER: { title: "This account is disabled", text: DISABLED_ACCOUNT_TEXT },
 };
 
 const GENERAL: SocialProblem = {

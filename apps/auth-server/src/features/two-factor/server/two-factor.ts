@@ -1,5 +1,9 @@
 import "server-only";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import {
+  authErrorMessage,
+  DISABLED_ACCOUNT_TEXT,
+  isDisabledAccount,
+} from "@/shared/auth/auth-errors";
 import { type AuthCaller, continuationUrl, type EndpointError } from "@/shared/auth/endpoint";
 import type { PasswordAttempt, SecondFactorMethod, VerifyProblem } from "../types";
 
@@ -20,6 +24,7 @@ export type VerifyOutcome =
 
 function verifyProblem(error: EndpointError): VerifyProblem {
   if (error.code === "INVALID_TWO_FACTOR_COOKIE") return { kind: "expired" };
+  if (isDisabledAccount(error)) return { kind: "message", text: DISABLED_ACCOUNT_TEXT };
   if (error.code === "ACCOUNT_TEMPORARILY_LOCKED") {
     return {
       kind: "message",
