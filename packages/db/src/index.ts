@@ -16,6 +16,11 @@ export {
   type OAuthClientSummary,
 } from "./queries/oauth-clients";
 export {
+  consumePushedRequest,
+  createPushedRequest,
+  type NewPushedRequest,
+} from "./queries/oauth-pushed-requests";
+export {
   countActiveSessions,
   getSessionToken,
   listActiveSessions,
