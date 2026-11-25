@@ -1,5 +1,9 @@
 import "server-only";
-import { authErrorMessage } from "@/shared/auth/auth-errors";
+import {
+  authErrorMessage,
+  DISABLED_ACCOUNT_TEXT,
+  isDisabledAccount,
+} from "@/shared/auth/auth-errors";
 import { type AuthCaller, continuationUrl, type EndpointError } from "@/shared/auth/endpoint";
 import type { LoginInput } from "../schemas/login";
 import type { LoginProblem } from "../types";
@@ -20,6 +24,7 @@ function problemFor(error: EndpointError, email: string): LoginProblem {
   }
   // The signed authorization query outlived its 10 minutes.
   if (error.error === "invalid_signature") return { kind: "expired" } as const;
+  if (isDisabledAccount(error)) return { kind: "message", text: DISABLED_ACCOUNT_TEXT } as const;
   // Wrong password and unknown email get the same words, as they get the same answer.
   if (error.status === 401) {
     return { kind: "message", text: "Email or password is incorrect." } as const;

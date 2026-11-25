@@ -133,6 +133,10 @@ describe("routeOf", () => {
     expect(routeOf("/")).toBe("/");
     expect(routeOf("/admin/clients/")).toBe("/admin/clients");
     expect(routeOf("/admin/clients/123")).toBe("other");
+    // A user's page is one route, whoever's it is; the literal pattern isn't a path.
+    expect(routeOf("/admin/users/6f1c1a1e-2b3c-4d5e-8f90-123456789abc")).toBe("/admin/users/[id]");
+    expect(routeOf("/admin/users/[id]")).toBe("other");
+    expect(routeOf("/admin/users/not-an-id")).toBe("other");
   });
 
   it("knows every page in src/app", () => {

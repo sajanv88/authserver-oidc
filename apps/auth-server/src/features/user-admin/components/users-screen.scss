@@ -1,0 +1,7 @@
+@use "abstracts" as a;
+
+.users-screen {
+  display: grid;
+  gap: a.space(6);
+  grid-template-columns: minmax(0, 1fr);
+}

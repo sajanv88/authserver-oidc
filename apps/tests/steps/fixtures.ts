@@ -16,6 +16,9 @@ export type World = {
   twoFactor?: TwoFactor;
   usedBackupCode?: string;
   client?: { name: string; redirectUri: string; clientId: string; secret: string };
+  /** Someone an admin manages in the scenario ("they"), and their own browser. */
+  someone?: Person;
+  theirDevice?: Page;
 };
 
 type Fixtures = {

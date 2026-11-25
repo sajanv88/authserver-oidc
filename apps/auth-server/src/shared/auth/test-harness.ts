@@ -2,7 +2,7 @@
 // Better Auth's HTTP handler the way browsers and OIDC clients drive it.
 import { createTestDb } from "@repo/db/testing";
 import type { ServerEnv } from "@/shared/config/env";
-import type { EmailMessage } from "@/shared/email";
+import type { EmailContent, EmailMessage } from "@/shared/email";
 import { createAuth } from "./auth-config";
 import { type AuthCaller, callEndpoint } from "./endpoint";
 
@@ -22,6 +22,7 @@ export const testEnv: ServerEnv = {
   turnstile: undefined,
   social: {},
   oauth: { resources: [], apiScopes: [] },
+  twoFactorRequiredForAdmins: false,
   appName: "Auth Server",
   logoUrl: undefined,
 };
@@ -33,15 +34,16 @@ export async function createHarness(overrides: Partial<ServerEnv> = {}) {
   // Rendered in order, after the response like the app's; each request waits for them, so a
   // test reads the email its request sent.
   let outbox: Promise<void> = Promise.resolve();
-  const auth = createAuth({
-    env: { ...testEnv, ...overrides },
-    database,
-    sendEmail: (to, email) => {
-      outbox = outbox.then(async () => {
-        emails.push({ to, ...(await email) });
-      });
-    },
-  });
+  const env = { ...testEnv, ...overrides };
+  /** The app's sendEmailInBackground, for tests: `emails` has it once `settled()`. */
+  const sendEmail = (to: string, email: Promise<EmailContent>) => {
+    outbox = outbox.then(async () => {
+      emails.push({ to, ...(await email) });
+    });
+  };
+  const auth = createAuth({ env, database, sendEmail });
+  /** Waits for the emails sent so far, outside a request (which waits by itself). */
+  const settled = () => outbox;
 
   /** A browser: keeps cookies between requests, and always comes from the same client IP. */
   function browser(clientIp = "203.0.113.10") {
@@ -128,7 +130,7 @@ export async function createHarness(overrides: Partial<ServerEnv> = {}) {
     return database.$client.query(query, params);
   }
 
-  return { auth, database, emails, browser, sql };
+  return { auth, database, env, emails, sendEmail, settled, browser, sql };
 }
 
 export function linkIn(email: EmailMessage | undefined): string {

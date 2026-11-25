@@ -1,0 +1,23 @@
+@use "abstracts" as a;
+
+// Stacked on a phone; the search takes the room left on one line from the sm breakpoint.
+.users-filter {
+  display: grid;
+  gap: a.space(3);
+
+  @include a.breakpoint("sm") {
+    grid-template-columns: minmax(0, 1fr) 12rem auto;
+    align-items: end;
+  }
+
+  &__field {
+    display: grid;
+    gap: a.space(1.5);
+    min-inline-size: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: a.space(2);
+  }
+}

@@ -1,3 +1,4 @@
+import adminUser from "@/content/docs/admin-user.png";
 import sessions from "@/content/docs/sessions.png";
 import twoFactor from "@/content/docs/two-factor.png";
 import { Code } from "../../code/code";
@@ -64,6 +65,10 @@ export function Security() {
             <C key="t">TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY</C>,
             "Optional: Cloudflare Turnstile on every form and the endpoints behind them. Both or neither.",
           ],
+          [
+            <C key="2">TWO_FACTOR_REQUIRED_FOR_ADMINS</C>,
+            "Optional: true makes every admin set up two-factor before anything else, apps included.",
+          ],
         ]}
       />
       <Code language="sh" title="Terminal" label="A secret" code="openssl rand -base64 32" />
@@ -83,6 +88,39 @@ export function Security() {
         src={sessions}
         alt="The Sessions page of My profile: where you're signed in, with this device marked and a Sign out everywhere button, beside tabs for Password, Two-factor and Sessions."
         caption="Every device the account is signed in on, ten to a page. Signing one out ends its session at once; apps with back-channel logout are told."
+      />
+      <Subheading id="security-admins">Managing people</Subheading>
+      <p className="article__text">
+        Admins find anyone under <strong>Users</strong>, by name, email or status, and open them to:
+      </p>
+      <ul className="article__list">
+        <li>
+          <strong>Disable</strong> the account, for a day, a week, a month or until enabled again.
+          It can't sign in by any method, its sessions end, and every token its apps hold is
+          revoked, offline access included.
+        </li>
+        <li>
+          <strong>Sign them out everywhere</strong>, with the same revocation, for a lost laptop or
+          someone leaving.
+        </li>
+        <li>
+          <strong>Require two-factor</strong>: until it's on, every page and every app's sign-in
+          sends them to set it up first. <strong>Reset</strong> it for a lost phone.
+        </li>
+        <li>
+          Make them an admin, or a user again, and <strong>delete</strong> the account once its
+          email is typed, for a GDPR request.
+        </li>
+      </ul>
+      <p className="article__text">
+        The person gets an email when their account is disabled, enabled, deleted, or its two-factor
+        is reset. Each change is kept in the account&apos;s history: what, when and by whom. No
+        admin can do these to their own account.
+      </p>
+      <Shot
+        src={adminUser}
+        alt="A user's admin page: their name, email, joined and last-active dates, two-factor and status, then cards for Access (Disable, Sign out everywhere), Two-factor authentication (Require two-factor), Role (Make admin) and Delete the account, and the history below."
+        caption="One person's page under Users. Every action asks first, and the history keeps what admins did."
       />
     </Section>
   );

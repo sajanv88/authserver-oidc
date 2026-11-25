@@ -4,7 +4,7 @@
 
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
-import { jwt, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createAuthAdapter } from "./auth-adapter";
@@ -30,6 +30,12 @@ function createAuth(db: TestDb, sentLinks: string[]) {
     user: {
       additionalFields: {
         role: { type: "string", input: false, required: false, defaultValue: "user" },
+        twoFactorRequired: {
+          type: "boolean",
+          input: false,
+          required: false,
+          defaultValue: false,
+        },
       },
     },
     rateLimit: { enabled: true, storage: "database", window: 60, max: 100 },
@@ -41,6 +47,7 @@ function createAuth(db: TestDb, sentLinks: string[]) {
         },
       }),
       twoFactor(),
+      admin({ adminRoles: ["admin"], defaultRole: "user" }),
       jwt({ disableSettingJwtHeader: true }),
       oauthProvider({
         loginPage: "/login",
@@ -160,6 +167,70 @@ describe("Better Auth on the @repo/db schema", () => {
     expect(await getOAuthClientPublicInfo(db, created.client_id)).toMatchObject({
       name: "Example client",
       disabled: false,
+    });
+  });
+
+  describe("the admin plugin", () => {
+    const graceEmail = "grace@example.com";
+    let grace = "";
+    // From a new client IP each time, so Better Auth's sign-in rate limit (3 in 10 seconds per
+    // IP) doesn't answer instead of the plugin.
+    let client = 0;
+    const signIn = (who: string) =>
+      auth.handler(
+        new Request(`${baseURL}/api/auth/sign-in/email`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: baseURL,
+            "x-forwarded-for": `198.51.100.${++client}`,
+          },
+          body: JSON.stringify({ email: who, password }),
+        }),
+      );
+    const asAdmin = () => new Headers({ cookie });
+
+    beforeAll(async () => {
+      const { user } = await auth.api.signUpEmail({
+        body: { email: graceEmail, password, name: "Grace" },
+      });
+      grace = user.id;
+    });
+
+    it("lists users and changes a role within the enum", async () => {
+      const listed = await auth.api.listUsers({ query: {}, headers: asAdmin() });
+      expect(listed.users.map((u) => u.email).sort()).toEqual([email, graceEmail]);
+
+      await auth.api.setRole({ body: { userId: grace, role: "admin" }, headers: asAdmin() });
+      expect(await getUserSecurityByEmail(db, graceEmail)).toMatchObject({ role: "admin" });
+      await auth.api.setRole({ body: { userId: grace, role: "user" }, headers: asAdmin() });
+      expect(await getUserSecurityByEmail(db, graceEmail)).toMatchObject({ role: "user" });
+    });
+
+    it("bans into the banned columns, refuses the banned user's sign-in, and unbans", async () => {
+      expect((await signIn(graceEmail)).status).toBe(200);
+      await auth.api.banUser({
+        body: { userId: grace, banReason: "testing", banExpiresIn: 60 * 60 },
+        headers: asAdmin(),
+      });
+      const [row] = await db
+        .select({ banned: users.banned, reason: users.banReason, until: users.banExpires })
+        .from(users)
+        .where(eq(users.id, grace));
+      expect(row).toMatchObject({ banned: true, reason: "testing" });
+      expect(row?.until).toBeInstanceOf(Date);
+
+      const refused = await signIn(graceEmail);
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toMatchObject({ code: "BANNED_USER" });
+
+      await auth.api.unbanUser({ body: { userId: grace }, headers: asAdmin() });
+      expect((await signIn(graceEmail)).status).toBe(200);
+    });
+
+    it("removes a user", async () => {
+      await auth.api.removeUser({ body: { userId: grace }, headers: asAdmin() });
+      expect(await getUserSecurityByEmail(db, graceEmail)).toBeUndefined();
     });
   });
 });

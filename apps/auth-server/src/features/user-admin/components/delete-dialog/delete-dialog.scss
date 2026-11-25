@@ -1,0 +1,16 @@
+@use "abstracts" as a;
+
+.delete-dialog {
+  &__form {
+    display: grid;
+    gap: a.space(4);
+    margin-block-start: a.space(4);
+  }
+
+  // The address as it has to be typed, letter for letter.
+  &__code {
+    font-family: var(--font-mono);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+  }
+}

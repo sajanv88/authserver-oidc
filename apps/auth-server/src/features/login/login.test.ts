@@ -2,6 +2,7 @@
 // LoginForm makes and the answers it acts on.
 import { createHash, randomBytes } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
+import { DISABLED_ACCOUNT_TEXT } from "@/shared/auth/auth-errors";
 import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
 import { parseForm } from "@/shared/validation/field-errors";
@@ -248,5 +249,24 @@ describe("the sign-in action's outcomes (signIn, as signInAction calls it)", () 
       problem: { kind: "message", text: "Email or password is incorrect." },
     });
     expect(unknown).toEqual(wrong);
+  });
+
+  it("tells a disabled account's owner it's disabled, and only with the right password", async () => {
+    await confirmed("gone@example.com", "203.0.113.197");
+    await h.sql("update users set banned = true where email = $1", ["gone@example.com"]);
+    const right = await signIn(h.browser("203.0.113.198").caller(), input("gone@example.com"), "");
+    expect(right).toEqual({
+      kind: "problem",
+      problem: { kind: "message", text: DISABLED_ACCOUNT_TEXT },
+    });
+    const wrong = await signIn(
+      h.browser("203.0.113.199").caller(),
+      input("gone@example.com", "not my password"),
+      "",
+    );
+    expect(wrong).toEqual({
+      kind: "problem",
+      problem: { kind: "message", text: "Email or password is incorrect." },
+    });
   });
 });

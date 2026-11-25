@@ -33,7 +33,7 @@ export async function SecurityLayout({
   active: SecurityPage;
   children: ReactNode;
 }) {
-  const methods = await signInMethodsForAccount();
+  const methods = await signInMethodsForAccount(active);
   const signInWith = new Intl.ListFormat("en", { type: "conjunction" }).format([
     ...(methods.hasPassword ? ["Password"] : []),
     ...methods.providers,

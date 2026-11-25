@@ -1,5 +1,6 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@nuvui/react";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@nuvui/react";
 import type { ReactNode } from "react";
+import { authPageHref } from "@/shared/auth/auth-pages";
 import { signInMethodsForAccount } from "../server/sign-in-methods";
 import type { AccountUser } from "../types";
 import { SecurityLayout } from "./security-layout/security-layout";
@@ -12,7 +13,7 @@ type SecurityTwoFactorScreenProps = {
 
 /** /account/security/two-factor: turning it on or off, and new backup codes. */
 export async function SecurityTwoFactorScreen({ user, twoFactor }: SecurityTwoFactorScreenProps) {
-  const methods = await signInMethodsForAccount();
+  const methods = await signInMethodsForAccount("twoFactor");
   return (
     <SecurityLayout user={user} active="twoFactor">
       {methods.hasPassword ? (
@@ -27,6 +28,13 @@ export async function SecurityTwoFactorScreen({ user, twoFactor }: SecurityTwoFa
               It asks for your password before it turns on, so add a password first.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            {/* A reset link creates the password: it proves the email is theirs first. It's
+                an auth page, so it opens even while two-factor is required and not on yet. */}
+            <Button asChild intent="secondary">
+              <a href={authPageHref("forgotPassword")}>Set a password</a>
+            </Button>
+          </CardContent>
         </Card>
       )}
     </SecurityLayout>

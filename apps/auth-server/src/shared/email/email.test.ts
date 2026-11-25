@@ -2,13 +2,61 @@ import { describe, expect, it } from "vitest";
 import { createConsoleProvider } from "./console-provider";
 import { smtpTransportOptions } from "./smtp-provider";
 import {
+  accountDeletedTemplate,
+  accountDisabledTemplate,
+  accountEnabledTemplate,
   existingAccountTemplate,
   magicLinkTemplate,
   resetPasswordTemplate,
+  twoFactorResetTemplate,
   verifyEmailTemplate,
 } from "./templates";
 
 const url = "https://auth.example.com/api/auth/verify?token=abc&callbackURL=%2F";
+
+describe("account notices from admins", () => {
+  it("says when a disabled account opens again, or that an admin has to enable it", async () => {
+    const until = await accountDisabledTemplate({ appName: "Acme ID", until: "1 December 2026" });
+    expect(until.subject).toBe("Your account has been disabled · Acme ID");
+    expect(until.text).toContain("You can sign in again from 1 December 2026.");
+    const forever = await accountDisabledTemplate({ appName: "Acme ID" });
+    expect(forever.text).toContain("until an administrator enables it again");
+  });
+
+  it("links an enabled account to sign-in", async () => {
+    const email = await accountEnabledTemplate({
+      appName: "Acme ID",
+      loginUrl: "https://auth.example.com/login",
+    });
+    expect(email.subject).toBe("Your account is enabled again · Acme ID");
+    expect(email.text.split(/\s+/)).toContain("https://auth.example.com/login");
+  });
+
+  it("warns of a two-factor reset, and says whether it's required again", async () => {
+    const settingsUrl = "https://auth.example.com/account/security/two-factor";
+    const required = await twoFactorResetTemplate({
+      appName: "Acme ID",
+      settingsUrl,
+      required: true,
+    });
+    expect(required.subject).toBe("Two-factor authentication was turned off · Acme ID");
+    expect(required.text).toContain("the next time you sign in");
+    expect(required.text).toContain("tell your administrator now");
+    expect(required.text.split(/\s+/)).toContain(settingsUrl);
+    const optional = await twoFactorResetTemplate({
+      appName: "Acme ID",
+      settingsUrl,
+      required: false,
+    });
+    expect(optional.text).toContain("Set it up again to keep your account safe.");
+  });
+
+  it("says a deleted account can't be brought back", async () => {
+    const email = await accountDeletedTemplate({ appName: "Acme ID" });
+    expect(email.subject).toBe("Your account has been deleted · Acme ID");
+    expect(email.text).toContain("can't be brought back");
+  });
+});
 
 describe("email templates", () => {
   it.each([

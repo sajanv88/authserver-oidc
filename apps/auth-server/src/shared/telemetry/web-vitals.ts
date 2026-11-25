@@ -23,7 +23,14 @@ export const KNOWN_ROUTES = [
   "/account/security/two-factor",
   "/account/security/sessions",
   "/admin/clients",
+  "/admin/users",
+  "/admin/users/[id]",
 ] as const;
+
+/** The pages with a dynamic segment, and the paths that are one of them. */
+const DYNAMIC_ROUTES: { route: (typeof KNOWN_ROUTES)[number]; path: RegExp }[] = [
+  { route: "/admin/users/[id]", path: /^\/admin\/users\/[0-9a-f-]{36}$/ },
+];
 
 const NAVIGATION_TYPES = [
   "navigate",
@@ -51,7 +58,11 @@ const PostSchema = v.pipe(v.array(VitalSchema), v.minLength(1), v.maxLength(MAX_
 /** The app route a reported path belongs to, or "other". */
 export function routeOf(path: string): string {
   const trimmed = path.length > 1 ? path.replace(/\/+$/, "") : path;
-  return (KNOWN_ROUTES as readonly string[]).includes(trimmed) ? trimmed : "other";
+  const dynamic = DYNAMIC_ROUTES.find((entry) => entry.path.test(trimmed));
+  if (dynamic) return dynamic.route;
+  return (KNOWN_ROUTES as readonly string[]).includes(trimmed) && !trimmed.includes("[")
+    ? trimmed
+    : "other";
 }
 
 function navigationTypeOf(value: string): string {

@@ -5,10 +5,9 @@ import { headers } from "next/headers";
 import * as v from "valibot";
 import { getAuth } from "@/shared/auth/auth";
 import { CAPTCHA_MESSAGE } from "@/shared/auth/auth-errors";
-import { captchaToken } from "@/shared/auth/captcha";
 import { requireAdmin } from "@/shared/auth/session";
 import { env } from "@/shared/config/env";
-import { turnstileHostnames, verifyTurnstileToken } from "@/shared/security/turnstile";
+import { formPassesTurnstile } from "@/shared/security/turnstile-form";
 import { traceFlow } from "@/shared/telemetry/trace-flow";
 import { parseForm } from "@/shared/validation/field-errors";
 import { ClientIdSchema, CreateClientSchema, UpdateClientSchema } from "../schemas/client";
@@ -41,16 +40,6 @@ function valuesFrom(formData: FormData): CreateClientValues {
   return { name: text("name"), kind: text("kind"), redirectUris: text("redirectUris") };
 }
 
-/**
- * Turnstile, when it's on. These forms post to the plugin's server API, which the captcha
- * plugin doesn't see, so the token is checked here.
- */
-async function passesTurnstile(formData: FormData): Promise<boolean> {
-  const config = env();
-  if (!config.turnstile) return true;
-  return verifyTurnstileToken(config.turnstile, captchaToken(formData), turnstileHostnames(config));
-}
-
 /** What a redirect URI may be, where this server runs. */
 function redirectUriAdvice(): string {
   return env().isProduction
@@ -78,7 +67,7 @@ export async function createClientAction(
   const parsed = parseForm(CreateClientSchema, values);
   if (!parsed.ok) return { status: "editing", values, errors: parsed.errors, attempt };
 
-  if (!(await passesTurnstile(formData))) {
+  if (!(await formPassesTurnstile(formData))) {
     return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
   }
 
@@ -128,7 +117,7 @@ export async function updateClientAction(
         : {}),
     };
   }
-  if (!(await passesTurnstile(formData))) {
+  if (!(await formPassesTurnstile(formData))) {
     return { status: "editing", values, attempt, formError: CAPTCHA_MESSAGE };
   }
 

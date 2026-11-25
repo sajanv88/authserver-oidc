@@ -8,6 +8,7 @@ import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-
 import { parseForm } from "@/shared/validation/field-errors";
 import { setupKeyFrom } from "./components/two-factor-settings/setup-key";
 import { VerifyBackupCodeSchema, VerifyTotpSchema } from "./schemas/two-factor";
+import { continueAfterSetup } from "./server/continue";
 import {
   confirmSetup,
   disableTwoFactor,
@@ -291,5 +292,65 @@ describe("the two-factor actions' server side, as the actions call it", () => {
         "",
       ),
     ).toEqual({ kind: "problem", problem: { kind: "expired" } });
+  });
+});
+
+describe("required two-factor inside an app's sign-in", () => {
+  it("sends someone to set it up, then goes on to the app once a real code turns it on", async () => {
+    const h = await createHarness();
+    const admin = h.browser("203.0.113.150");
+    await admin.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "admin@example.com", password, name: "Admin" },
+    });
+    await admin.request("GET", linkIn(h.emails.at(-1)));
+    await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
+    const { client_id } = await h.auth.api.adminCreateOAuthClient({
+      body: { client_name: "App", redirect_uris: [redirectUri], skip_consent: true },
+      headers: new Headers({
+        cookie: [...admin.jar].map(([name, value]) => `${name}=${value}`).join("; "),
+      }),
+    });
+
+    const ada = h.browser("203.0.113.151");
+    await ada.request("POST", "/api/auth/sign-up/email", {
+      json: { email: "ada@example.com", password, name: "Ada" },
+    });
+    await ada.request("GET", linkIn(h.emails.at(-1)));
+    await h.sql("update users set two_factor_required = true where email = $1", [
+      "ada@example.com",
+    ]);
+
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id,
+      redirect_uri: redirectUri,
+      scope: "openid email",
+      state: "st",
+      code_challenge: createHash("sha256").update(randomBytes(16)).digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    const authorize = await ada.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    const setUp = new URL(authorize.headers.get("location") ?? "", BASE_URL);
+    expect(setUp.pathname).toBe("/account/security/two-factor");
+    const signed = setUp.search.slice(1);
+
+    expect(await continueAfterSetup(ada.caller(), signed)).toEqual({ kind: "not-yet" });
+
+    const started = await startSetup(ada.caller(), password, 1);
+    if (!started.ok) throw new Error("setup didn't start");
+    expect(await confirmSetup(ada.caller(), totp(started.totpURI))).toEqual({ ok: true });
+
+    const outcome = await continueAfterSetup(ada.caller(), signed);
+    if (outcome.kind !== "continue") throw new Error(`expected to continue, got ${outcome.kind}`);
+    const callback = new URL(outcome.url);
+    expect(`${callback.origin}${callback.pathname}`).toBe(redirectUri);
+    expect(callback.searchParams.get("code")).toBeTruthy();
+
+    // A query that no longer verifies asks the app's request again instead.
+    const tampered = signed.replace("state=st", "state=xx");
+    expect(await continueAfterSetup(ada.caller(), tampered)).toMatchObject({
+      kind: "restart",
+      url: expect.stringContaining("/api/auth/oauth2/authorize?"),
+    });
   });
 });

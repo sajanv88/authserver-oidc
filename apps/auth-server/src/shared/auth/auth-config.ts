@@ -3,7 +3,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { createAuthAdapter, type Executor, getUserSecurityByEmail } from "@repo/db";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
+import { admin, captcha, genericOAuth, jwt, magicLink, twoFactor } from "better-auth/plugins";
 import type { OAuthApiConfig, ServerEnv } from "@/shared/config/env";
 import {
   type EmailContent,
@@ -13,6 +13,8 @@ import {
   verifyEmailTemplate,
 } from "@/shared/email";
 import { turnstileHostnames } from "@/shared/security/turnstile";
+import { SECURITY_PAGES } from "./account-pages";
+import { accountPolicy } from "./account-policy";
 import { AUTH_PAGES } from "./auth-pages";
 import { CAPTCHA_ENDPOINTS } from "./captcha";
 import {
@@ -24,6 +26,7 @@ import {
 import { pushedAuthorizationRequests, pushedRequestResolver } from "./pushed-authorization";
 import { socialProviderOptions, ssoProviderConfig } from "./social-providers";
 import { socialTwoFactorGuard } from "./social-two-factor-guard";
+import { mustSetUpTwoFactor } from "./two-factor-policy";
 
 // Lifetimes, in seconds. Short for anything that's a bearer credential in a URL or a header.
 export const LIFETIMES = {
@@ -60,6 +63,23 @@ export const ADMIN_CLIENT_OWNER = "admins";
 function isAdmin(user: unknown): boolean {
   return (user as { role?: unknown } | undefined)?.role === "admin";
 }
+
+/** What a disabled account is told when it tries to sign in. */
+export const DISABLED_ACCOUNT_MESSAGE = "This account is disabled.";
+
+/**
+ * The admin plugin's endpoints this server doesn't offer. Impersonation would let an admin
+ * act as someone at every app; setting a password or an email would take an account over;
+ * accounts are made by signing up and confirming the address. What's left: listing users,
+ * disabling and enabling them, ending their sessions, their role, and deleting them.
+ */
+const DISABLED_ADMIN_PATHS = [
+  "/admin/impersonate-user",
+  "/admin/stop-impersonating",
+  "/admin/set-user-password",
+  "/admin/update-user",
+  "/admin/create-user",
+];
 
 // Tighter than the global limit (100 per minute per IP and path) on everything an attacker
 // would hammer: guessing passwords, enumerating accounts, flooding inboxes. Counted in the
@@ -116,6 +136,7 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
   const ssoProviders = ssoProviderConfig(env.social);
   // Who the emails are from: the name, and the logo above it.
   const brand = { appName: env.appName, logoUrl: env.logoUrl };
+  const twoFactorPolicy = { requiredForAdmins: env.twoFactorRequiredForAdmins };
 
   return betterAuth({
     appName: env.appName,
@@ -126,8 +147,16 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
 
     user: {
       additionalFields: {
-        // Never settable through sign-up or update-user: admins are made in the database.
+        // Never settable through sign-up or update-user: the seed makes the first admin, and
+        // admins change roles on the Users screens (the admin plugin's set-role).
         role: { type: "string", input: false, required: false, defaultValue: "user" },
+        // An admin requires two-factor of this person (two-factor-policy.ts).
+        twoFactorRequired: {
+          type: "boolean",
+          input: false,
+          required: false,
+          defaultValue: false,
+        },
       },
     },
 
@@ -200,7 +229,7 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
     },
 
     // Better Auth's own /token (a JWT for the session) isn't needed: clients use /oauth2/token.
-    disabledPaths: ["/token"],
+    disabledPaths: ["/token", ...DISABLED_ADMIN_PATHS],
 
     advanced: {
       database: { generateId: "uuid" },
@@ -243,6 +272,17 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         backupCodeOptions: { amount: 10, length: 10, storeBackupCodes: "encrypted" },
       }),
 
+      // The Users screens: disabling an account (it can't start a session, by any method, and
+      // its sessions end), its role, ending its sessions, deleting it. Only admins, and only
+      // the endpoints DISABLED_ADMIN_PATHS leaves.
+      admin({
+        adminRoles: ["admin"],
+        defaultRole: "user",
+        bannedUserMessage: DISABLED_ACCOUNT_MESSAGE,
+      }),
+      // Rules on those endpoints, on turning two-factor off, and on get-session.
+      accountPolicy({ database, twoFactor: twoFactorPolicy }),
+
       // The SSO_* OpenID Connect provider, when it's configured.
       ...(ssoProviders.length > 0 ? [genericOAuth({ config: ssoProviders })] : []),
 
@@ -261,6 +301,14 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
       oauthProvider({
         loginPage: LOGIN_PAGE,
         consentPage: CONSENT_PAGE,
+        // Someone who must have two-factor and hasn't set it up goes to set it up after signing
+        // in, before consent or a code: an app never hears of them until it's on. The page
+        // continues the flow (/oauth2/continue), which asks again.
+        postLogin: {
+          page: SECURITY_PAGES.twoFactor,
+          shouldRedirect: ({ user }) => mustSetUpTwoFactor(user, twoFactorPolicy),
+          consentReferenceId: () => undefined,
+        },
         scopes: offeredScopes(env.oauth),
         // Authorization code (always with PKCE S256) and refresh tokens for apps that sign
         // people in; client credentials for services that call an API as themselves, within

@@ -22,6 +22,7 @@
 - **Social sign-in (optional):** Google, Microsoft, GitHub, and any OpenID Connect provider (Okta, Keycloak, Auth0…), each on when its keys are set
 - **Two-factor authentication:** an authenticator app, with backup codes
 - **My profile:** change the password, turn two-factor on or off, see where you're signed in and sign out one device or all of them
+- **User management:** admins find people, disable or enable their accounts, sign them out everywhere (apps' tokens included), require or reset two-factor, change roles and delete accounts, with an email to the person and a history of every change
 - **OpenID Connect:** the authorization code flow with PKCE, rotating refresh tokens, a consent screen, pushed authorization requests (PAR, RFC 9126), and an admin page to register apps
 - **Your own APIs (optional):** JWT access tokens for each API (RFC 8707 resource indicators), API scopes, client credentials for services, back-channel logout, and a script that registers your apps from a file
 - **Shared session:** one sign-in across your subdomains, for apps you trust
@@ -70,6 +71,7 @@ Every setting is an environment variable, checked at startup: a missing or wrong
 | `EMAIL_PROVIDER`, `EMAIL_FROM` | config | `smtp` in production; `console` prints emails in development. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` | config | Port 465 is TLS from the first byte; any other port must offer STARTTLS. The certificate is always verified. |
 | `SMTP_PASSWORD` | **secret** | The SMTP password or API token. |
+| `TWO_FACTOR_REQUIRED_FOR_ADMINS` | config | Optional: `true` makes every admin set up two-factor before anything else. Admins can require it of anyone on **/admin/users**. |
 | `APP_NAME`, `LOGO_URL` | config | Optional: your product's name and a square logo (https), on every page and in the emails. |
 | `OAUTH_RESOURCES`, `OAUTH_API_SCOPES` | config | Optional: your APIs (e.g. `https://api.example.com`) and their scopes (e.g. `crm,booking`). |
 | `GOOGLE_*`, `MICROSOFT_*`, `GITHUB_*`, `SSO_*` | config, **secret** | Optional: each sign-in provider is on when its client ID (config) and its `*_CLIENT_SECRET` (secret) are both set. |

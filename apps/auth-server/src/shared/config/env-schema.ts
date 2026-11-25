@@ -193,6 +193,16 @@ const RawEnvSchema = v.object({
     v.pipe(v.string(), v.transform(scopeList), v.array(ApiScopeSchema)),
     "",
   ),
+  // Every admin must have two-factor on: an admin without it is sent to set it up before
+  // anything else, including an app's sign-in. "true" or "false" (the default).
+  TWO_FACTOR_REQUIRED_FOR_ADMINS: v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(v.picklist(["true", "false"], 'must be "true" or "false"'), "false"),
+      v.transform((value) => value === "true"),
+    ),
+  ),
   // The product's name on the pages, in titles, in emails and in authenticator apps. No line
   // breaks or other control characters: it goes into email subjects.
   APP_NAME: v.optional(
@@ -276,6 +286,8 @@ export type ServerEnv = {
   turnstile: TurnstileConfig | undefined;
   social: SocialConfig;
   oauth: OAuthApiConfig;
+  /** TWO_FACTOR_REQUIRED_FOR_ADMINS: every admin must have two-factor on. */
+  twoFactorRequiredForAdmins: boolean;
   /** The product's name: APP_NAME, or "Auth Server". */
   appName: string;
   /** The sign-in pages' logo, or undefined for the default shield. */
@@ -405,6 +417,7 @@ const EnvSchema = v.pipe(
           : undefined,
       social: socialConfig(env),
       oauth: { resources: env.OAUTH_RESOURCES, apiScopes: env.OAUTH_API_SCOPES },
+      twoFactorRequiredForAdmins: env.TWO_FACTOR_REQUIRED_FOR_ADMINS ?? false,
       appName: env.APP_NAME ?? DEFAULT_APP_NAME,
       logoUrl: env.LOGO_URL,
     }),

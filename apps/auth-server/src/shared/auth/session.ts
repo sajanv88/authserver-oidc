@@ -4,8 +4,11 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
+import { env } from "@/shared/config/env";
+import { SECURITY_PAGES } from "./account-pages";
 import { getAuth } from "./auth";
 import { safeReturnPath } from "./return-path";
+import { mustSetUpTwoFactor, twoFactorRequired } from "./two-factor-policy";
 
 export { safeReturnPath } from "./return-path";
 
@@ -28,14 +31,40 @@ async function readSession() {
 export const getSession = cache(readSession);
 
 /**
+ * The one page someone who must set up two-factor can open until it's on. Without a password
+ * (signed up with a provider), it links to setting one through the reset email, which is an
+ * auth page and open to anyone.
+ */
+const OPEN_BEFORE_TWO_FACTOR = new Set<string>([SECURITY_PAGES.twoFactor]);
+
+function twoFactorPolicy() {
+  return { requiredForAdmins: env().twoFactorRequiredForAdmins };
+}
+
+/** Whether this signed-in person must set up two-factor before anything else. */
+export function mustSetUpTwoFactorNow(user: AuthSession["user"]): boolean {
+  return mustSetUpTwoFactor(user, twoFactorPolicy());
+}
+
+/** Whether this signed-in person must have two-factor on (so they can't turn it off). */
+export function twoFactorRequiredFor(user: AuthSession["user"]): boolean {
+  return twoFactorRequired(user, twoFactorPolicy());
+}
+
+/**
  * The session, or a redirect to the login page that comes back to `returnTo`. For pages and
- * server actions: call it first, before reading or changing anything.
+ * server actions: call it first, before reading or changing anything. Someone who must have
+ * two-factor and hasn't set it up is sent to set it up, from every page but that one.
  */
 export async function requireSession(returnTo = "/"): Promise<AuthSession> {
   const session = await getSession();
   if (!session) {
     const query = new URLSearchParams({ returnTo: safeReturnPath(returnTo) });
     redirect(`/login?${query.toString()}` as Route);
+  }
+  const page = safeReturnPath(returnTo).split("?")[0] ?? "";
+  if (mustSetUpTwoFactorNow(session.user) && !OPEN_BEFORE_TWO_FACTOR.has(page)) {
+    redirect(SECURITY_PAGES.twoFactor as Route);
   }
   return session;
 }
