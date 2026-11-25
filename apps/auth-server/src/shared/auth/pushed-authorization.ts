@@ -14,8 +14,8 @@ import * as v from "valibot";
 // Pushed authorization requests (RFC 9126). An app posts its authorization parameters to
 // /oauth2/par, authenticated as it would be at the token endpoint, and gets a request_uri back;
 // it then sends the browser to /oauth2/authorize with only client_id and that request_uri. So
-// the parameters can't be read or altered in the browser, and they're checked before the user
-// sees anything. The OAuth provider plugin resolves a request_uri through `requestUriResolver`;
+// the request is authenticated and checked before the user sees anything, and can't be altered
+// on the way (the sign-in pages that follow carry it in a signed query, as for any request). The OAuth provider plugin resolves a request_uri through `requestUriResolver`;
 // this adds the endpoint that issues one, and advertises it in discovery.
 
 export const PAR_PATH = "/oauth2/par";

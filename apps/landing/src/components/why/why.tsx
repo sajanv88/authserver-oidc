@@ -11,7 +11,7 @@ const REASONS = [
   {
     Icon: ScaleIcon,
     title: "Standards first",
-    text: "OpenID Connect discovery, the authorization code flow with PKCE, RFC 8707 resource tokens and back-channel logout. Any standard OIDC client library connects without custom code.",
+    text: "OpenID Connect discovery, the authorization code flow with PKCE, pushed authorization requests (RFC 9126), RFC 8707 resource tokens and back-channel logout. Any standard OIDC client library connects without custom code.",
   },
   {
     Icon: CodeIcon,

@@ -50,6 +50,7 @@ const LIMITS = [
   { path: "/sign-in/social", limit: "10 a minute" },
   { path: "/callback/*", limit: "10 a minute" },
   { path: "/oauth2/token", limit: "30 a minute" },
+  { path: "/oauth2/par", limit: "30 a minute" },
   { path: "Everything else", limit: "100 a minute" },
 ];
 

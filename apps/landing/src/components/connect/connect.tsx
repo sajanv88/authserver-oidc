@@ -32,7 +32,7 @@ OIDC_SCOPES="openid profile email offline_access"`,
     value: "authorize",
     name: "Authorize",
     about:
-      "Send the user to the authorization endpoint. Keep the state, the nonce and the PKCE verifier, encrypted, until they come back.",
+      "Send the user to the authorization endpoint. Keep the state, the nonce and the PKCE verifier, encrypted, until they come back. Or POST the same parameters to /oauth2/par from your server first, and send only client_id and the request_uri it returns.",
     title: "Redirect",
     language: "http",
     code: `GET https://auth.example.com/api/auth/oauth2/authorize
@@ -191,6 +191,11 @@ const ENDPOINTS = [
   },
   { method: "GET", path: "/jwks", what: "The public keys ID tokens are signed with (RS256)" },
   { method: "GET", path: "/api/auth/oauth2/authorize", what: "Starts a sign-in: code + PKCE S256" },
+  {
+    method: "POST",
+    path: "/api/auth/oauth2/par",
+    what: "Pushes a sign-in's parameters first (PAR): a one-time request_uri for /authorize",
+  },
   {
     method: "POST",
     path: "/api/auth/oauth2/token",
