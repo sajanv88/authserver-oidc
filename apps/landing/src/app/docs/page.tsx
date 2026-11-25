@@ -35,6 +35,7 @@ const contents: TableOfContentsItem[] = [
   { id: "register-app", title: "Register an app" },
   { id: "pkce", title: "PKCE, step by step" },
   { id: "par", title: "Pushed requests (PAR)", depth: 2 },
+  { id: "sign-out", title: "Signing out here too", depth: 2 },
   { id: "secrets", title: "Confidential secrets" },
   { id: "security", title: "Security" },
   { id: "security-defaults", title: "On by default", depth: 2 },

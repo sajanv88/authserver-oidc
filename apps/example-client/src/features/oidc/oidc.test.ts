@@ -5,6 +5,7 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { sealFlow, sealSession, unsealFlow, unsealSession } from "./server/app-session";
 import { parseDiscovery } from "./server/discovery";
+import { endSessionUrl } from "./server/end-session";
 import { verifyIdToken } from "./server/id-token";
 import { challengeFor, randomToken, sameString } from "./server/pkce";
 import { seal, unseal } from "./server/sealed-cookie";
@@ -58,6 +59,7 @@ describe("encrypted cookies", () => {
       accessToken: "at",
       accessTokenExpiresAt: 1_800_000_000,
       refreshToken: "rt",
+      idToken: "header.payload.signature",
     };
     expect(await unsealSession(await sealSession(session, secret), secret)).toEqual(session);
   });
@@ -76,6 +78,30 @@ describe("discovery", () => {
     expect(parseDiscovery(document, issuer).jwks_uri).toBe(`${issuer}/jwks`);
     expect(() => parseDiscovery(document, "https://other.example.com")).toThrow(/issuer/);
     expect(() => parseDiscovery({ issuer }, issuer)).toThrow();
+  });
+
+  it("takes the end-session endpoint when the server has one", () => {
+    const endpoint = `${issuer}/api/auth/oauth2/end-session`;
+    expect(
+      parseDiscovery({ ...document, end_session_endpoint: endpoint }, issuer).end_session_endpoint,
+    ).toBe(endpoint);
+    expect(parseDiscovery(document, issuer).end_session_endpoint).toBeUndefined();
+  });
+});
+
+describe("signing out of the auth server too", () => {
+  it("sends the ID token as the hint, with the client and the registered way back", () => {
+    const url = endSessionUrl(
+      `${issuer}/api/auth/oauth2/end-session`,
+      { clientId, postLogoutRedirectUri: "http://app.localtest.me:3001/" },
+      "header.payload.signature",
+    );
+    expect(`${url.origin}${url.pathname}`).toBe(`${issuer}/api/auth/oauth2/end-session`);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      id_token_hint: "header.payload.signature",
+      client_id: clientId,
+      post_logout_redirect_uri: "http://app.localtest.me:3001/",
+    });
   });
 });
 

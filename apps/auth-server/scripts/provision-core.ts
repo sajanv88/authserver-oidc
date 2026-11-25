@@ -173,8 +173,6 @@ async function create(auth: Auth, headers: Headers, spec: ClientSpec): Promise<P
           redirect_uris: spec.redirectUris,
           token_endpoint_auth_method: "client_secret_basic" as const,
           skip_consent: spec.firstParty,
-          // Lets the zone end the session here when someone signs out of it.
-          enable_end_session: true,
           ...(spec.postLogoutRedirectUris.length > 0
             ? { post_logout_redirect_uris: spec.postLogoutRedirectUris }
             : {}),
@@ -214,6 +212,7 @@ async function update(
           scope: oidcClientDefaults(spec.scopes).scope,
           redirect_uris: spec.redirectUris,
           skip_consent: spec.firstParty,
+          // On for clients made before the defaults turned it on.
           enable_end_session: true,
           ...(spec.postLogoutRedirectUris.length > 0
             ? { post_logout_redirect_uris: spec.postLogoutRedirectUris }

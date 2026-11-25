@@ -13,6 +13,7 @@ describe("example-client environment", () => {
     expect(parseEnv({ ...base, EXAMPLE_CLIENT_SECRET: "" })).toMatchObject({
       appUrl: "http://app.localtest.me:3001",
       redirectUri: "http://app.localtest.me:3001/oidc/callback",
+      postLogoutRedirectUri: "http://app.localtest.me:3001/",
       clientSecret: undefined,
       authCookiePrefix: "nvx-auth",
     });

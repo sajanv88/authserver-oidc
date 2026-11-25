@@ -29,6 +29,8 @@ const SessionSchema = v.object({
   /** Seconds since the epoch. */
   accessTokenExpiresAt: v.number(),
   refreshToken: v.optional(v.string()),
+  /** The ID token as received: the hint when signing out of the auth server too. */
+  idToken: v.optional(v.string()),
 });
 export type AppSession = Omit<v.InferOutput<typeof SessionSchema>, "claims"> & {
   claims: JWTPayload;
@@ -51,6 +53,7 @@ export function sealSession(session: AppSession, secret: string): Promise<string
       accessToken: session.accessToken,
       accessTokenExpiresAt: session.accessTokenExpiresAt,
       ...(session.refreshToken ? { refreshToken: session.refreshToken } : {}),
+      ...(session.idToken ? { idToken: session.idToken } : {}),
     },
     { secret, purpose: SESSION_PURPOSE, maxAgeSeconds: SESSION_MAX_AGE },
   );

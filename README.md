@@ -95,7 +95,7 @@ Every setting is an environment variable, checked at startup: a missing or wrong
 | `POST /api/auth/oauth2/token` | A code, a refresh token or client credentials for tokens |
 | `GET /api/auth/oauth2/userinfo` | The signed-in user's claims |
 | `POST /api/auth/oauth2/revoke`, `/introspect` | Revokes a token; says whether one is active |
-| `GET /api/auth/oauth2/end-session` | Signs the user out here too |
+| `GET /api/auth/oauth2/end-session` | Signs the user out here too (RP-initiated logout), back to a registered post-logout address |
 | `GET /api/health` | For probes; never touches the database |
 
 ### Tokens for your own APIs

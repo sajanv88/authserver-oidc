@@ -1,0 +1,8 @@
+@use "abstracts" as a;
+
+// The two ways out, side by side, wrapping on a phone.
+.sign-out-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: a.space(2);
+}

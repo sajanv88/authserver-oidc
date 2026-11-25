@@ -35,6 +35,8 @@ export type ExampleEnv = {
   authServerUrl: string;
   appUrl: string;
   redirectUri: string;
+  /** Where the auth server sends people back after signing them out: the home page. */
+  postLogoutRedirectUri: string;
   clientId: string;
   clientSecret: string | undefined;
   sessionSecret: string;
@@ -66,6 +68,7 @@ export function parseEnv(source: Record<string, string | undefined>): ExampleEnv
     authServerUrl: env.EXAMPLE_AUTH_SERVER_URL,
     appUrl: env.EXAMPLE_APP_URL,
     redirectUri: `${env.EXAMPLE_APP_URL}/oidc/callback`,
+    postLogoutRedirectUri: `${env.EXAMPLE_APP_URL}/`,
     clientId: env.EXAMPLE_CLIENT_ID,
     clientSecret: env.EXAMPLE_CLIENT_SECRET === "" ? undefined : env.EXAMPLE_CLIENT_SECRET,
     sessionSecret: env.EXAMPLE_SESSION_SECRET,

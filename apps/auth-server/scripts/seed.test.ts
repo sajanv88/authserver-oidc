@@ -7,9 +7,10 @@ import { SeedError, seed } from "./seed-core";
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 
 const redirectUri = "http://app.localtest.me:3001/oidc/callback";
+const postLogoutRedirectUri = "http://app.localtest.me:3001/";
 const input = {
   admin: { email: "admin@localtest.me", password: "seed admin passphrase", name: "Admin" },
-  client: { name: "Example app", redirectUri },
+  client: { name: "Example app", redirectUri, postLogoutRedirectUri },
 };
 
 describe("the seed", () => {
@@ -31,12 +32,14 @@ describe("the seed", () => {
     ]);
     expect(users).toEqual([{ role: "admin", email_verified: true }]);
     const { rows: clients } = await h.sql(
-      "select name, redirect_uris, token_endpoint_auth_method, require_pkce, grant_types, client_secret from oauth_clients",
+      "select name, redirect_uris, post_logout_redirect_uris, enable_end_session, token_endpoint_auth_method, require_pkce, grant_types, client_secret from oauth_clients",
     );
     expect(clients).toEqual([
       {
         name: "Example app",
         redirect_uris: [redirectUri],
+        post_logout_redirect_uris: [postLogoutRedirectUri],
+        enable_end_session: true,
         token_endpoint_auth_method: "none",
         require_pkce: true,
         grant_types: ["authorization_code", "refresh_token"],
@@ -54,6 +57,22 @@ describe("the seed", () => {
     });
     const { rows } = await h.sql("select count(*)::int as n from oauth_clients");
     expect(rows).toEqual([{ n: 1 }]);
+  });
+
+  it("adds the post-logout address to an example client seeded before it had one", async () => {
+    await h.sql(
+      "update oauth_clients set post_logout_redirect_uris = null, enable_end_session = null where client_id = $1",
+      [clientId],
+    );
+    expect((await seed(h.auth, h.database, input)).client).toEqual({ clientId, status: "updated" });
+    const { rows } = await h.sql(
+      "select post_logout_redirect_uris, enable_end_session from oauth_clients where client_id = $1",
+      [clientId],
+    );
+    expect(rows).toEqual([
+      { post_logout_redirect_uris: [postLogoutRedirectUri], enable_end_session: true },
+    ]);
+    expect((await seed(h.auth, h.database, input)).client.status).toBe("existing");
   });
 
   it("the admin it makes can sign in with the password given", async () => {

@@ -1,14 +1,20 @@
 import { Button } from "@nuvui/react";
+import "./sign-out-form.scss";
 
 /**
- * Signs out of this app: a plain form POST to the route handler, which checks the Origin,
- * revokes the refresh token and clears this app's cookie. The auth server's session stays.
+ * Signing out: a plain form POST to the route handler, which checks the Origin, revokes the
+ * refresh token and clears this app's cookie. "Of this app" leaves the auth server's session,
+ * so the next sign-in goes straight through; "of the auth server too" then sends the browser
+ * to its end-session endpoint (RP-initiated logout), which comes back to the home page.
  */
 export function SignOutForm() {
   return (
-    <form method="post" action="/oidc/logout">
-      <Button type="submit" intent="secondary">
+    <form method="post" action="/oidc/logout" className="sign-out-form">
+      <Button type="submit" name="where" value="app" intent="secondary">
         Sign out of this app
+      </Button>
+      <Button type="submit" name="where" value="everywhere" intent="secondary">
+        Sign out of the auth server too
       </Button>
     </form>
   );

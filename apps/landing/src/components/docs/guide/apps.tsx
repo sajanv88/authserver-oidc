@@ -159,6 +159,29 @@ curl -X POST https://auth.example.com/api/auth/oauth2/token \\
 # 201 {"request_uri":"urn:ietf:params:oauth:request_uri:…","expires_in":60}
 # Then: /api/auth/oauth2/authorize?client_id=your-client-id&request_uri=<that request_uri>`}
       />
+      <Subheading id="sign-out">Signing out here too</Subheading>
+      <p className="article__text">
+        Clearing the app's own cookie signs someone out of the app, but not of this server: their
+        next sign-in goes straight through. To end both, the app clears its session, then sends the
+        browser to the end-session endpoint with the ID token it kept. The server ends that session,
+        tells apps with back-channel logout, and sends the browser back.
+      </p>
+      <Code
+        language="http"
+        title="Redirect"
+        label="Signing out of the auth server"
+        code={`GET https://auth.example.com/api/auth/oauth2/end-session
+  ?id_token_hint=THE_ID_TOKEN
+  &client_id=your-client-id
+  &post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2F
+  &state=OPTIONAL_STATE`}
+      />
+      <p className="article__text">
+        It goes back only to an address registered for the app, exactly: give the app{" "}
+        <C>postLogoutRedirectUris</C> in the provisioning file. Without one, or with an address it
+        doesn't know, the person lands on the server's own &quot;Logged out&quot; page. Without the
+        ID token, the server asks the person to confirm first, so no other site can sign them out.
+      </p>
     </Section>
   );
 }

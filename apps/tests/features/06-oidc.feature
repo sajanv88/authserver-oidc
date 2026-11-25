@@ -54,6 +54,12 @@ Feature: Apps sign people in with OIDC
     And I sign in to the example app with OIDC again
     Then the example app has signed me in with a verified ID token
 
+  Scenario: Signing out of the app and of the auth server
+    Given I have signed in to the example app with OIDC and allowed it
+    When I sign out of the example app and of the auth server
+    Then I am back on the example app, signed out
+    And I am signed out of the auth server
+
   Scenario: The app refreshes its tokens
     Given I have signed in to the example app with OIDC and allowed it
     When the example app refreshes its tokens
