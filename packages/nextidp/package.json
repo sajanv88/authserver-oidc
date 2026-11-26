@@ -1,7 +1,7 @@
 {
   "name": "nextidp",
   "version": "0.1.0",
-  "description": "Sign people in to Next.js, Node and NestJS apps with authserver-oidc, in one call.",
+  "description": "Sign people in to Next.js, Express and Node apps, and protect NestJS, Express and Next.js APIs, with authserver-oidc, in one call.",
   "keywords": [
     "oidc",
     "openid-connect",
@@ -30,6 +30,9 @@
       ],
       "express": [
         "./dist/cjs/express.d.ts"
+      ],
+      "node": [
+        "./dist/cjs/node.d.ts"
       ],
       "nestjs": [
         "./dist/cjs/nestjs.d.ts"
@@ -70,6 +73,16 @@
       "require": {
         "types": "./dist/cjs/express.d.ts",
         "default": "./dist/cjs/express.js"
+      }
+    },
+    "./node": {
+      "import": {
+        "types": "./dist/esm/node.d.ts",
+        "default": "./dist/esm/node.js"
+      },
+      "require": {
+        "types": "./dist/cjs/node.d.ts",
+        "default": "./dist/cjs/node.js"
       }
     },
     "./nestjs": {
@@ -121,8 +134,10 @@
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@repo/tsconfig": "workspace:*",
+    "@types/express": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
+    "express": "catalog:",
     "next": "catalog:",
     "publint": "catalog:",
     "react": "catalog:",
