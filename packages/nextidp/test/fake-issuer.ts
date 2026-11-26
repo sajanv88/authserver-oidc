@@ -68,6 +68,36 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       .setExpirationTime("10m")
       .sign(settings.forge ? other.privateKey : real.privateKey);
 
+  /**
+   * A back-channel logout token, as the auth server's plugin sends one: typ logout+jwt, `aud`
+   * this client, the logout event, `sid` and `sub`. `claims` adds to or (with undefined)
+   * removes from them.
+   */
+  const logoutToken = (
+    claims: Record<string, unknown> = {},
+    options: { typ?: string | null; forge?: boolean; exp?: string } = {},
+  ) => {
+    const header: { alg: string; kid: string; typ?: string } = { alg: "RS256", kid: "k1" };
+    if (options.typ !== null) header.typ = options.typ ?? "logout+jwt";
+    const payload: Record<string, unknown> = {
+      sub: "user-1",
+      sid: "idp-session-1",
+      jti: random(),
+      events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+      ...claims,
+    };
+    for (const [name, value] of Object.entries(payload)) {
+      if (value === undefined) delete payload[name];
+    }
+    return new SignJWT(payload)
+      .setProtectedHeader(header)
+      .setIssuer(ISSUER)
+      .setAudience(typeof claims.aud === "string" ? claims.aud : CLIENT_ID)
+      .setIssuedAt()
+      .setExpirationTime(options.exp ?? "2m")
+      .sign(options.forge ? other.privateKey : real.privateKey);
+  };
+
   /** A JWT access token, as the auth server's plugin makes one for a `resource`. */
   const accessToken = (
     claims: Record<string, unknown> = {},
@@ -208,6 +238,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
     fetch,
     settings,
     accessToken,
+    logoutToken,
     /** An opaque access token the introspection endpoint knows, with these claims. */
     opaqueToken(claims: Record<string, unknown>): string {
       const token = random();

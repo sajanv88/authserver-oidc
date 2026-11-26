@@ -28,6 +28,7 @@ import { createDiscovery, type Discovery } from "./discovery.js";
 import { IdpError, isIdpError, type SignInErrorCode } from "./errors.js";
 import { createIdpHttp, type Http } from "./http.js";
 import { createKeys, verifyIdToken } from "./id-token.js";
+import { verifyLogoutToken } from "./logout-token.js";
 import { challengeFor, randomToken, sameString } from "./pkce.js";
 import { safePath } from "./return-path.js";
 import { Sealer } from "./sealed.js";
@@ -43,12 +44,11 @@ import {
   FLOW_MAX_AGE,
   FLOW_PURPOSE,
   parseFlow,
-  parseStoredSession,
-  SESSION_PURPOSE,
   type Session,
   type StoredSession,
   toSession,
 } from "./session.js";
+import { cookieBackend, type SessionBackend, storeBackend } from "./store.js";
 import {
   type Client,
   exchangeCode,
@@ -76,7 +76,8 @@ export type Idp = {
   config(): IdpConfig;
   /**
    * Answers nextidp's routes under `basePath`: `GET /login`, `GET /callback`,
-   * `POST /logout`, `POST /refresh`. Anything else under it is a 404.
+   * `POST /logout`, `POST /refresh`, and with a store `POST /backchannel-logout`. Anything
+   * else under it is a 404.
    */
   handler(request: Request): Promise<Response>;
   /** The signed-in session, or null. Doesn't refresh: see `refreshIfNeeded`. */
@@ -144,6 +145,8 @@ type State = Shared & {
   config: IdpConfig;
   client: Client;
   sealer: Sealer;
+  /** Where sessions are kept: their cookie, or the store. */
+  backend: SessionBackend;
   /** Refreshes in progress or just done, by refresh token: see refreshStored. */
   refreshing: Map<string, { result: Promise<StoredSession>; until: number }>;
 };
@@ -246,11 +249,20 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
   const ready = (): State => {
     if (state) return state;
     const config = resolveConfig(optionsOf());
+    const sealer = new Sealer(config.secrets);
+    const settings = {
+      sealer,
+      cookie: config.cookies.session,
+      secure: config.secure,
+      maxAge: config.sessionMaxAge,
+      clientId: config.clientId,
+    };
     state = {
       ...sharedFor(config.issuer),
       config,
       client: { clientId: config.clientId, clientSecret: config.clientSecret },
-      sealer: new Sealer(config.secrets),
+      sealer,
+      backend: config.store ? storeBackend(config.store, settings) : cookieBackend(settings),
       refreshing: new Map(),
     };
     return state;
@@ -315,19 +327,6 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     url.searchParams.set("error", code);
     return redirect(url.toString(), 303, setCookies);
   };
-
-  const readStored = async (s: State, jar: CookieJar) =>
-    parseStoredSession(
-      await s.sealer.unseal(readCookie(jar, s.config.cookies.session), SESSION_PURPOSE),
-    );
-
-  const writeSession = async (s: State, jar: CookieJar, stored: StoredSession) =>
-    writeCookie(
-      jar,
-      s.config.cookies.session,
-      await s.sealer.seal(stored, SESSION_PURPOSE, s.config.sessionMaxAge),
-      { secure: s.config.secure, maxAge: s.config.sessionMaxAge },
-    );
 
   const verify = async (s: State, discovery: Discovery, idToken: string, nonce?: string) =>
     verifyIdToken(idToken, s.keys(discovery.jwks_uri), {
@@ -397,6 +396,17 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
   /** A refusal (400, 401) ends the session; a network error or a 5xx keeps it for later. */
   const refusedForGood = (error: IdpError) => error.status === 400 || error.status === 401;
 
+  /**
+   * After a refused refresh: the session as it's kept now, if something else refreshed it
+   * in the meantime (another instance sharing the store, whose new refresh token we lack).
+   */
+  const refreshedElsewhere = async (s: State, jar: CookieJar, stale: StoredSession) => {
+    const latest = await s.backend.load(jar);
+    return latest?.stored.refreshToken && latest.stored.refreshToken !== stale.refreshToken
+      ? latest
+      : undefined;
+  };
+
   async function login(s: State, url: URL): Promise<Response> {
     const returnTo = safePath(url.searchParams.get("returnTo")) ?? s.config.afterSignIn;
     let discovery: Discovery;
@@ -463,7 +473,7 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
         throw new IdpError("invalid_id_token", "No ID token came back: was openid asked for?");
       }
       const claims = await verify(s, discovery, tokens.id_token, flow.nonce);
-      const session = await writeSession(s, jar, storedFrom(tokens, claims));
+      const session = await s.backend.create(jar, storedFrom(tokens, claims));
       return redirect(new URL(flow.returnTo, s.config.appUrl).toString(), 302, [
         ...done,
         ...session,
@@ -483,8 +493,8 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     const signOutOfIdp =
       choice === "true" ? true : choice === "false" ? false : s.config.signOutOfIdp;
     const jar = parseCookies(request.headers.get("cookie"));
-    const stored = await readStored(s, jar);
-    const cleared = clearCookie(jar, s.config.cookies.session, s.config.secure);
+    const stored = (await s.backend.load(jar))?.stored;
+    const cleared = await s.backend.remove(jar);
     const home = new URL(s.config.afterSignOut, s.config.appUrl).toString();
 
     let discovery: Discovery | undefined;
@@ -515,23 +525,54 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     const form = await formOf(request);
     const returnTo = safePath(form?.get("returnTo")) ?? s.config.afterSignIn;
     const jar = parseCookies(request.headers.get("cookie"));
-    const stored = await readStored(s, jar);
-    if (!stored?.refreshToken) return errorRedirect(s, "refresh_failed", []);
+    const loaded = await s.backend.load(jar);
+    const back = new URL(returnTo, s.config.appUrl).toString();
+    if (!loaded?.stored.refreshToken) return errorRedirect(s, "refresh_failed", []);
     try {
-      const next = await refreshStored(s, stored);
-      return redirect(
-        new URL(returnTo, s.config.appUrl).toString(),
-        303,
-        await writeSession(s, jar, next),
-      );
+      const next = await refreshStored(s, loaded.stored);
+      return redirect(back, 303, await s.backend.update(jar, loaded, next));
     } catch (error) {
       const idpError = fail(error);
-      return errorRedirect(
-        s,
-        "refresh_failed",
-        refusedForGood(idpError) ? clearCookie(jar, s.config.cookies.session, s.config.secure) : [],
-      );
+      if (!refusedForGood(idpError)) return errorRedirect(s, "refresh_failed", []);
+      if (await refreshedElsewhere(s, jar, loaded.stored)) return redirect(back, 303);
+      return errorRedirect(s, "refresh_failed", await s.backend.remove(jar));
     }
+  }
+
+  /**
+   * The auth server ended a session (OIDC Back-Channel Logout 1.0): a POST from it, not a
+   * browser, so no Origin check; the signed logout token is the proof. 200 once the app's
+   * sessions from it are marked ended, 400 for a token that doesn't verify.
+   */
+  async function backchannelLogout(s: State, request: Request): Promise<Response> {
+    const endIdpSession = s.backend.endIdpSession;
+    if (!endIdpSession) return plain(404, "Not found");
+    const answer = (status: number, error?: string) =>
+      new Response(error ? JSON.stringify({ error }) : null, {
+        status,
+        headers: { "cache-control": "no-store", "content-type": "application/json" },
+      });
+    const token = (await formOf(request))?.get("logout_token");
+    if (typeof token !== "string" || !token) return answer(400, "invalid_request");
+    let logout: Awaited<ReturnType<typeof verifyLogoutToken>>;
+    try {
+      const discovery = await s.discovery();
+      logout = await verifyLogoutToken(token, s.keys(discovery.jwks_uri), {
+        issuer: discovery.issuer,
+        clientId: s.config.clientId,
+        algorithms: discovery.id_token_signing_alg_values_supported,
+      });
+    } catch (error) {
+      fail(error);
+      return answer(400, "invalid_request");
+    }
+    try {
+      await endIdpSession(logout);
+    } catch (error) {
+      fail(error);
+      return answer(500, "server_error");
+    }
+    return answer(200);
   }
 
   return {
@@ -564,6 +605,8 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
           return only("POST", () => logout(s, request));
         case "/refresh":
           return only("POST", () => refresh(s, request));
+        case "/backchannel-logout":
+          return only("POST", () => backchannelLogout(s, request));
         default:
           return plain(404, "Not found");
       }
@@ -571,27 +614,28 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
 
     async getSession(source) {
       const s = ready();
-      const stored = await readStored(s, parseCookies(cookieHeaderOf(source)));
-      return stored ? toSession(stored) : null;
+      const loaded = await s.backend.load(parseCookies(cookieHeaderOf(source)));
+      return loaded ? toSession(loaded.stored) : null;
     },
 
     async refreshIfNeeded(source, { leeway = 60 } = {}) {
       const s = ready();
       const header = cookieHeaderOf(source);
       const jar = parseCookies(header);
-      const stored = await readStored(s, jar);
+      const loaded = await s.backend.load(jar);
       const unchanged = (session: Session | null): Refreshed => ({
         session,
         setCookies: [],
         cookieHeader: undefined,
       });
-      if (!stored) return unchanged(null);
+      if (!loaded) return unchanged(null);
+      const stored = loaded.stored;
       if (!stored.refreshToken || stored.accessTokenExpiresAt - nowSeconds() > leeway) {
         return unchanged(toSession(stored));
       }
       try {
         const next = await refreshStored(s, stored);
-        const setCookies = await writeSession(s, jar, next);
+        const setCookies = await s.backend.update(jar, loaded, next);
         return {
           session: toSession(next),
           setCookies,
@@ -600,7 +644,9 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
       } catch (error) {
         const idpError = fail(error);
         if (!refusedForGood(idpError)) return unchanged(toSession(stored));
-        const setCookies = clearCookie(jar, s.config.cookies.session, s.config.secure);
+        const elsewhere = await refreshedElsewhere(s, jar, stored);
+        if (elsewhere) return unchanged(toSession(elsewhere.stored));
+        const setCookies = await s.backend.remove(jar);
         return { session: null, setCookies, cookieHeader: applySetCookies(header, setCookies) };
       }
     },

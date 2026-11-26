@@ -14,6 +14,12 @@ export type IdTokenCheck = {
   algorithms?: readonly string[] | undefined;
 };
 
+/** What discovery lists, narrowed to ALLOWED_ALGORITHMS; RS256 when it lists none of them. */
+export function signingAlgorithms(listed: readonly string[] | undefined): string[] {
+  const algorithms = listed ? listed.filter((alg) => ALLOWED_ALGORITHMS.includes(alg)) : [];
+  return algorithms.length > 0 ? algorithms : ["RS256"];
+}
+
 /** The issuer's public keys from its jwks_uri: fetched once, again for a new `kid`. */
 export function createKeys(): (jwksUri: string) => JWTVerifyGetKey {
   const sets = new Map<string, JWTVerifyGetKey>();
@@ -37,13 +43,10 @@ export async function verifyIdToken(
   keys: JWTVerifyGetKey,
   check: IdTokenCheck,
 ): Promise<JWTPayload> {
-  const algorithms = check.algorithms
-    ? check.algorithms.filter((alg) => ALLOWED_ALGORITHMS.includes(alg))
-    : ["RS256"];
   let payload: JWTPayload;
   try {
     ({ payload } = await jwtVerify(idToken, keys, {
-      algorithms: algorithms.length > 0 ? algorithms : ["RS256"],
+      algorithms: signingAlgorithms(check.algorithms),
       issuer: check.issuer,
       audience: check.clientId,
       requiredClaims: ["sub", "iat", "exp"],

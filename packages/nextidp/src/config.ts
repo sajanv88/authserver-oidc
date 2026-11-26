@@ -1,5 +1,6 @@
 import { IdpError } from "./errors.js";
 import { safePath } from "./return-path.js";
+import type { SessionStore } from "./store.js";
 
 /** What `idp()` takes. Every setting can also come from the environment (in brackets). */
 export type IdpOptions = {
@@ -47,6 +48,12 @@ export type IdpOptions = {
   sessionMaxAge?: number | undefined;
   /** The start of this app's cookie names. Default `nextidp`. */
   cookiePrefix?: string | undefined;
+  /**
+   * Keep sessions here instead of in the cookie, which then holds only a sealed reference.
+   * Needed for back-channel logout (`<basePath>/backchannel-logout`): the auth server can
+   * then end this app's sessions. Default: none, sessions live in the cookie.
+   */
+  store?: SessionStore | undefined;
   /**
    * Where the IDP_* settings are read from, when an option isn't passed. Default
    * `process.env`.
@@ -101,6 +108,9 @@ export type IdpConfig = {
   /** https: cookies are Secure, with `__Host-` names. */
   secure: boolean;
   cookies: { session: string; flow: string };
+  store: SessionStore | undefined;
+  /** Where the auth server sends logout tokens, with a store. */
+  backchannelLogoutUri: string;
 };
 
 export const DEFAULT_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
@@ -330,6 +340,16 @@ export function resolveConfig(options: IdpOptions): IdpConfig {
     problems.push("cookiePrefix may hold letters, digits, dots, dashes and underscores only");
   }
 
+  const store = options.store;
+  if (
+    store !== undefined &&
+    (typeof store?.get !== "function" ||
+      typeof store.set !== "function" ||
+      typeof store.delete !== "function")
+  ) {
+    problems.push("store must have get, set and delete functions");
+  }
+
   if (problems.length > 0 || !issuer || !app || !clientId) throw misconfigured(problems);
 
   const appUrl = app.origin;
@@ -356,5 +376,7 @@ export function resolveConfig(options: IdpOptions): IdpConfig {
     sessionMaxAge,
     secure,
     cookies: { session: name("session"), flow: name("flow") },
+    store,
+    backchannelLogoutUri: `${appUrl}${basePath}/backchannel-logout`,
   };
 }
