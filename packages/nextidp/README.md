@@ -10,7 +10,8 @@ OpenID Connect work for you:
 - refreshing tokens before they expire;
 - signing out, of your app or of the auth server too;
 - checking the access tokens your API is called with, and their scopes, in NestJS, Express
-  or a Next.js route handler ([below](#protecting-an-api)).
+  or a Next.js route handler ([below](#protecting-an-api));
+- tokens for a service to call other APIs as itself ([below](#calling-an-api-as-a-service)).
 
 It works with any OpenID Connect provider that supports the code flow with PKCE, but it's
 made for, and tested against, authserver-oidc.
@@ -318,9 +319,72 @@ was issued for something else passes only with `acceptOwnTokens: true`. Answers 
 for a minute at most, so a revoked token is refused within a minute. For APIs, prefer JWTs:
 ask for tokens with `resource`.
 
+## Calling an API as a service
+
+A service that calls another API as itself, with no person involved, gets its own tokens
+(the client credentials grant). It needs a **machine** client on the auth server (in
+`clients:provision`: `"type": "machine"`, with the `scopes` it may ask for and the
+`resources` it may call), and its credentials:
+
+```sh
+IDP_ISSUER=https://auth.example.com
+IDP_CLIENT_ID=…
+IDP_CLIENT_SECRET=…
+IDP_RESOURCE=https://orders.example.com   # optional: the API, when a call names none
+```
+
+```ts
+import { idp } from "nextidp"; // or nextidp/express, nextidp/node, nextidp/next
+
+const auth = idp();
+
+const token = await auth.serviceToken({
+  scopes: ["orders:read"],
+  resource: "https://orders.example.com",
+});
+await fetch("https://orders.example.com/orders", {
+  headers: { authorization: `Bearer ${token}` },
+});
+```
+
+A token is kept until a minute before it expires (half its life, if that's shorter), one per
+scopes and API, and calls at the same time share one request to the auth server. If an API
+refuses one (401), `auth.dropServiceToken(token)` forgets it. With
+[fast-http-client](https://www.npmjs.com/package/fast-http-client), that's done for you:
+
+```ts
+import { createHttp } from "fast-http-client";
+
+const orders = createHttp({ baseUrl: "https://orders.example.com" });
+auth.useServiceToken(orders, { scopes: ["orders:read"], resource: "https://orders.example.com" });
+
+const { data } = await orders.get("/orders"); // with the token; a 401 gets a new one, once
+```
+
+In **NestJS**, inject the instance `IdpModule` holds (with `{ protectAll: false }` if the app
+doesn't check tokens itself):
+
+```ts
+import { Inject, Injectable } from "@nestjs/common";
+import { IDP, type Idp } from "nextidp/nestjs";
+
+@Injectable()
+export class OrdersClient {
+  constructor(@Inject(IDP) private readonly auth: Idp) {}
+
+  async list() {
+    const token = await this.auth.serviceToken({ scopes: ["orders:read"] });
+    // …
+  }
+}
+```
+
+A refusal throws `IdpError` with the code `service_token_failed` and the auth server's
+status (`invalid_scope` for a scope the client may not have, `invalid_target` for an API it
+isn't linked to).
+
 ## Coming next
 
-- **Service-to-service tokens** (client credentials).
 - **A session store**, so the auth server can end an app's sessions (back-channel logout).
 
 ## License
