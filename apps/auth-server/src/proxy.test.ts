@@ -59,6 +59,8 @@ describe("proxy", () => {
 
   it("expires a second session cookie left by a parent domain, on a page and on the gate", () => {
     vi.stubEnv("BETTER_AUTH_URL", origin);
+    // Without COOKIE_DOMAIN, whatever the shell running the tests exports.
+    vi.stubEnv("COOKIE_DOMAIN", "");
     const twice = "nvx-auth.session_token=stale.sig; nvx-auth.session_token=fresh.sig";
     // As the server sees it: the address it listens on, not the issuer's host.
     const listening = (path: string) =>
@@ -76,6 +78,8 @@ describe("proxy", () => {
 
   it("on a form post, expires a parent domain's copy of the one session cookie sent", () => {
     vi.stubEnv("BETTER_AUTH_URL", origin);
+    // Without COOKIE_DOMAIN, whatever the shell running the tests exports.
+    vi.stubEnv("COOKIE_DOMAIN", "");
     const posted = new NextRequest(`http://0.0.0.0:3000/login`, {
       method: "POST",
       headers: { cookie: "nvx-auth.session_token=a.b" },
