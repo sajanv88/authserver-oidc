@@ -21,8 +21,59 @@ env:
   TURBO_TELEMETRY_DISABLED: "1"
 
 jobs:
-  quality:
+  # Which parts of the repo this PR touches, so each part's checks run only when it changed:
+  # the auth server's (its image, chart and migrations) and nextidp's (the npm package).
+  changes:
     if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.paths.outputs.code }}
+      server: ${{ steps.paths.outputs.server }}
+      nextidp: ${{ steps.paths.outputs.nextidp }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - name: Sort the changed paths
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          code=false
+          server=false
+          nextidp=false
+          while IFS= read -r path; do
+            [[ -z "${path}" ]] && continue
+            # code: anything but Markdown (lint, typecheck, tests and builds, all --affected).
+            case "${path}" in
+              *.md) ;;
+              *) code=true ;;
+            esac
+            # nextidp: the package, its release, or the root config every package builds on.
+            case "${path}" in
+              packages/nextidp/* | .github/workflows/nextidp-release.yaml |                 pnpm-lock.yaml | pnpm-workspace.yaml | package.json | turbo.json | biome.json |                 .node-version | packages/tsconfig/* | .github/workflows/pr.yaml) nextidp=true ;;
+            esac
+            # server: what goes into the auth server's image, chart or migrations. The same
+            # list as main.yaml's paths-ignore and release.yaml's in_image(): keep them alike.
+            case "${path}" in
+              apps/landing/* | apps/example-client/* | apps/tests/* | packages/nextidp/* |                 *.md | .github/workflows/pages.yaml | .github/workflows/e2e.yaml |                 .github/workflows/nextidp-release.yaml) ;;
+              *) server=true ;;
+            esac
+          done <<< "$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+          {
+            echo "code=${code}"
+            echo "server=${server}"
+            echo "nextidp=${nextidp}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "::notice::Checks for: code=${code}, auth server=${server}, nextidp=${nextidp}"
+
+  quality:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,11 +91,33 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec biome ci --reporter=github .
       - run: pnpm exec stylelint "**/*.scss" --allow-empty-input
+      # --affected: a change to nextidp tests nextidp and the example app, not the auth server,
+      # and the other way round.
       - run: pnpm exec turbo run typecheck test --affected
       - run: pnpm audit --audit-level high
 
+  # nextidp is published to npm: its exports map and types are checked as it would be packed.
+  nextidp:
+    needs: changes
+    if: ${{ needs.changes.outputs.nextidp == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter nextidp build
+      - run: pnpm --filter nextidp check:package
+
   build:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -61,10 +134,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec turbo run build --affected
       # The local seed (`pnpm db:seed`) is a separate esbuild bundle no build task makes.
-      - run: pnpm --filter auth-server seed:build
+      - if: ${{ needs.changes.outputs.server == 'true' }}
+        run: pnpm --filter auth-server seed:build
 
   docker:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -99,7 +174,8 @@ jobs:
           exit 1
 
   helm:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -125,7 +201,8 @@ jobs:
   # Added by nuvraxis-fullstack. Runs the exact migration artefact the Kubernetes Job runs
   # (the bundled dist/migrate.mjs) against a real Postgres 17, twice, then the db tests.
   db:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:

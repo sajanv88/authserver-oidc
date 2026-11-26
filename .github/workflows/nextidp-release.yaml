@@ -1,0 +1,99 @@
+# Publishes nextidp (packages/nextidp) to npm for a tag nextidp-vX.Y.Z, then creates its
+# GitHub Release. npm trusts this workflow (trusted publishing, OIDC): no npm token is stored
+# here, and the package gets provenance. The publish job runs in the `npm` environment, whose
+# required reviewers approve each release.
+#
+# Ritual: bump packages/nextidp/package.json's version and CHANGELOG.md in a PR → merge →
+# git tag nextidp-vX.Y.Z && git push origin nextidp-vX.Y.Z
+name: nextidp release
+
+on:
+  push:
+    tags: ["nextidp-v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    permissions:
+      contents: read
+      # Trusted publishing: npm exchanges this job's OIDC token for a one-time publish token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tag matches the version and is on main
+        run: |
+          version="${GITHUB_REF_NAME#nextidp-v}"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} isn't nextidp-vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+          declared="$(node -p 'require("./packages/nextidp/package.json").version')"
+          if [[ "${declared}" != "${version}" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} says ${version}, but packages/nextidp/package.json says ${declared}."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which isn't on main."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter nextidp typecheck
+      - run: pnpm --filter nextidp test
+      - run: pnpm --filter nextidp build
+      - run: pnpm --filter nextidp check:package
+      # pnpm replaces catalog: and workspace: with the real versions in the published
+      # package.json. Under trusted publishing it attaches provenance itself.
+      - run: pnpm --filter nextidp publish --access public --no-git-checks
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create the GitHub Release from the changelog's section
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#nextidp-v}"
+          # The lines under "## <version>", up to the next "## ".
+          awk -v heading="## ${version}" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' packages/nextidp/CHANGELOG.md > notes.md
+          if [[ ! -s notes.md ]]; then
+            echo "See packages/nextidp/CHANGELOG.md." > notes.md
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --title "nextidp ${version}" \
+            --notes-file notes.md \
+            --latest=false

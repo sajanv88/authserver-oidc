@@ -217,6 +217,21 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/nextidp/src/**", "packages/nextidp/test/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useImportExtensions": {
+              "level": "error",
+              "options": {
+                "forceJsExtensions": true
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

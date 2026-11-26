@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "pnpm --filter nextidp build && next dev --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
     "typecheck": "next typegen && tsc --noEmit",
@@ -14,8 +14,8 @@
     "@nuvui/react": "catalog:",
     "@nuvui/table": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "jose": "catalog:",
     "next": "catalog:",
+    "nextidp": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "server-only": "catalog:",

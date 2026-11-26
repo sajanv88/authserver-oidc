@@ -13,8 +13,10 @@ on:
       - apps/landing/**
       - apps/example-client/**
       - apps/tests/**
+      - packages/nextidp/**
       - .github/workflows/pages.yaml
       - .github/workflows/e2e.yaml
+      - .github/workflows/nextidp-release.yaml
       - "**.md"
   # Builds the image for main's head by hand, for a commit that skipped it.
   workflow_dispatch:

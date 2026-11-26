@@ -54,6 +54,17 @@ catalog:
   # Landing page (apps/landing)
   "@nuvui/chat": 0.2.2
   shiki: 4.6.0
+  # nextidp's checks of what it publishes (packages/nextidp)
+  "@arethetypeswrong/cli": 0.18.5
+  publint: 0.3.25
+
+# nextidp (packages/nextidp) is published to npm, so its own dependencies are ranges: an app
+# that installs it then shares one copy of each with its other packages.
+catalogs:
+  nextidp:
+    fast-http-client: ^0.2.0
+    jose: ^6.2.18
+    valibot: ^1.5.0
 
 # Install scripts are denied unless listed here (strictDepBuilds is on by default).
 # Review a package's script before setting it to true.

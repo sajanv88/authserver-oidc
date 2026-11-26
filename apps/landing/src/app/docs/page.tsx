@@ -6,6 +6,7 @@ import { ConfidentialSecrets, Pkce, RegisterApp } from "@/components/docs/guide/
 import { Kubernetes, ProductionImage } from "@/components/docs/guide/deploy";
 import { Email } from "@/components/docs/guide/email";
 import { BeforeYouStart, FirstAdmin, RunLocally } from "@/components/docs/guide/getting-started";
+import { Nextidp } from "@/components/docs/guide/nextidp";
 import { Resources, Scopes } from "@/components/docs/guide/scopes-resources";
 import { Security } from "@/components/docs/guide/security";
 import { SocialSignIn } from "@/components/docs/guide/social";
@@ -17,7 +18,7 @@ import { PRODUCT_NAME } from "@/content/site";
 export const metadata: Metadata = {
   title: `Guide · ${PRODUCT_NAME}`,
   description:
-    "Run the auth server with Docker Compose, seed an admin, add Google, Microsoft or GitHub sign-in, define scopes and APIs, register apps with PKCE and secrets, send email over SMTP, and deploy to Kubernetes.",
+    "Run the auth server with Docker Compose, seed an admin, add Google, Microsoft or GitHub sign-in, define scopes and APIs, register apps with PKCE and secrets, sign people in to Next.js apps with nextidp, send email over SMTP, and deploy to Kubernetes.",
 };
 
 // In page order: every id is a heading's id in the guide.
@@ -33,6 +34,8 @@ const contents: TableOfContentsItem[] = [
   { id: "resources", title: "Your APIs (resources)" },
   { id: "resources-without", title: "Without a resource", depth: 2 },
   { id: "register-app", title: "Register an app" },
+  { id: "nextidp", title: "Next.js apps: nextidp" },
+  { id: "nextidp-routes", title: "Its routes", depth: 2 },
   { id: "pkce", title: "PKCE, step by step" },
   { id: "par", title: "Pushed requests (PAR)", depth: 2 },
   { id: "sign-out", title: "Signing out here too", depth: 2 },
@@ -76,6 +79,7 @@ export default function DocsPage() {
           <Scopes />
           <Resources />
           <RegisterApp />
+          <Nextidp />
           <Pkce />
           <ConfidentialSecrets />
           <Security />
