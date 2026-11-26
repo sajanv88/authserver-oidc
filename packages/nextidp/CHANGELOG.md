@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
-Released once the whole planned scope is in: sign-in for Next.js, API protection, Express
-and Node sign-in, service tokens and a session store. All of it is in now. The heading becomes the version then
-(`nextidp-release.yaml` takes the release notes from it).
+The first release with code in it: sign-in for Next.js, Express and Node, API protection
+for NestJS, Express and Next.js, service tokens, and sessions in a store with back-channel
+logout.
 
 ### Sign-in for Next.js (App Router)
 
