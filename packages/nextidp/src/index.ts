@@ -1,0 +1,22 @@
+// nextidp: sign people in to an app with authserver-oidc (or any OpenID Connect provider
+// that supports the code flow with PKCE). This entry point has no framework in it: Web
+// Request and Response in, Response out. `nextidp/next` adds Next.js on top.
+
+export type { IdpConfig, IdpOptions } from "./config.js";
+export { DEFAULT_SCOPES } from "./config.js";
+export {
+  IdpError,
+  type IdpErrorCode,
+  isIdpError,
+  isSignInErrorCode,
+  SIGN_IN_ERROR_CODES,
+  type SignInErrorCode,
+} from "./errors.js";
+export {
+  type CookieSource,
+  createIdp as idp,
+  type Idp,
+  type Refreshed,
+} from "./idp.js";
+export { safePath } from "./return-path.js";
+export type { IdpUser, Session } from "./session.js";
