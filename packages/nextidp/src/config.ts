@@ -20,6 +20,12 @@ export type IdpOptions = {
   scopes?: string | readonly string[] | undefined;
   /** An API's URI (RFC 8707): the access token is then a JWT for that API (IDP_RESOURCE). */
   resource?: string | undefined;
+  /**
+   * For an API that checks tokens: its own URI, as the auth server lists it in
+   * OAUTH_RESOURCES. Every access token must name it in `aud` (IDP_AUDIENCE). Default:
+   * `resource`.
+   */
+  audience?: string | undefined;
   /** Where nextidp's routes live. Default `/auth`: the redirect URI is `<appUrl>/auth/callback`. */
   basePath?: string | undefined;
   /** Where a sign-in lands when it wasn't asked to return somewhere. Default `/`. */
@@ -44,6 +50,15 @@ export type IdpOptions = {
    * line with the code and message, which never hold a token or a claim.
    */
   onError?: ((error: IdpError) => void) | undefined;
+};
+
+/** What checking access tokens needs: an API has no sign-in of its own. */
+export type ApiConfig = {
+  issuer: string;
+  audience: string;
+  /** For introspecting opaque tokens; a JWT needs neither. */
+  clientId: string | undefined;
+  clientSecret: string | undefined;
 };
 
 /** The settings once checked, as nextidp uses them. */
@@ -160,12 +175,65 @@ function scopesFrom(option: IdpOptions["scopes"], env: IdpOptions["env"], proble
   return [...new Set(list)].join(" ");
 }
 
+function envOf(options: IdpOptions): IdpOptions["env"] {
+  return options.env ?? (typeof process === "undefined" ? undefined : process.env);
+}
+
 /**
- * The checked settings. Throws an IdpError("misconfigured") that names every setting that's
- * missing or wrong, and never repeats a value.
+ * An absolute URI, kept exactly as written: the auth server compares resources and token
+ * audiences as strings, so `https://api.example.com` and `https://api.example.com/` differ.
+ */
+function absoluteUri(value: string | undefined, label: string, problems: Problems) {
+  if (value === undefined) return undefined;
+  try {
+    new URL(value);
+    return value;
+  } catch {
+    problems.push(`${label} must be an absolute URI`);
+    return undefined;
+  }
+}
+
+function misconfigured(problems: Problems): IdpError {
+  return new IdpError("misconfigured", `nextidp is misconfigured: ${problems.join("; ")}.`);
+}
+
+/**
+ * What checking access tokens needs: the issuer and this API's audience. The client ID and
+ * secret are optional: only introspection (an opaque token) uses them.
+ */
+export function resolveApiConfig(options: IdpOptions): ApiConfig {
+  const env = envOf(options);
+  const problems: Problems = [];
+  const issuer = httpUrl(
+    pick(options.issuer, env, "IDP_ISSUER"),
+    "issuer (IDP_ISSUER)",
+    problems,
+    env?.NODE_ENV === "production",
+  );
+  const audience = absoluteUri(
+    pick(options.audience, env, "IDP_AUDIENCE") ?? pick(options.resource, env, "IDP_RESOURCE"),
+    "audience (IDP_AUDIENCE)",
+    problems,
+  );
+  if (!audience && !problems.some((p) => p.startsWith("audience"))) {
+    problems.push("audience (IDP_AUDIENCE) is required to check access tokens: this API's URI");
+  }
+  if (problems.length > 0 || !issuer || !audience) throw misconfigured(problems);
+  return {
+    issuer: issuer.href.replace(/\/+$/, ""),
+    audience,
+    clientId: pick(options.clientId, env, "IDP_CLIENT_ID"),
+    clientSecret: pick(options.clientSecret, env, "IDP_CLIENT_SECRET"),
+  };
+}
+
+/**
+ * The checked settings for signing people in. Throws an IdpError("misconfigured") that
+ * names every setting that's missing or wrong, and never repeats a value.
  */
 export function resolveConfig(options: IdpOptions): IdpConfig {
-  const env = options.env ?? (typeof process === "undefined" ? undefined : process.env);
+  const env = envOf(options);
   const production = env?.NODE_ENV === "production";
   const problems: Problems = [];
 
@@ -190,15 +258,11 @@ export function resolveConfig(options: IdpOptions): IdpConfig {
   const secrets = secretsFrom(options.secret, env, problems);
   const scope = scopesFrom(options.scopes, env, problems);
 
-  const resourceValue = pick(options.resource, env, "IDP_RESOURCE");
-  let resource: string | undefined;
-  if (resourceValue !== undefined) {
-    try {
-      resource = new URL(resourceValue).toString();
-    } catch {
-      problems.push("resource (IDP_RESOURCE) must be an absolute URI");
-    }
-  }
+  const resource = absoluteUri(
+    pick(options.resource, env, "IDP_RESOURCE"),
+    "resource (IDP_RESOURCE)",
+    problems,
+  );
 
   const basePath = options.basePath ?? "/auth";
   if (!/^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(basePath)) {
@@ -217,9 +281,7 @@ export function resolveConfig(options: IdpOptions): IdpConfig {
     problems.push("cookiePrefix may hold letters, digits, dots, dashes and underscores only");
   }
 
-  if (problems.length > 0 || !issuer || !app || !clientId) {
-    throw new IdpError("misconfigured", `nextidp is misconfigured: ${problems.join("; ")}.`);
-  }
+  if (problems.length > 0 || !issuer || !app || !clientId) throw misconfigured(problems);
 
   const appUrl = app.origin;
   const secure = app.protocol === "https:";

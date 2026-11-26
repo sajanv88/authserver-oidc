@@ -1,4 +1,20 @@
-import { type IdpConfig, type IdpOptions, resolveConfig } from "./config.js";
+import {
+  type AccessToken,
+  bearerToken,
+  introspect,
+  isJwt,
+  requireScopes,
+  type TokenRequirements,
+  tokenRefusal,
+  verifyJwtAccessToken,
+} from "./access-token.js";
+import {
+  type ApiConfig,
+  type IdpConfig,
+  type IdpOptions,
+  resolveApiConfig,
+  resolveConfig,
+} from "./config.js";
 import {
   applySetCookies,
   type CookieJar,
@@ -65,18 +81,53 @@ export type Idp = {
   userInfo(accessToken: string): Promise<Record<string, unknown>>;
   /** The path that starts a sign-in, returning to `returnTo` (a path of this app) after. */
   signInPath(returnTo?: string): string;
+
+  /** For an API: the checked settings it needs (issuer and audience). */
+  apiConfig(): ApiConfig;
+  /**
+   * Checks an access token an API was called with: a JWT against the issuer's keys, an
+   * opaque one by introspection. Throws IdpError invalid_token (401) or insufficient_scope
+   * (403); `tokenErrorResponse` turns either into the answer.
+   */
+  verifyAccessToken(token: string, requirements?: TokenRequirements): Promise<AccessToken>;
+  /** `verifyAccessToken` for an `Authorization` header; none at all is missing_token (401). */
+  verifyBearer(
+    authorization: string | null | undefined,
+    requirements?: TokenRequirements,
+  ): Promise<AccessToken>;
+  /** The 401 or 403 for a refused token, with its WWW-Authenticate challenge (RFC 6750). */
+  tokenErrorResponse(error: IdpError): Response;
 };
 
-type State = {
-  config: IdpConfig;
-  client: Client;
-  sealer: Sealer;
+/** What sign-in and token checks share: one HTTP client, discovery and key set per issuer. */
+type Shared = {
   http: Http;
   discovery: () => Promise<Discovery>;
   keys: ReturnType<typeof createKeys>;
+};
+
+type State = Shared & {
+  config: IdpConfig;
+  client: Client;
+  sealer: Sealer;
   /** Refreshes in progress or just done, by refresh token: see refreshStored. */
   refreshing: Map<string, { result: Promise<StoredSession>; until: number }>;
 };
+
+type ApiState = Shared & {
+  config: ApiConfig;
+  /** Introspection answers, by the token's SHA-256, kept at most a minute. */
+  introspected: Map<string, { token: AccessToken; until: number }>;
+};
+
+/** How long an introspection answer is kept: a revoked token is refused within a minute. */
+const INTROSPECTION_CACHE_MS = 60_000;
+const INTROSPECTION_CACHE_SIZE = 1000;
+
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)));
+}
 
 /** How long a refresh's result is shared with requests that still carry the old token. */
 const REFRESH_SHARE_MS = 30_000;
@@ -138,6 +189,8 @@ function report(options: IdpOptions, error: IdpError): void {
  */
 export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
   let state: State | undefined;
+  let apiState: ApiState | undefined;
+  const shared = new Map<string, Shared>();
   let resolvedOptions: IdpOptions | undefined;
 
   const optionsOf = (): IdpOptions => {
@@ -145,20 +198,65 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     return resolvedOptions;
   };
 
+  const sharedFor = (issuer: string): Shared => {
+    let entry = shared.get(issuer);
+    if (!entry) {
+      const http = createIdpHttp();
+      entry = { http, discovery: createDiscovery(http, issuer), keys: createKeys() };
+      shared.set(issuer, entry);
+    }
+    return entry;
+  };
+
   const ready = (): State => {
     if (state) return state;
     const config = resolveConfig(optionsOf());
-    const http = createIdpHttp();
     state = {
+      ...sharedFor(config.issuer),
       config,
       client: { clientId: config.clientId, clientSecret: config.clientSecret },
       sealer: new Sealer(config.secrets),
-      http,
-      discovery: createDiscovery(http, config.issuer),
-      keys: createKeys(),
       refreshing: new Map(),
     };
     return state;
+  };
+
+  const apiReady = (): ApiState => {
+    if (apiState) return apiState;
+    const config = resolveApiConfig(optionsOf());
+    apiState = { ...sharedFor(config.issuer), config, introspected: new Map() };
+    return apiState;
+  };
+
+  const introspectCached = async (s: ApiState, discovery: Discovery, token: string) => {
+    const key = await sha256(token);
+    const now = Date.now();
+    const cached = s.introspected.get(key);
+    if (cached && cached.until > now) return cached.token;
+    const checked = await introspect(s.http, discovery, s.config, token);
+    if (s.introspected.size >= INTROSPECTION_CACHE_SIZE) {
+      for (const [old, entry] of s.introspected) if (entry.until <= now) s.introspected.delete(old);
+      // Still full: drop the oldest.
+      const first = s.introspected.keys().next();
+      if (s.introspected.size >= INTROSPECTION_CACHE_SIZE && !first.done) {
+        s.introspected.delete(first.value);
+      }
+    }
+    const expires = checked.expiresAt === undefined ? Infinity : checked.expiresAt * 1000;
+    s.introspected.set(key, {
+      token: checked,
+      until: Math.min(now + INTROSPECTION_CACHE_MS, expires),
+    });
+    return checked;
+  };
+
+  const verifyAccessToken = async (token: string, requirements: TokenRequirements = {}) => {
+    const s = apiReady();
+    const discovery = await s.discovery();
+    const checked = isJwt(token)
+      ? await verifyJwtAccessToken(token, s.keys(discovery.jwks_uri), s.config)
+      : await introspectCached(s, discovery, token);
+    return requireScopes(checked, requirements.scopes);
   };
 
   const fail = (error: unknown): IdpError => {
@@ -467,6 +565,26 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     async userInfo(accessToken) {
       const s = ready();
       return fetchUserInfo(s.http, await s.discovery(), accessToken);
+    },
+
+    apiConfig: () => apiReady().config,
+
+    verifyAccessToken,
+
+    async verifyBearer(authorization, requirements) {
+      const token = bearerToken(authorization);
+      if (!token) {
+        throw new IdpError("missing_token", "An access token is required.", { status: 401 });
+      }
+      return verifyAccessToken(token, requirements);
+    },
+
+    tokenErrorResponse(error) {
+      const refusal = tokenRefusal(error);
+      return new Response(JSON.stringify(refusal.body), {
+        status: refusal.status,
+        headers: refusal.headers,
+      });
     },
 
     signInPath(returnTo) {

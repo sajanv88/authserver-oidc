@@ -1,6 +1,9 @@
 // A small OpenID provider for the tests, behind a stubbed fetch: discovery, JWKS, the token
 // endpoint (authorization code with PKCE S256, refresh with rotation), revocation and
 // userinfo. Codes are handed out by `issueCode`, as the auth server would after sign-in.
+// For APIs: `accessToken` mints a JWT access token the way the auth server's OAuth plugin
+// does (typ at+jwt, aud, client_id, azp, scope, jti), and `opaqueToken` registers one for the
+// introspection endpoint, which answers API_CLIENT_ID with API_CLIENT_SECRET only.
 import { createHash, randomBytes } from "node:crypto";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -8,6 +11,9 @@ export const ISSUER = "https://auth.example.test";
 export const CLIENT_ID = "client-123";
 export const APP_URL = "https://app.example.test";
 export const SECRET = "a test secret that is at least thirty-two characters long";
+export const API_URL = "https://api.example.test";
+export const API_CLIENT_ID = "api-client";
+export const API_CLIENT_SECRET = "api-client-secret";
 
 type Code = {
   challenge: string;
@@ -33,6 +39,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
   const jwk = { ...(await exportJWK(real.publicKey)), kid: "k1", alg: "RS256", use: "sig" };
 
   const codes = new Map<string, Code>();
+  const opaque = new Map<string, Record<string, unknown>>();
   const refreshTokens = new Map<string, { sub: string }>();
   const requests: Recorded[] = [];
   const settings = {
@@ -57,6 +64,29 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       .setIssuedAt()
       .setExpirationTime("10m")
       .sign(settings.forge ? other.privateKey : real.privateKey);
+
+  /** A JWT access token, as the auth server's plugin makes one for a `resource`. */
+  const accessToken = (
+    claims: Record<string, unknown> = {},
+    options: { typ?: string | null; forge?: boolean; exp?: string; aud?: string | string[] } = {},
+  ) => {
+    const header: { alg: string; kid: string; typ?: string } = { alg: "RS256", kid: "k1" };
+    if (options.typ !== null) header.typ = options.typ ?? "at+jwt";
+    return new SignJWT({
+      sub: "user-1",
+      client_id: CLIENT_ID,
+      azp: CLIENT_ID,
+      scope: "openid orders:read",
+      jti: random(),
+      ...claims,
+    })
+      .setProtectedHeader(header)
+      .setIssuer(ISSUER)
+      .setAudience(options.aud ?? [API_URL, `${ISSUER}/api/auth/oauth2/userinfo`])
+      .setIssuedAt()
+      .setExpirationTime(options.exp ?? "10m")
+      .sign(options.forge ? other.privateKey : real.privateKey);
+  };
 
   const tokens = async (sub: string, nonce?: string) => {
     const refreshToken = random();
@@ -121,6 +151,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
           userinfo_endpoint: `${ISSUER}/userinfo`,
           jwks_uri: `${ISSUER}/jwks`,
           revocation_endpoint: `${ISSUER}/revoke`,
+          introspection_endpoint: `${ISSUER}/introspect`,
           ...(options.endSession === false
             ? {}
             : { end_session_endpoint: `${ISSUER}/end-session` }),
@@ -133,6 +164,14 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       case `POST ${ISSUER}/revoke`:
         refreshTokens.delete(new URLSearchParams(body).get("token") ?? "");
         return new Response(null, { status: 200 });
+      case `POST ${ISSUER}/introspect`: {
+        const basic = `Basic ${btoa(`${API_CLIENT_ID}:${API_CLIENT_SECRET}`)}`;
+        if (request.headers.get("authorization") !== basic) {
+          return json({ error: "invalid_client" }, 401);
+        }
+        const claims = opaque.get(new URLSearchParams(body).get("token") ?? "");
+        return json(claims ? { active: true, iss: ISSUER, ...claims } : { active: false });
+      }
       case `GET ${ISSUER}/userinfo`: {
         const bearer = request.headers.get("authorization");
         return bearer?.startsWith("Bearer ")
@@ -147,6 +186,23 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
   return {
     fetch,
     settings,
+    accessToken,
+    /** An opaque access token the introspection endpoint knows, with these claims. */
+    opaqueToken(claims: Record<string, unknown>): string {
+      const token = random();
+      opaque.set(token, {
+        scope: "orders:read",
+        client_id: CLIENT_ID,
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) + 600,
+        ...claims,
+      });
+      return token;
+    },
+    /** Revokes an opaque token: introspection answers inactive from now on. */
+    revoke(token: string) {
+      opaque.delete(token);
+    },
     requests,
     refreshTokens,
     /** A code for the sign-in an authorize URL started, as the auth server would issue it. */

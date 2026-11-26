@@ -2,15 +2,23 @@
 // that supports the code flow with PKCE). This entry point has no framework in it: Web
 // Request and Response in, Response out. `nextidp/next` adds Next.js on top.
 
-export type { IdpConfig, IdpOptions } from "./config.js";
+export {
+  type AccessToken,
+  bearerChallenge,
+  bearerToken,
+  type TokenRequirements,
+} from "./access-token.js";
+export type { ApiConfig, IdpConfig, IdpOptions } from "./config.js";
 export { DEFAULT_SCOPES } from "./config.js";
 export {
   IdpError,
   type IdpErrorCode,
   isIdpError,
   isSignInErrorCode,
+  isTokenError,
   SIGN_IN_ERROR_CODES,
   type SignInErrorCode,
+  type TokenErrorCode,
 } from "./errors.js";
 export {
   type CookieSource,

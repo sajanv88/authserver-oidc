@@ -14,6 +14,8 @@ const DiscoverySchema = v.object({
   jwks_uri: Url,
   userinfo_endpoint: v.optional(Url),
   revocation_endpoint: v.optional(Url),
+  /** RFC 7662: whether an opaque access token is active, asked with a client's credentials. */
+  introspection_endpoint: v.optional(Url),
   /** RP-initiated logout: where to send someone to sign out of the auth server too. */
   end_session_endpoint: v.optional(Url),
   id_token_signing_alg_values_supported: v.optional(v.array(v.string())),

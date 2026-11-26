@@ -67,7 +67,7 @@ describe("signing in", () => {
       redirect_uri: `${APP_URL}/auth/callback`,
       scope: "openid profile email offline_access",
       code_challenge_method: "S256",
-      resource: "https://api.example.test/",
+      resource: "https://api.example.test",
     });
     expect(params.state).toMatch(/^[\w-]{43}$/);
     expect(params.nonce).toMatch(/^[\w-]{43}$/);
