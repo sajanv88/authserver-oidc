@@ -6,10 +6,10 @@ import { Step, Steps } from "../steps/steps";
 
 const NPM = "https://www.npmjs.com/package/nextidp";
 
-/** nextidp: the package that does an app's side of sign-in, for Next.js apps. */
+/** nextidp: the package that does an app's side of sign-in, and checks tokens for APIs. */
 export function Nextidp() {
   return (
-    <Section id="nextidp" title="Sign in from a Next.js app with nextidp">
+    <Section id="nextidp" title="Apps and APIs with nextidp">
       <p className="article__text">
         <a href={NPM}>nextidp</a> does an app's whole side of OpenID Connect in one call: the code
         flow with PKCE, the ID token's checks, an encrypted session cookie (no database), refreshing
@@ -114,6 +114,52 @@ export default async function Dashboard() {
         <C>state_mismatch</C>, <C>token_failed</C>, <C>invalid_id_token</C> or <C>refresh_failed</C>
         , for your page to explain. The <a href={NPM}>README</a> lists every setting.
       </p>
+
+      <Subheading id="nextidp-api">Protecting your API</Subheading>
+      <p className="article__text">
+        An API needs only <C>IDP_ISSUER</C> and <C>IDP_AUDIENCE</C>, its own URI exactly as in{" "}
+        <C>OAUTH_RESOURCES</C>. Apps that call it ask for tokens with that URI as <C>resource</C>,
+        so they get JWTs nextidp checks against the published keys: signature, issuer, audience,
+        expiry and the scopes each route needs, with no call to this server per request. A refused
+        call gets 401 or 403 with the RFC 6750 challenge.
+      </p>
+      <Code
+        language="ts"
+        title="NestJS: app.module.ts and orders.controller.ts"
+        label="Protecting a NestJS API"
+        code={`import { CurrentToken, IdpModule, Public, Scopes, type AccessToken } from "nextidp/nestjs";
+
+@Module({ imports: [IdpModule.forRoot()] }) // every route needs a token, unless @Public()
+export class AppModule {}
+
+@Controller("orders")
+@Scopes("orders:read")
+export class OrdersController {
+  @Get()
+  list(@CurrentToken() token: AccessToken) {
+    return this.orders.of(token.subject);
+  }
+
+  @Public()
+  @Get("health")
+  health() {}
+}`}
+      />
+      <Code
+        language="ts"
+        title="Express, or a Next.js route handler"
+        label="Protecting an Express API or a route handler"
+        code={`import { idp } from "nextidp/express";
+const auth = idp();
+app.get("/orders", auth.requireToken({ scopes: ["orders:read"] }), (req, res) =>
+  res.json(ordersOf(auth.tokenOf(req)?.subject)),
+);
+
+// Next.js: src/app/api/orders/route.ts
+export const GET = auth.withToken({ scopes: ["orders:read"] }, async (request, { token }) =>
+  Response.json(await ordersOf(token.subject)),
+);`}
+      />
     </Section>
   );
 }

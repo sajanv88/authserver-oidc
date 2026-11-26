@@ -3,7 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection, NextRequest, NextResponse } from "next/server";
+import type { AccessToken, TokenRequirements } from "./access-token.js";
 import type { IdpOptions } from "./config.js";
+import { isIdpError, isTokenError } from "./errors.js";
 import { createIdp, type Idp } from "./idp.js";
 import type { Session } from "./session.js";
 
@@ -34,6 +36,23 @@ export type NextIdp = Idp & {
   requireSession(returnTo?: string): Promise<Session>;
   /** For `proxy.ts`: `export const proxy = auth.proxy({ protect: ["/dashboard"] });` */
   proxy(options?: ProxyOptions): (request: NextRequest) => Promise<Response>;
+  /**
+   * A route handler of an API: the bearer token is checked (and its scopes) before `handler`
+   * runs, which gets it as `context.token`. A refused token gets 401 or 403.
+   *
+   * ```ts
+   * export const GET = auth.withToken({ scopes: ["orders:read"] }, async (request, { token }) =>
+   *   Response.json(await ordersOf(token.subject)),
+   * );
+   * ```
+   */
+  withToken<Context extends object = object>(
+    requirements: TokenRequirements,
+    handler: (
+      request: NextRequest,
+      context: Context & { token: AccessToken },
+    ) => Response | Promise<Response>,
+  ): (request: NextRequest, context: Context) => Promise<Response>;
 };
 
 function isProtected(protect: ProxyOptions["protect"], pathname: string): boolean {
@@ -77,6 +96,29 @@ export function idp(options?: IdpOptions | (() => IdpOptions)): NextIdp {
       return current;
     },
 
+    withToken(requirements, handler) {
+      return async (request, context) => {
+        let token: AccessToken;
+        try {
+          token = await core.verifyBearer(request.headers.get("authorization"), requirements);
+        } catch (error) {
+          if (isTokenError(error)) return core.tokenErrorResponse(error);
+          // The auth server can't be reached, or a setting is wrong: never let the call through.
+          console.error(
+            `nextidp: a token couldn't be checked: ${isIdpError(error) ? error.code : "unexpected error"}`,
+          );
+          return Response.json(
+            {
+              error: "temporarily_unavailable",
+              error_description: "The token can't be checked now.",
+            },
+            { status: 503, headers: { "retry-after": "5", "cache-control": "no-store" } },
+          );
+        }
+        return handler(request, { ...context, token });
+      };
+    },
+
     proxy(options = {}) {
       return async (request) => {
         const config = core.config();
@@ -116,14 +158,17 @@ export function idp(options?: IdpOptions | (() => IdpOptions)): NextIdp {
   };
 }
 
-export type { IdpConfig, IdpOptions } from "./config.js";
+export type { AccessToken, TokenRequirements } from "./access-token.js";
+export type { ApiConfig, IdpConfig, IdpOptions } from "./config.js";
 export {
   IdpError,
   type IdpErrorCode,
   isIdpError,
   isSignInErrorCode,
+  isTokenError,
   SIGN_IN_ERROR_CODES,
   type SignInErrorCode,
+  type TokenErrorCode,
 } from "./errors.js";
 export type { Idp, Refreshed } from "./idp.js";
 export type { IdpUser, Session } from "./session.js";

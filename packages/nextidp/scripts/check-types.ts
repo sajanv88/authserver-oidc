@@ -13,7 +13,7 @@ try {
   const [tarball] = (await readdir(out)).filter((name) => name.endsWith(".tgz"));
   if (!tarball) throw new Error("pnpm pack made no tarball.");
   const packed = `"${join(out, tarball)}"`;
-  execSync(`attw ${packed} --entrypoints .`, { cwd: root, stdio: "inherit" });
+  execSync(`attw ${packed} --entrypoints . ./express ./nestjs`, { cwd: root, stdio: "inherit" });
   // `nextidp/next` imports next/server, and `next` has no exports map, so node16 can't
   // resolve that from it. Next.js apps resolve through their bundler, where it does.
   // node10 (no exports map at all) can't resolve `next` itself, so that profile is skipped.

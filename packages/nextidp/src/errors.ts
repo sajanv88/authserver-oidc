@@ -36,7 +36,25 @@ export type IdpErrorCode =
   /** The auth server's discovery document couldn't be fetched or isn't valid. */
   | "discovery_failed"
   /** The userinfo endpoint refused the access token or didn't answer. */
-  | "userinfo_failed";
+  | "userinfo_failed"
+  /** An API was called without an access token (401, no error code in the challenge). */
+  | "missing_token"
+  /** The access token is expired, revoked, for another API, or not valid at all (401). */
+  | "invalid_token"
+  /** The access token is valid but lacks a scope this route needs (403). */
+  | "insufficient_scope";
+
+/** The three codes an API answers a caller with; see `tokenErrorResponse`. */
+export type TokenErrorCode = "missing_token" | "invalid_token" | "insufficient_scope";
+
+export function isTokenError(error: unknown): error is IdpError & { code: TokenErrorCode } {
+  return (
+    isIdpError(error) &&
+    (error.code === "missing_token" ||
+      error.code === "invalid_token" ||
+      error.code === "insufficient_scope")
+  );
+}
 
 /**
  * Every error nextidp throws. Its message never holds a token, a secret or a claim.
@@ -46,13 +64,23 @@ export type IdpErrorCode =
 export class IdpError extends Error {
   override readonly name = "IdpError";
   readonly code: IdpErrorCode;
-  /** The HTTP status the auth server answered with, when there was one. */
+  /**
+   * The HTTP status the auth server answered with, when there was one; for a token error,
+   * the status to answer the caller with (401 or 403).
+   */
   readonly status: number | undefined;
+  /** For insufficient_scope: the scopes the route needs, for the WWW-Authenticate challenge. */
+  readonly scopes: readonly string[] | undefined;
 
-  constructor(code: IdpErrorCode, message: string, options?: { status?: number; cause?: unknown }) {
+  constructor(
+    code: IdpErrorCode,
+    message: string,
+    options?: { status?: number; cause?: unknown; scopes?: readonly string[] },
+  ) {
     super(message, options?.cause === undefined ? undefined : { cause: options.cause });
     this.code = code;
     this.status = options?.status;
+    this.scopes = options?.scopes;
   }
 }
 

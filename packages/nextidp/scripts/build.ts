@@ -33,7 +33,7 @@ for (const format of ["esm", "cjs"] as const) {
     outbase: src,
     format,
     platform: "node",
-    target: "node20",
+    target: "node24",
     bundle: false,
     logLevel: "warning",
   });

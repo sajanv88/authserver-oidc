@@ -19,6 +19,27 @@ and Node sign-in, service tokens and a session store. The heading becomes the ve
   the refresh token, and can end the auth server's session too (RP-initiated logout).
 - ES module and CommonJS builds, with types for each.
 
+### Protecting an API
+
+- `verifyAccessToken()` and `verifyBearer()` in the core: a JWT access token checked against
+  the issuer's keys (signature, `typ` at+jwt, `iss`, `aud`, expiry), an opaque one by
+  introspection (kept a minute at most), then the scopes a route needs.
+- 401 and 403 with RFC 6750's `WWW-Authenticate` challenge (`tokenErrorResponse()`), 503
+  when a token can't be checked at all.
+- `nextidp/nestjs`: `IdpModule.forRoot()` and `forRootAsync()`, a guard on every route by
+  default, `@Scopes()`, `@Public()`, `@CurrentToken()`. NestJS 11 (CommonJS) and 12 (ES
+  modules).
+- `nextidp/express`: `requireToken()` middleware and `tokenOf(req)`.
+- `nextidp/next`: `withToken()` for route handlers.
+- An API needs only `issuer` and `audience` (IDP_AUDIENCE), required and never taken from
+  `resource`. A JWT access token must have `typ` at+jwt. An introspected token must name the
+  audience too, unless `acceptOwnTokens` lets this client's own tokens through.
+- Nothing from the HTTP client reaches an error or a log: a failed request keeps only its
+  message, and the adapters log error codes.
+- `resource` and `audience` are kept exactly as written: the auth server compares them as
+  strings.
+- Node 24 or later.
+
 ## 0.0.1
 
 The name, reserved.
