@@ -1,6 +1,6 @@
 // A service's own access tokens (client credentials): asked for once, kept until shortly
 // before they expire, one request at a time per scopes and API. And the hook that puts them
-// on every request of a fast-http-client client, renewing one an API refused.
+// on every request of a fast-http-client client to that API, renewing one the API refused.
 import { bearerToken } from "./access-token.js";
 import type { ServiceConfig } from "./config.js";
 import type { Discovery } from "./discovery.js";
@@ -17,6 +17,22 @@ export type ServiceTokenOptions = {
   fresh?: boolean | undefined;
 };
 
+export type UseServiceTokenOptions = Omit<ServiceTokenOptions, "fresh"> & {
+  /**
+   * The origins the token may be sent to, like `https://orders.example.com`. Default: the
+   * origin of `resource` (or IDP_RESOURCE). A request anywhere else goes out untouched, with
+   * no token: a URL from elsewhere must never carry this service's token away.
+   */
+  origins?: readonly string[] | undefined;
+};
+
+type RequestConfigLike = {
+  url: string;
+  baseUrl?: string;
+  headers?: Record<string, string>;
+  retried?: boolean;
+};
+
 /**
  * What `useServiceToken` needs of an HTTP client: fast-http-client's `createHttp()` has it.
  * Written out rather than imported, so a client from another version of it fits too.
@@ -29,8 +45,6 @@ export type InterceptableClient = {
   };
 };
 
-type RequestConfigLike = { url: string; headers?: Record<string, string>; retried?: boolean };
-
 type Issued = { token: string; until: number };
 type Kept = { pending: Promise<Issued>; issued?: Issued };
 
@@ -38,31 +52,30 @@ type Kept = { pending: Promise<Issued>; issued?: Issued };
 const RENEW_BEFORE_S = 60;
 const MAX_KEPT = 100;
 
-/** The scopes as the token endpoint gets them, and the key a token is kept under. */
+function misconfigured(problem: string): IdpError {
+  return new IdpError("misconfigured", `nextidp is misconfigured: ${problem}.`);
+}
+
+/** The scopes as the token endpoint gets them, sorted, so the same set is one key. */
 function scopeOf(scopes: readonly string[] | undefined): string | undefined {
   const list = [...new Set((scopes ?? []).map((scope) => scope.trim()).filter(Boolean))];
-  if (list.some((scope) => /\s/.test(scope))) {
-    throw new IdpError("misconfigured", "nextidp is misconfigured: a scope can't hold spaces.");
-  }
+  if (list.some((scope) => /\s/.test(scope))) throw misconfigured("a scope can't hold spaces");
   return list.length > 0 ? list.sort().join(" ") : undefined;
 }
 
 function resourceOf(resource: string | undefined): string | undefined {
   if (resource === undefined) return undefined;
-  try {
-    new URL(resource);
-    return resource; // as written: the auth server compares resources as strings
-  } catch {
-    throw new IdpError(
-      "misconfigured",
-      "nextidp is misconfigured: resource must be an absolute URI.",
-    );
+  if (!URL.canParse(resource) || /\s/.test(resource)) {
+    throw misconfigured("resource must be an absolute URI");
   }
+  return resource; // as written: the auth server compares resources as strings
 }
 
 export type ServiceTokens = {
   get(options?: ServiceTokenOptions): Promise<string>;
   drop(token: string): void;
+  /** The API a token is for when a call names none (IDP_RESOURCE). */
+  defaultResource: string | undefined;
 };
 
 export function createServiceTokens(deps: {
@@ -96,7 +109,8 @@ export function createServiceTokens(deps: {
     async get(options = {}) {
       const scope = scopeOf(options.scopes);
       const resource = resourceOf(options.resource ?? deps.config.resource);
-      const key = `${resource ?? ""} ${scope ?? ""}`;
+      // Unambiguous, whatever the two hold.
+      const key = JSON.stringify([resource ?? null, scope ?? null]);
       const now = Date.now();
       const known = kept.get(key);
       if (known && !options.fresh) {
@@ -105,10 +119,16 @@ export function createServiceTokens(deps: {
       }
       if (kept.size >= MAX_KEPT) prune(now);
       const entry: Kept = { pending: issue(scope, resource) };
+      // Marked issued before any caller gets the token, so a drop() of it always finds it.
+      entry.pending.then(
+        (issued) => {
+          entry.issued = issued;
+        },
+        () => undefined,
+      );
       kept.set(key, entry);
       try {
-        entry.issued = await entry.pending;
-        return entry.issued.token;
+        return (await entry.pending).token;
       } catch (error) {
         // A refusal isn't kept: the next call asks again.
         if (kept.get(key) === entry) kept.delete(key);
@@ -119,6 +139,8 @@ export function createServiceTokens(deps: {
     drop(token) {
       for (const [key, entry] of kept) if (entry.issued?.token === token) kept.delete(key);
     },
+
+    defaultResource: deps.config.resource,
   };
 }
 
@@ -137,6 +159,35 @@ function configOf(error: unknown): RequestConfigLike | undefined {
     : undefined;
 }
 
+/** The origin a request goes to, or undefined when it can't be told (no token then). */
+function originOf(config: RequestConfigLike): string | undefined {
+  try {
+    return new URL(config.url, config.baseUrl).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Where the token may go: `origins`, else the origin of an http(s) resource. */
+function allowedOrigins(tokens: ServiceTokens, options: UseServiceTokenOptions): Set<string> {
+  const resource = options.resource ?? tokens.defaultResource;
+  const listed = options.origins ?? (resource && /^https?:\/\//i.test(resource) ? [resource] : []);
+  const origins = new Set<string>();
+  for (const value of listed) {
+    const url = URL.canParse(value) ? new URL(value) : undefined;
+    if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
+      throw misconfigured("useServiceToken's origins must be http(s) URLs");
+    }
+    origins.add(url.origin);
+  }
+  if (origins.size === 0) {
+    throw misconfigured(
+      "useServiceToken needs origins, or an http(s) resource, to know where the token may go",
+    );
+  }
+  return origins;
+}
+
 /** The headers without any Authorization, whatever its case: ours replaces it. */
 function withoutAuthorization(headers: Record<string, string> | undefined) {
   return Object.fromEntries(
@@ -145,26 +196,38 @@ function withoutAuthorization(headers: Record<string, string> | undefined) {
 }
 
 /**
- * Puts a service token on every request of `client`. When an API answers 401, the token is
- * dropped and the request sent once more with a new one (a token revoked or rotated early);
- * a second 401 is the caller's. Returns a function that takes both hooks off.
+ * Puts a service token on every request of `client` to the allowed origins, and nowhere else.
+ * When the API answers 401, the token is dropped and the request sent once more with a new
+ * one (a token revoked early); a second 401 is the caller's. Returns a function that takes
+ * both hooks off.
  */
 export function useServiceToken(
   tokens: ServiceTokens,
   client: InterceptableClient,
-  options: Omit<ServiceTokenOptions, "fresh"> = {},
+  options: UseServiceTokenOptions = {},
 ): () => void {
-  const stopRequest = client.interceptors.request.use(async (config) => ({
-    ...config,
-    headers: {
-      ...withoutAuthorization(config.headers),
-      authorization: `Bearer ${await tokens.get(options)}`,
-    },
-  }));
+  const origins = allowedOrigins(tokens, options);
+  const { origins: _listed, ...tokenOptions } = options;
+  const allowed = (config: RequestConfigLike) => {
+    const origin = originOf(config);
+    return origin !== undefined && origins.has(origin);
+  };
+
+  const stopRequest = client.interceptors.request.use(async (config) =>
+    allowed(config)
+      ? {
+          ...config,
+          headers: {
+            ...withoutAuthorization(config.headers),
+            authorization: `Bearer ${await tokens.get(tokenOptions)}`,
+          },
+        }
+      : config,
+  );
   const stopResponse = client.interceptors.response.use({
     async onRejected(error) {
       const config = configOf(error);
-      if (statusOf(error) !== 401 || !config || config.retried) throw error;
+      if (statusOf(error) !== 401 || !config || config.retried || !allowed(config)) throw error;
       const refused = bearerToken(
         Object.entries(config.headers ?? {}).find(
           ([name]) => name.toLowerCase() === "authorization",

@@ -80,5 +80,9 @@ export {
 } from "./errors.js";
 export type { Idp, Refreshed } from "./idp.js";
 export type { SessionOptions } from "./node-adapter.js";
-export type { InterceptableClient, ServiceTokenOptions } from "./service.js";
+export type {
+  InterceptableClient,
+  ServiceTokenOptions,
+  UseServiceTokenOptions,
+} from "./service.js";
 export type { IdpUser, Session } from "./session.js";

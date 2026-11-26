@@ -27,5 +27,9 @@ export {
   type Refreshed,
 } from "./idp.js";
 export { safePath } from "./return-path.js";
-export type { InterceptableClient, ServiceTokenOptions } from "./service.js";
+export type {
+  InterceptableClient,
+  ServiceTokenOptions,
+  UseServiceTokenOptions,
+} from "./service.js";
 export type { IdpUser, Session } from "./session.js";

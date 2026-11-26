@@ -361,6 +361,11 @@ auth.useServiceToken(orders, { scopes: ["orders:read"], resource: "https://order
 const { data } = await orders.get("/orders"); // with the token; a 401 gets a new one, once
 ```
 
+The token goes only to the API's origin: that of `resource` (here
+`https://orders.example.com`), or the ones you list in `origins`. A request through the same
+client to any other origin goes out without it, so a URL from elsewhere can't carry the token
+away. Without an http(s) `resource` or `origins`, `useServiceToken` refuses to start.
+
 In **NestJS**, inject the instance `IdpModule` holds (with `{ protectAll: false }` if the app
 doesn't check tokens itself):
 

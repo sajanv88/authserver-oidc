@@ -151,6 +151,12 @@ describe("a service token", () => {
       "misconfigured",
     );
   });
+
+  it("refuses a resource with spaces, so a resource and scopes can't pass for another pair", async () => {
+    const refused = await failure(service().serviceToken({ resource: "urn:a b", scopes: ["c"] }));
+    expect(refused.code).toBe("misconfigured");
+    expect(asked()).toHaveLength(0);
+  });
 });
 
 describe("fast-http-client with a service token", () => {
@@ -191,7 +197,7 @@ describe("fast-http-client with a service token", () => {
   it("puts the token on every request, in place of any Authorization already there", async () => {
     const auth = service();
     const orders = client();
-    auth.useServiceToken(orders, { scopes: ["orders:read"], resource: API_URL });
+    auth.useServiceToken(orders, { scopes: ["orders:read"], resource: API_URL, origins: [base] });
     const answer = await orders.get<{ token: string }>("/orders", {
       headers: { Authorization: "Bearer stale" },
     });
@@ -206,7 +212,7 @@ describe("fast-http-client with a service token", () => {
   it("gets a new token when the API refuses the kept one, and sends the request again", async () => {
     const auth = service();
     const orders = client();
-    auth.useServiceToken(orders);
+    auth.useServiceToken(orders, { origins: [base] });
     const first = (await orders.get<{ token: string }>("/orders")).data.token;
     refused.add(first);
     const again = await orders.get<{ token: string }>("/orders");
@@ -217,7 +223,7 @@ describe("fast-http-client with a service token", () => {
   it("gives up after one more try: a second 401 is the caller's", async () => {
     const auth = service();
     const orders = client();
-    auth.useServiceToken(orders);
+    auth.useServiceToken(orders, { origins: [base] });
     refused.add(await auth.serviceToken());
     // Every token is refused from now on.
     const realHas = refused.has.bind(refused);
@@ -234,7 +240,7 @@ describe("fast-http-client with a service token", () => {
 
   it("sends nothing when no token can be had, and can be taken off", async () => {
     const orders = client();
-    const stop = service({ clientSecret: "wrong" }).useServiceToken(orders);
+    const stop = service({ clientSecret: "wrong" }).useServiceToken(orders, { origins: [base] });
     const error = await orders.get("/orders").catch((caught: unknown) => caught);
     expect(isIdpError(error) && error.code).toBe("service_token_failed");
     expect(seen).toHaveLength(0);
@@ -246,6 +252,38 @@ describe("fast-http-client with a service token", () => {
   it("checks its settings when it's set up, not at the first request", () => {
     expect(() => createIdp({ issuer: ISSUER, env: {} }).useServiceToken(client())).toThrow(
       /clientSecret/,
+    );
+  });
+
+  it("sends the token to the API's origin only: never to a URL elsewhere", async () => {
+    const auth = service();
+    const orders = client();
+    auth.useServiceToken(orders, { origins: [base] });
+    // The same server under another name is another origin, as is a protocol-relative URL.
+    const elsewhere = base.replace("127.0.0.1", "localhost");
+    await orders.get(`${elsewhere}/orders`).catch(() => undefined);
+    await orders.get(`//${new URL(elsewhere).host}/orders`).catch(() => undefined);
+    expect(seen).toEqual(["", ""]);
+    // No new token was asked for, and none was sent on a retry either.
+    expect(asked()).toHaveLength(0);
+    await orders.get(`${base}/orders`);
+    expect(seen[2]).toMatch(/^Bearer \S+$/);
+  });
+
+  it("takes the API's origin from an http(s) resource", async () => {
+    const orders = client();
+    service().useServiceToken(orders, { resource: `${base}/` });
+    await orders.get("/orders");
+    expect(seen[0]).toMatch(/^Bearer \S+$/);
+  });
+
+  it("refuses to start without knowing where the token may go", () => {
+    expect(() => service().useServiceToken(client())).toThrow(/origins/);
+    expect(() => service().useServiceToken(client(), { resource: "urn:orders" })).toThrow(
+      /origins/,
+    );
+    expect(() => service().useServiceToken(client(), { origins: ["ftp://x"] })).toThrow(
+      /http\(s\)/,
     );
   });
 });

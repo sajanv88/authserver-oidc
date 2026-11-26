@@ -36,6 +36,7 @@ import {
   type InterceptableClient,
   type ServiceTokenOptions,
   type ServiceTokens,
+  type UseServiceTokenOptions,
   useServiceToken,
 } from "./service.js";
 import {
@@ -120,18 +121,16 @@ export type Idp = {
   /** Forgets a kept service token an API refused (401), so the next call asks for a new one. */
   dropServiceToken(token: string): void;
   /**
-   * Puts a service token on every request of a fast-http-client client; on a 401 it gets a new
-   * one and sends the request once more. Returns a function that undoes it.
+   * Puts a service token on every request of a fast-http-client client to the API (the origin
+   * of `resource`, or `origins`), and nowhere else; on a 401 it gets a new one and sends the
+   * request once more. Returns a function that undoes it.
    *
    * ```ts
    * const orders = createHttp({ baseUrl: "https://orders.example.com" });
    * auth.useServiceToken(orders, { scopes: ["orders:read"], resource: "https://orders.example.com" });
    * ```
    */
-  useServiceToken(
-    client: InterceptableClient,
-    options?: Omit<ServiceTokenOptions, "fresh">,
-  ): () => void;
+  useServiceToken(client: InterceptableClient, options?: UseServiceTokenOptions): () => void;
 };
 
 /** What sign-in and token checks share: one HTTP client, discovery and key set per issuer. */

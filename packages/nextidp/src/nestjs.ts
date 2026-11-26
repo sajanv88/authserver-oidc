@@ -175,4 +175,8 @@ export type { AccessToken, TokenRequirements } from "./access-token.js";
 export type { ApiConfig, IdpOptions } from "./config.js";
 export { IdpError, isIdpError, isTokenError, type TokenErrorCode } from "./errors.js";
 export { createIdp as idp, type Idp } from "./idp.js";
-export type { InterceptableClient, ServiceTokenOptions } from "./service.js";
+export type {
+  InterceptableClient,
+  ServiceTokenOptions,
+  UseServiceTokenOptions,
+} from "./service.js";
