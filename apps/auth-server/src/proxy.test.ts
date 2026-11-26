@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { proxy } from "./proxy";
 
 const origin = "http://auth.localtest.me:3000";
@@ -9,6 +9,10 @@ function request(path: string, cookie?: string): NextRequest {
 }
 
 describe("proxy", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it.each([
     ["/account/security", "/account/security"],
     ["/admin/clients?page=2", "/admin/clients?page=2"],
@@ -51,6 +55,34 @@ describe("proxy", () => {
       headers: { "x-pathname": "//evil.example" },
     });
     expect(proxy(forged).headers.get("x-middleware-request-x-pathname")).toBe("/login");
+  });
+
+  it("expires a second session cookie left by a parent domain, on a page and on the gate", () => {
+    vi.stubEnv("BETTER_AUTH_URL", origin);
+    const twice = "nvx-auth.session_token=stale.sig; nvx-auth.session_token=fresh.sig";
+    // As the server sees it: the address it listens on, not the issuer's host.
+    const listening = (path: string) =>
+      new NextRequest(`http://0.0.0.0:3000${path}`, { headers: { cookie: twice } });
+    for (const path of ["/login?client_id=x", "/account"]) {
+      const cookies = proxy(listening(path)).headers.getSetCookie();
+      expect(cookies).toEqual([
+        "nvx-auth.session_token=; Path=/; Domain=localtest.me; Max-Age=0; HttpOnly; SameSite=Lax",
+      ]);
+    }
+    expect(proxy(request("/login", "nvx-auth.session_token=a.b")).headers.getSetCookie()).toEqual(
+      [],
+    );
+  });
+
+  it("on a form post, expires a parent domain's copy of the one session cookie sent", () => {
+    vi.stubEnv("BETTER_AUTH_URL", origin);
+    const posted = new NextRequest(`http://0.0.0.0:3000/login`, {
+      method: "POST",
+      headers: { cookie: "nvx-auth.session_token=a.b" },
+    });
+    expect(proxy(posted).headers.getSetCookie()).toEqual([
+      "nvx-auth.session_token=; Path=/; Domain=localtest.me; Max-Age=0; HttpOnly; SameSite=Lax",
+    ]);
   });
 
   it("uses a new nonce for every response", () => {
