@@ -6,7 +6,9 @@ OpenID Connect work for you:
 
 - the authorization code flow with PKCE;
 - the ID token's checks (signature, issuer, audience, expiry, nonce);
-- an encrypted session cookie, so no database is needed;
+- an encrypted session cookie, so no database is needed, or sessions in your own store
+  (Redis, a database), which the auth server can then end ([back-channel
+  logout](#sessions-in-a-store-and-back-channel-logout));
 - refreshing tokens before they expire;
 - signing out, of your app or of the auth server too;
 - checking the access tokens your API is called with, and their scopes, in NestJS, Express
@@ -204,6 +206,7 @@ Pass them to `idp({...})`, or set the variable in brackets. A function works too
 | `signOutOfIdp` | `false` | Sign out of the auth server too, unless the form says otherwise. |
 | `sessionMaxAge` | 7 days | Renewed at every refresh. |
 | `cookiePrefix` | `nextidp` | Cookies are `__Host-nextidp.session` on https. |
+| `store` | none: sessions live in the cookie | Keep sessions in a store instead ([below](#sessions-in-a-store-and-back-channel-logout)). |
 | `onError` | one `console.error` line | Told about every failure. Messages never hold tokens or claims. |
 
 Anything missing or wrong is reported on the first request, with every setting named, in
@@ -388,9 +391,46 @@ A refusal throws `IdpError` with the code `service_token_failed` and the auth se
 status (`invalid_scope` for a scope the client may not have, `invalid_target` for an API it
 isn't linked to).
 
-## Coming next
+## Sessions in a store, and back-channel logout
 
-- **A session store**, so the auth server can end an app's sessions (back-channel logout).
+By default a session lives in its encrypted cookie, which only the browser holds: the auth
+server can't end it, and signing out can't take back a copy of the cookie. Give nextidp a
+`store` and sessions live there instead, with only a sealed reference in the cookie:
+
+```ts
+import { idp, memoryStore } from "nextidp/next"; // or nextidp/express, nextidp/node
+
+export const auth = idp({ store: memoryStore() }); // one process only: use Redis to share
+```
+
+A store is three functions over strings nextidp has already encrypted, so a copy of the
+store holds no readable tokens. With Redis (ioredis):
+
+```ts
+import type { SessionStore } from "nextidp";
+
+const store: SessionStore = {
+  get: (key) => redis.get(key),
+  set: async (key, value, ttlSeconds) => { await redis.set(key, value, "EX", ttlSeconds); },
+  delete: async (key) => { await redis.del(key); },
+};
+```
+
+Then:
+
+- **Signing out ends the session for good**: an old copy of the cookie is signed out too.
+- **Back-channel logout**: when someone's session ends on the auth server (they sign out
+  there, an admin signs them out everywhere, the account is disabled), it posts a signed
+  logout token to `POST /auth/backchannel-logout`, and nextidp ends this app's sessions from
+  that auth-server session. Register the address with the client, in `clients:provision`:
+  `"backchannelLogoutUri": "https://app.example.com/auth/backchannel-logout"` (https, or a
+  loopback address in development). The auth server sends it only to apps that hold a
+  refresh token for that session, so keep `offline_access` in the scopes.
+- **Several instances** sharing the store share sessions, and one that refreshes a session
+  just after another did keeps it, instead of signing the person out.
+
+Each read of a session costs a store lookup or three (the session, and whether the auth
+server ended it). Apps sharing a store are kept apart by their client ID.
 
 ## License
 

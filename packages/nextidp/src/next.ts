@@ -177,3 +177,4 @@ export type {
   UseServiceTokenOptions,
 } from "./service.js";
 export type { IdpUser, Session } from "./session.js";
+export { memoryStore, type SessionStore } from "./store.js";

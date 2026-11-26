@@ -44,7 +44,9 @@ export type IdpErrorCode =
   /** The access token is valid but lacks a scope this route needs (403). */
   | "insufficient_scope"
   /** The token endpoint refused this service's client credentials, or didn't answer. */
-  | "service_token_failed";
+  | "service_token_failed"
+  /** A back-channel logout request's token didn't verify, or isn't a logout token. */
+  | "invalid_logout_token";
 
 /** The three codes an API answers a caller with; see `tokenErrorResponse`. */
 export type TokenErrorCode = "missing_token" | "invalid_token" | "insufficient_scope";

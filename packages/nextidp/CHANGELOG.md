@@ -3,7 +3,7 @@
 ## Unreleased
 
 Released once the whole planned scope is in: sign-in for Next.js, API protection, Express
-and Node sign-in, service tokens and a session store. The heading becomes the version then
+and Node sign-in, service tokens and a session store. All of it is in now. The heading becomes the version then
 (`nextidp-release.yaml` takes the release notes from it).
 
 ### Sign-in for Next.js (App Router)
@@ -30,6 +30,22 @@ and Node sign-in, service tokens and a session store. The heading becomes the ve
   already read are taken from it; others are read up to 64 KB (413 past that).
 - A refresh happens only while the response's headers can still be set, so a rotated refresh
   token is never lost.
+
+### Sessions in a store, and back-channel logout
+
+- The `store` option (`SessionStore`: `get`, `set`, `delete` over strings), and
+  `memoryStore()` for one process. The cookie then holds only a sealed reference, and the
+  stored session is sealed too.
+- Signing out deletes the stored session, so a copy of the old cookie is signed out as well.
+  A new sign-in replaces the browser's previous session.
+- `POST <basePath>/backchannel-logout` (OIDC Back-Channel Logout 1.0), with a store only:
+  the logout token is checked (signature, `iss`, `aud`, `iat`, `exp`, the logout event, a
+  `sid` or `sub`, no `nonce`, `typ` logout+jwt when there is one), then the app's sessions
+  from that auth-server session end; a token with only `sub` ends all of the person's
+  sessions begun before it. 400 for a token that doesn't verify (`invalid_logout_token`).
+- A refresh refused because another instance sharing the store refreshed first keeps the
+  session that instance stored.
+- Apps sharing a store are kept apart by their client ID.
 
 ### Service tokens
 
