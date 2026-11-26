@@ -21,7 +21,7 @@ import {
 import { APP_GUARD, Reflector } from "@nestjs/core";
 import { type AccessToken, bearerChallenge } from "./access-token.js";
 import type { IdpOptions } from "./config.js";
-import { isTokenError } from "./errors.js";
+import { isIdpError, isTokenError } from "./errors.js";
 import { createIdp, type Idp } from "./idp.js";
 
 /** The injection token of the `Idp` instance the module was given. */
@@ -85,9 +85,10 @@ export class IdpGuard implements CanActivate {
       return true;
     } catch (error) {
       if (!isTokenError(error)) {
-        throw new ServiceUnavailableException("The access token can't be checked now.", {
-          cause: error,
-        });
+        // Its code only: nothing from the HTTP client reaches Nest's logs or responses.
+        throw new ServiceUnavailableException(
+          `The access token can't be checked now (${isIdpError(error) ? error.code : "unexpected error"}).`,
+        );
       }
       const response = http.getResponse<HttpResponse>();
       const challenge = bearerChallenge(error);

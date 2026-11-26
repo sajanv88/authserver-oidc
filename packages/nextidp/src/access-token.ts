@@ -93,9 +93,9 @@ export function isJwt(token: string): boolean {
 }
 
 /**
- * A JWT access token: a signature by one of the issuer's keys (asymmetric algorithms only),
- * `typ` at+jwt when it says (an ID token is refused by its audience in any case), `iss`,
- * `aud` naming this API, and not expired (60 seconds of clock skew).
+ * A JWT access token (RFC 9068): `typ` at+jwt, so no other kind of JWT (an ID token, a logout
+ * token) passes for one; a signature by one of the issuer's keys (asymmetric algorithms
+ * only); `iss`; `aud` naming this API; and not expired (60 seconds of clock skew).
  */
 export async function verifyJwtAccessToken(
   token: string,
@@ -103,8 +103,8 @@ export async function verifyJwtAccessToken(
   config: Pick<ApiConfig, "issuer" | "audience">,
 ): Promise<AccessToken> {
   const { typ } = decodeProtectedHeader(token);
-  if (typ !== undefined && !ACCESS_TOKEN_TYPES.has(typ.toLowerCase())) {
-    throw invalid("The token isn't an access token (typ).");
+  if (typ === undefined || !ACCESS_TOKEN_TYPES.has(typ.toLowerCase())) {
+    throw invalid("The token isn't a JWT access token (its typ isn't at+jwt).");
   }
   try {
     const { payload } = await jwtVerify(token, keys, {
@@ -179,8 +179,9 @@ export async function introspect(
     throw invalid("The access token is from another issuer.");
   }
   const checked = toAccessToken(parsed.output as Record<string, unknown>);
-  // For this API, or issued to this very client (a token with no API in its audience).
-  if (!checked.audience.includes(config.audience) && checked.clientId !== config.clientId) {
+  // For this API; or, only when the API asked for it, issued to this very client.
+  const own = config.acceptOwnTokens && checked.clientId === config.clientId;
+  if (!checked.audience.includes(config.audience) && !own) {
     throw invalid("The access token is for another API.");
   }
   if (checked.expiresAt !== undefined && checked.expiresAt <= Math.floor(Date.now() / 1000)) {

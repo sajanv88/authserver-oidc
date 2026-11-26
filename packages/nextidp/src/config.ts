@@ -22,10 +22,17 @@ export type IdpOptions = {
   resource?: string | undefined;
   /**
    * For an API that checks tokens: its own URI, as the auth server lists it in
-   * OAUTH_RESOURCES. Every access token must name it in `aud` (IDP_AUDIENCE). Default:
-   * `resource`.
+   * OAUTH_RESOURCES. Every access token must name it in `aud` (IDP_AUDIENCE). Never taken
+   * from `resource`: that's the API an app asks tokens *for*, and accepting those here would
+   * let an app take tokens meant for the API it calls.
    */
   audience?: string | undefined;
+  /**
+   * Also accept an opaque token, by introspection, that doesn't name `audience` but was
+   * issued to this very client (`clientId`): an app checking its own tokens. Off by default,
+   * so only tokens for this API pass.
+   */
+  acceptOwnTokens?: boolean | undefined;
   /** Where nextidp's routes live. Default `/auth`: the redirect URI is `<appUrl>/auth/callback`. */
   basePath?: string | undefined;
   /** Where a sign-in lands when it wasn't asked to return somewhere. Default `/`. */
@@ -59,6 +66,8 @@ export type ApiConfig = {
   /** For introspecting opaque tokens; a JWT needs neither. */
   clientId: string | undefined;
   clientSecret: string | undefined;
+  /** See IdpOptions.acceptOwnTokens. */
+  acceptOwnTokens: boolean;
 };
 
 /** The settings once checked, as nextidp uses them. */
@@ -212,7 +221,7 @@ export function resolveApiConfig(options: IdpOptions): ApiConfig {
     env?.NODE_ENV === "production",
   );
   const audience = absoluteUri(
-    pick(options.audience, env, "IDP_AUDIENCE") ?? pick(options.resource, env, "IDP_RESOURCE"),
+    pick(options.audience, env, "IDP_AUDIENCE"),
     "audience (IDP_AUDIENCE)",
     problems,
   );
@@ -225,6 +234,7 @@ export function resolveApiConfig(options: IdpOptions): ApiConfig {
     audience,
     clientId: pick(options.clientId, env, "IDP_CLIENT_ID"),
     clientSecret: pick(options.clientSecret, env, "IDP_CLIENT_SECRET"),
+    acceptOwnTokens: options.acceptOwnTokens ?? false,
   };
 }
 

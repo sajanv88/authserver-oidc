@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { connection, NextRequest, NextResponse } from "next/server";
 import type { AccessToken, TokenRequirements } from "./access-token.js";
 import type { IdpOptions } from "./config.js";
-import { isTokenError } from "./errors.js";
+import { isIdpError, isTokenError } from "./errors.js";
 import { createIdp, type Idp } from "./idp.js";
 import type { Session } from "./session.js";
 
@@ -104,7 +104,9 @@ export function idp(options?: IdpOptions | (() => IdpOptions)): NextIdp {
         } catch (error) {
           if (isTokenError(error)) return core.tokenErrorResponse(error);
           // The auth server can't be reached, or a setting is wrong: never let the call through.
-          console.error("nextidp: a token couldn't be checked", error);
+          console.error(
+            `nextidp: a token couldn't be checked: ${isIdpError(error) ? error.code : "unexpected error"}`,
+          );
           return Response.json(
             {
               error: "temporarily_unavailable",

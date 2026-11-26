@@ -144,7 +144,8 @@ Pass them to `idp({...})`, or set the variable in brackets. A function works too
 | `secret` (IDP_SECRET) | | At least 32 characters. A list rotates it: the first encrypts, all decrypt (comma-separated in the variable). |
 | `scopes` (IDP_SCOPES) | `openid profile email offline_access` | `offline_access` gets a refresh token. |
 | `resource` (IDP_RESOURCE) | none | An API's URI (RFC 8707): the access token is then a JWT for it. |
-| `audience` (IDP_AUDIENCE) | `resource` | For an API: its own URI, exactly as in the auth server's `OAUTH_RESOURCES`. Every token must name it. |
+| `audience` (IDP_AUDIENCE) | none: required to check tokens | For an API: its own URI, exactly as in the auth server's `OAUTH_RESOURCES`. Every token must name it. Never taken from `resource`, which is the API an app asks tokens *for*. |
+| `acceptOwnTokens` | `false` | For an API: also accept an opaque token issued to its own `clientId` that doesn't name `audience`. |
 | `basePath` | `/auth` | Where the routes live. |
 | `afterSignIn` | `/` | Where a sign-in lands without a `returnTo`. |
 | `afterSignOut` | `/` | Where sign-out lands: also the post-logout redirect URI. |
@@ -189,7 +190,7 @@ IDP_AUDIENCE=https://api.example.com   # exactly as in OAUTH_RESOURCES
 The apps that call it ask for tokens with `resource` set to that URI, and must be linked to
 it on the auth server (`clients:provision`'s `resources`). Their access tokens are then JWTs
 for this API: nextidp checks each one against the auth server's published keys (signature,
-`typ` at+jwt, issuer, audience, expiry) and the scopes the route needs, with no call to the
+`typ` at+jwt, required, so no other kind of JWT passes for one; issuer, audience, expiry) and the scopes the route needs, with no call to the
 auth server per request.
 
 **NestJS** (11 or 12):
@@ -262,8 +263,10 @@ type AccessToken = {
 **Opaque tokens.** A token asked for without `resource` isn't a JWT, and only introspection
 can check it. Pass the API's own `clientId` and `clientSecret` (a confidential client) for
 that. The auth server answers only for tokens this client was issued, or tokens for an API
-it's linked to. Answers are kept for a minute at most, so a revoked token is refused within
-a minute. For APIs, prefer JWTs: ask for tokens with `resource`.
+it's linked to, and nextidp still requires the token to name `audience`: a token this client
+was issued for something else passes only with `acceptOwnTokens: true`. Answers are kept
+for a minute at most, so a revoked token is refused within a minute. For APIs, prefer JWTs:
+ask for tokens with `resource`.
 
 ## Coming next
 

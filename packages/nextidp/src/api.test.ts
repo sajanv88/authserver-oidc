@@ -81,19 +81,20 @@ describe("checking an access token", () => {
     expect((await api().verifyAccessToken(jwt)).isService).toBe(true);
   });
 
-  it("needs only the issuer and audience, and falls back to resource for the audience", async () => {
+  it("needs only the issuer and audience, and never takes the audience from resource", async () => {
     expect(api().apiConfig()).toEqual({
       issuer: ISSUER,
       audience: API_URL,
       clientId: undefined,
       clientSecret: undefined,
+      acceptOwnTokens: false,
     });
-    expect(createIdp({ issuer: ISSUER, resource: API_URL, env: {} }).apiConfig().audience).toBe(
-      API_URL,
-    );
-    expect(() => createIdp({ issuer: ISSUER, env: {} }).apiConfig()).toThrow(
-      /audience \(IDP_AUDIENCE\) is required/,
-    );
+    // `resource` is the API an app asks tokens for: an app mustn't accept those itself.
+    for (const options of [{}, { resource: API_URL }]) {
+      expect(() => createIdp({ issuer: ISSUER, env: {}, ...options }).apiConfig()).toThrow(
+        /audience \(IDP_AUDIENCE\) is required/,
+      );
+    }
   });
 
   it("refuses a token for another API, from another issuer's key, or expired", async () => {
@@ -107,8 +108,10 @@ describe("checking an access token", () => {
   });
 
   it("refuses a token typed as something else (an ID token), and an unsigned one", async () => {
-    const typed = await issuer.accessToken({}, { typ: "JWT" });
-    expect((await refusal(api().verifyAccessToken(typed))).message).toMatch(/typ/);
+    for (const typ of ["JWT", null]) {
+      const typed = await issuer.accessToken({}, { typ });
+      expect((await refusal(api().verifyAccessToken(typed))).message).toMatch(/typ/);
+    }
     const unsigned = new UnsecuredJWT({ sub: "user-1", scope: "orders:read" })
       .setIssuer(ISSUER)
       .setAudience(API_URL)
@@ -163,13 +166,51 @@ describe("an opaque token, by introspection", () => {
     expect((await refusal(introspecting().verifyAccessToken(opaque))).code).toBe("invalid_token");
   });
 
-  it("accepts a token issued to this very client, and refuses one for another API", async () => {
+  it("refuses a token not for this API, even this client's own, unless acceptOwnTokens", async () => {
     const own = issuer.opaqueToken({ client_id: API_CLIENT_ID });
-    expect((await introspecting().verifyAccessToken(own)).clientId).toBe(API_CLIENT_ID);
+    expect((await refusal(introspecting().verifyAccessToken(own))).message).toMatch(/another API/);
+    const ownTokens = api({
+      clientId: API_CLIENT_ID,
+      clientSecret: API_CLIENT_SECRET,
+      acceptOwnTokens: true,
+    });
+    expect((await ownTokens.verifyAccessToken(own)).clientId).toBe(API_CLIENT_ID);
+    // Even then, another client's token that isn't for this API stays refused.
+    const theirs = issuer.opaqueToken({ client_id: "someone-else" });
+    expect((await refusal(ownTokens.verifyAccessToken(theirs))).code).toBe("invalid_token");
     const elsewhere = issuer.opaqueToken({ aud: "https://other-api.example.test" });
     expect((await refusal(introspecting().verifyAccessToken(elsewhere))).message).toMatch(
       /another API/,
     );
+  });
+
+  it("never lets the client secret reach an error, whatever the HTTP client throws", async () => {
+    vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input);
+      // As an HTTP client might fail one day: an error that carries the request, headers and all.
+      if (url.endsWith("/introspect")) {
+        const headers = new Headers(init?.headers);
+        return Promise.reject(
+          Object.assign(new Error("timed out"), {
+            config: { headers: { authorization: headers.get("authorization") } },
+          }),
+        );
+      }
+      return issuer.fetch(input, init);
+    });
+    let thrown: unknown;
+    try {
+      await introspecting().verifyAccessToken(issuer.opaqueToken({ aud: API_URL }));
+    } catch (error) {
+      thrown = error;
+    }
+    const seen = (error: unknown): string =>
+      error instanceof Error
+        ? `${error.message} ${JSON.stringify(error)} ${seen(error.cause)}`
+        : String(error);
+    expect(thrown).toBeDefined();
+    expect(seen(thrown)).not.toContain(API_CLIENT_SECRET);
+    expect(seen(thrown)).not.toContain(btoa(`${API_CLIENT_ID}:${API_CLIENT_SECRET}`));
   });
 
   it("can't be checked without credentials: the answer says to ask for JWTs", async () => {

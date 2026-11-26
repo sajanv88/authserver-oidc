@@ -31,7 +31,11 @@ and Node sign-in, service tokens and a session store. The heading becomes the ve
   modules).
 - `nextidp/express`: `requireToken()` middleware and `tokenOf(req)`.
 - `nextidp/next`: `withToken()` for route handlers.
-- An API needs only `issuer` and `audience` (IDP_AUDIENCE, default `resource`).
+- An API needs only `issuer` and `audience` (IDP_AUDIENCE), required and never taken from
+  `resource`. A JWT access token must have `typ` at+jwt. An introspected token must name the
+  audience too, unless `acceptOwnTokens` lets this client's own tokens through.
+- Nothing from the HTTP client reaches an error or a log: a failed request keeps only its
+  message, and the adapters log error codes.
 - `resource` and `audience` are kept exactly as written: the auth server compares them as
   strings.
 - Node 24 or later.

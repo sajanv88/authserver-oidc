@@ -12,6 +12,15 @@ export type Http = {
   postForm(url: string, form: URLSearchParams, headers?: Record<string, string>): Promise<Answer>;
 };
 
+/**
+ * A request that failed without an answer (network, timeout), as an error that holds only
+ * its message: the HTTP client's own errors carry the request, headers and all, and the
+ * introspection request's Authorization header holds the client secret.
+ */
+function bare(error: unknown): Error {
+  return new Error(error instanceof Error ? error.message : "The request failed.");
+}
+
 /** An HttpError from fast-http-client, by shape: it carries the status and the parsed body. */
 function refusal(error: unknown): Answer | undefined {
   if (typeof error !== "object" || error === null) return undefined;
@@ -33,7 +42,7 @@ export function createIdpHttp(): Http {
       } catch (error) {
         const answer = refusal(error);
         if (answer) return answer;
-        throw error;
+        throw bare(error);
       }
     },
     async postForm(url, form, headers) {
@@ -46,7 +55,7 @@ export function createIdpHttp(): Http {
       } catch (error) {
         const answer = refusal(error);
         if (answer) return answer;
-        throw error;
+        throw bare(error);
       }
     },
   };
