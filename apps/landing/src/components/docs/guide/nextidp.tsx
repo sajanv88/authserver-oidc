@@ -185,6 +185,29 @@ export const GET = auth.withToken({ scopes: ["orders:read"] }, async (request, {
 );`}
       />
 
+      <Subheading id="nextidp-store">Sessions in a store, and back-channel logout</Subheading>
+      <p className="article__text">
+        Sessions live in their encrypted cookie by default. Pass a <C>store</C> (Redis, a database,
+        or <C>memoryStore()</C> for one process) and they live there, so this server can end them:
+        register <C>https://app.example.com/auth/backchannel-logout</C> as the client's{" "}
+        <C>backchannelLogoutUri</C> in <C>clients:provision</C>, and when someone's session ends
+        here, the app's sessions from it end too.
+      </p>
+      <Code
+        language="ts"
+        title="src/auth.ts"
+        label="Sessions in Redis"
+        code={`import { idp, type SessionStore } from "nextidp/next";
+
+const store: SessionStore = {
+  get: (key) => redis.get(key),
+  set: async (key, value, ttlSeconds) => { await redis.set(key, value, "EX", ttlSeconds); },
+  delete: async (key) => { await redis.del(key); },
+};
+
+export const auth = idp({ store });`}
+      />
+
       <Subheading id="nextidp-service">Calling an API as a service</Subheading>
       <p className="article__text">
         A service with a <strong>machine</strong> client (client ID and secret, linked to the APIs
