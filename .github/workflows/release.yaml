@@ -61,7 +61,7 @@ jobs:
           # What main.yaml's paths-ignore leaves out of the image; keep the two alike.
           in_image() {
             case "$1" in
-              apps/landing/* | apps/example-client/* | apps/tests/* | *.md |                 .github/workflows/pages.yaml | .github/workflows/e2e.yaml) return 1 ;;
+              apps/landing/* | apps/example-client/* | apps/tests/* | packages/nextidp/* | *.md |                 .github/workflows/pages.yaml | .github/workflows/e2e.yaml |                 .github/workflows/nextidp-release.yaml) return 1 ;;
               *) return 0 ;;
             esac
           }
