@@ -13,6 +13,66 @@ import { repo } from "@/content/site";
 import { Code } from "../code/code";
 import "./connect.scss";
 
+const NEXTIDP = "https://www.npmjs.com/package/nextidp";
+
+/** A Next.js app with nextidp: the files of one setup, each a view of it, so tabs fit. */
+const NEXTIDP_SNIPPETS = [
+  {
+    value: "install",
+    name: "Install",
+    about:
+      "Install it, and register the app in /admin/clients with the redirect URI <your app>/auth/callback.",
+    title: "Terminal",
+    language: "sh",
+    code: `npm i nextidp
+
+# .env
+IDP_ISSUER=https://auth.example.com
+IDP_CLIENT_ID=your-client-id
+IDP_APP_URL=https://app.example.com
+IDP_SECRET=$(openssl rand -base64 32)`,
+  },
+  {
+    value: "client",
+    name: "auth.ts",
+    about:
+      "One call. The settings are read on first use, so a build needs none of them; pass them to idp({...}) if you'd rather.",
+    title: "src/auth.ts",
+    language: "ts",
+    code: `import { idp } from "nextidp/next";
+
+export const auth = idp();`,
+  },
+  {
+    value: "routes",
+    name: "Routes",
+    about:
+      "Sign in, the callback, sign out (of the app, or of this server too) and refresh, under /auth. The proxy sends signed-out visitors to sign in and refreshes tokens before they expire.",
+    title: "src/app/auth/[...nextidp]/route.ts",
+    language: "ts",
+    code: `import { auth } from "@/auth";
+
+export const { GET, POST } = auth.routes();
+
+// src/proxy.ts
+export const proxy = auth.proxy({ protect: ["/dashboard"] });`,
+  },
+  {
+    value: "session",
+    name: "Session",
+    about:
+      "The ID token checked, the user's claims, and an access token for your APIs. The refresh token stays in an encrypted cookie the browser can't read.",
+    title: "src/app/dashboard/page.tsx",
+    language: "tsx",
+    code: `import { auth } from "@/auth";
+
+export default async function Dashboard() {
+  const session = await auth.requireSession("/dashboard");
+  return <h1>Hello, {session.user.name}</h1>;
+}`,
+  },
+];
+
 const SNIPPETS = [
   {
     value: "settings",
@@ -218,17 +278,51 @@ export function Connect() {
         <div className="section__intro">
           <p className="section__eyebrow">Connect an app</p>
           <h2 className="section__title" id="connect-title">
-            Four snippets from zero to a signed-in user
+            Connect your app in one call
           </h2>
           <p className="section__lead">
-            Use your framework's OIDC library, or follow these by hand. The{" "}
+            A Next.js app installs{" "}
+            <a className="connect__link" href={NEXTIDP}>
+              nextidp
+            </a>{" "}
+            and calls <code>idp()</code>: sign-in, refresh and sign-out are done, as in the{" "}
             <a className="connect__link" href={repo("tree/main/apps/example-client")}>
               example client
-            </a>{" "}
-            does all of it in a few hundred lines, refresh and sign-out included.
+            </a>
+            . Anything else uses its framework's OIDC library, or the four steps below by hand.
           </p>
         </div>
         <div className="connect">
+          <Tabs defaultValue="install" className="connect__tabs">
+            <TabsList aria-label="nextidp in a Next.js app">
+              {NEXTIDP_SNIPPETS.map((snippet) => (
+                <TabsTrigger key={snippet.value} value={snippet.value}>
+                  {snippet.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {NEXTIDP_SNIPPETS.map((snippet) => (
+              <TabsContent key={snippet.value} value={snippet.value}>
+                <div className="connect__panel">
+                  <p className="connect__about">{snippet.about}</p>
+                  <Code
+                    code={snippet.code}
+                    language={snippet.language}
+                    title={snippet.title}
+                    label={`nextidp: ${snippet.name}`}
+                  />
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+          <div className="connect__reference">
+            <h3 className="connect__heading" id="by-hand-title">
+              By hand, or with any OIDC library
+            </h3>
+            <p className="connect__about">
+              Four steps from zero to a signed-in user, for any language.
+            </p>
+          </div>
           <Tabs defaultValue="settings" className="connect__tabs">
             <TabsList aria-label="Steps to connect an app">
               {SNIPPETS.map((snippet, index) => (
