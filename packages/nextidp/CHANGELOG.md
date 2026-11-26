@@ -19,6 +19,18 @@ and Node sign-in, service tokens and a session store. The heading becomes the ve
   the refresh token, and can end the auth server's session too (RP-initiated logout).
 - ES module and CommonJS builds, with types for each.
 
+### Sign-in for Express and Node
+
+- `nextidp/express`: `express()` middleware (nextidp's routes, and the session read and
+  refreshed on every other request), `requireSession()` and `sessionOf(req)`.
+- `nextidp/node` for Node's own HTTP server: `handle(req, res)`, `session(req, res)` and
+  `requireSession(req, res)`.
+- A signed-out GET goes to sign in and comes back after; anything else gets 401.
+- The URL is always on `appUrl`'s origin, never from the Host header. Forms a body parser
+  already read are taken from it; others are read up to 64 KB (413 past that).
+- A refresh happens only while the response's headers can still be set, so a rotated refresh
+  token is never lost.
+
 ### Protecting an API
 
 - `verifyAccessToken()` and `verifyBearer()` in the core: a JWT access token checked against

@@ -115,6 +115,30 @@ export default async function Dashboard() {
         , for your page to explain. The <a href={NPM}>README</a> lists every setting.
       </p>
 
+      <Subheading id="nextidp-node">Express and Node apps</Subheading>
+      <p className="article__text">
+        The same settings and routes, from <C>nextidp/express</C> or, for Node's own HTTP server,{" "}
+        <C>nextidp/node</C> (<C>auth.handle(req, res)</C>, then <C>auth.requireSession(req, res)</C>
+        ).
+      </p>
+      <Code
+        language="ts"
+        title="app.ts"
+        label="Signing people in to an Express app"
+        code={`import express from "express";
+import { idp } from "nextidp/express";
+
+const auth = idp();
+const app = express();
+
+// nextidp's routes, and the session (refreshed before it expires) on every other request.
+app.use(auth.express());
+
+app.get("/dashboard", auth.requireSession(), (req, res) => {
+  res.render("dashboard", { user: auth.sessionOf(req)?.user });
+});`}
+      />
+
       <Subheading id="nextidp-api">Protecting your API</Subheading>
       <p className="article__text">
         An API needs only <C>IDP_ISSUER</C> and <C>IDP_AUDIENCE</C>, its own URI exactly as in{" "}

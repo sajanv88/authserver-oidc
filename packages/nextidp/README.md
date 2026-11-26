@@ -1,6 +1,6 @@
 # nextidp
 
-Sign people in to your Next.js app, and protect your APIs, with
+Sign people in to your Next.js, Express or Node app, and protect your APIs, with
 [authserver-oidc](https://github.com/sajanv88/authserver-oidc), in one call. It does the
 OpenID Connect work for you:
 
@@ -20,7 +20,8 @@ npm i nextidp
 ```
 
 ES module and CommonJS builds, with types. Node 24 or later. Next.js 15 or 16 (App
-Router), NestJS 11 or 12, and Express or anything else that takes Node middleware.
+Router), Express (tested with 5) or anything else that takes Node middleware, Node's own
+HTTP server, and NestJS 11 or 12 for APIs.
 
 ## 1. Register your app on the auth server
 
@@ -45,6 +46,8 @@ IDP_SECRET=…                               # ≥ 32 characters: openssl rand -
 ```
 
 ## 3. Wire it up
+
+In a Next.js app (for Express or Node's own server, see [below](#express-or-node)):
 
 ```ts
 // src/auth.ts
@@ -100,6 +103,53 @@ await fetch("https://api.example.com/orders", {
   headers: { authorization: `Bearer ${session?.accessToken}` },
 });
 ```
+
+## Express or Node
+
+The same settings, the same routes. With **Express**:
+
+```ts
+import express from "express";
+import { idp } from "nextidp/express";
+
+const auth = idp(); // the IDP_* settings, read on first use
+const app = express();
+
+// Before your routes: answers nextidp's routes, and reads the session (refreshing it
+// before it expires) for every other request.
+app.use(auth.express());
+
+app.get("/", (req, res) => {
+  const session = auth.sessionOf(req); // null if signed out
+  res.send(session ? `Hello, ${session.user.name}` : `<a href="/auth/login">Sign in</a>`);
+});
+
+// Signed out, a GET goes to sign in and comes back; anything else gets 401.
+app.get("/dashboard", auth.requireSession(), (req, res) => {
+  res.render("dashboard", { user: auth.sessionOf(req)?.user });
+});
+```
+
+A body parser before it is fine: the sign-out form is read from what it parsed.
+
+With **Node's own HTTP server**:
+
+```ts
+import { createServer } from "node:http";
+import { idp } from "nextidp/node";
+
+const auth = idp();
+
+createServer(async (req, res) => {
+  if (await auth.handle(req, res)) return;             // nextidp's routes
+  const session = await auth.requireSession(req, res); // or auth.session(req, res): null if signed out
+  if (!session) return;                                // sent to sign in
+  res.end(`Hello, ${session.user.name}`);
+}).listen(3000);
+```
+
+Read the session before you start the response: a refresh sets a new cookie. Read twice in
+one request, it's refreshed once.
 
 ## The routes
 
@@ -270,7 +320,6 @@ ask for tokens with `resource`.
 
 ## Coming next
 
-- **Express and Node** sign-in, for apps that render their own pages.
 - **Service-to-service tokens** (client credentials).
 - **A session store**, so the auth server can end an app's sessions (back-channel logout).
 
