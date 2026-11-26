@@ -8,7 +8,7 @@ export {
   bearerToken,
   type TokenRequirements,
 } from "./access-token.js";
-export type { ApiConfig, IdpConfig, IdpOptions } from "./config.js";
+export type { ApiConfig, IdpConfig, IdpOptions, ServiceConfig } from "./config.js";
 export { DEFAULT_SCOPES } from "./config.js";
 export {
   IdpError,
@@ -27,4 +27,5 @@ export {
   type Refreshed,
 } from "./idp.js";
 export { safePath } from "./return-path.js";
+export type { InterceptableClient, ServiceTokenOptions } from "./service.js";
 export type { IdpUser, Session } from "./session.js";

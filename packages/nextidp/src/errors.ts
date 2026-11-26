@@ -42,7 +42,9 @@ export type IdpErrorCode =
   /** The access token is expired, revoked, for another API, or not valid at all (401). */
   | "invalid_token"
   /** The access token is valid but lacks a scope this route needs (403). */
-  | "insufficient_scope";
+  | "insufficient_scope"
+  /** The token endpoint refused this service's client credentials, or didn't answer. */
+  | "service_token_failed";
 
 /** The three codes an API answers a caller with; see `tokenErrorResponse`. */
 export type TokenErrorCode = "missing_token" | "invalid_token" | "insufficient_scope";

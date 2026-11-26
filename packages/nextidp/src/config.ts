@@ -70,6 +70,15 @@ export type ApiConfig = {
   acceptOwnTokens: boolean;
 };
 
+/** What a service needs to get tokens of its own: a confidential client. */
+export type ServiceConfig = {
+  issuer: string;
+  clientId: string;
+  clientSecret: string;
+  /** The API to ask tokens for when a call names none (IDP_RESOURCE). */
+  resource: string | undefined;
+};
+
 /** The settings once checked, as nextidp uses them. */
 export type IdpConfig = {
   issuer: string;
@@ -236,6 +245,36 @@ export function resolveApiConfig(options: IdpOptions): ApiConfig {
     clientSecret: pick(options.clientSecret, env, "IDP_CLIENT_SECRET"),
     acceptOwnTokens: options.acceptOwnTokens ?? false,
   };
+}
+
+/**
+ * What getting a service's own tokens (client credentials) needs: the issuer, and a
+ * confidential client's ID and secret. Sign-in's `appUrl` and `secret` aren't needed.
+ */
+export function resolveServiceConfig(options: IdpOptions): ServiceConfig {
+  const env = envOf(options);
+  const problems: Problems = [];
+  const issuer = httpUrl(
+    pick(options.issuer, env, "IDP_ISSUER"),
+    "issuer (IDP_ISSUER)",
+    problems,
+    env?.NODE_ENV === "production",
+  );
+  const clientId = pick(options.clientId, env, "IDP_CLIENT_ID");
+  if (!clientId) problems.push("clientId (IDP_CLIENT_ID) is required for service tokens");
+  const clientSecret = pick(options.clientSecret, env, "IDP_CLIENT_SECRET");
+  if (!clientSecret) {
+    problems.push(
+      "clientSecret (IDP_CLIENT_SECRET) is required for service tokens: a confidential client",
+    );
+  }
+  const resource = absoluteUri(
+    pick(options.resource, env, "IDP_RESOURCE"),
+    "resource (IDP_RESOURCE)",
+    problems,
+  );
+  if (problems.length > 0 || !issuer || !clientId || !clientSecret) throw misconfigured(problems);
+  return { issuer: issuer.href.replace(/\/+$/, ""), clientId, clientSecret, resource };
 }
 
 /**

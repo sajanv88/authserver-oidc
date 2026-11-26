@@ -3,7 +3,8 @@
 // userinfo. Codes are handed out by `issueCode`, as the auth server would after sign-in.
 // For APIs: `accessToken` mints a JWT access token the way the auth server's OAuth plugin
 // does (typ at+jwt, aud, client_id, azp, scope, jti), and `opaqueToken` registers one for the
-// introspection endpoint, which answers API_CLIENT_ID with API_CLIENT_SECRET only.
+// introspection endpoint, which answers API_CLIENT_ID with API_CLIENT_SECRET only. The same
+// client gets service tokens (client credentials); the scope `forbidden` is refused.
 import { createHash, randomBytes } from "node:crypto";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -52,6 +53,8 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
     /** Extra claims in every ID token. */
     extraClaims: {} as Record<string, unknown>,
     accessTokenLifetime: 600,
+    /** How long a service token (client credentials) lasts. */
+    serviceTokenLifetime: 600 as number | undefined,
   };
 
   const random = () => randomBytes(16).toString("base64url");
@@ -106,7 +109,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
     };
   };
 
-  async function token(form: URLSearchParams): Promise<Response> {
+  async function token(form: URLSearchParams, headers: Headers): Promise<Response> {
     if (settings.tokenFailure) {
       return json({ error: settings.tokenFailure.error }, settings.tokenFailure.status);
     }
@@ -134,6 +137,24 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
           : rest,
       );
     }
+    if (form.get("grant_type") === "client_credentials") {
+      // A confidential client only, with Basic: API_CLIENT_ID and API_CLIENT_SECRET.
+      if (
+        headers.get("authorization") !== `Basic ${btoa(`${API_CLIENT_ID}:${API_CLIENT_SECRET}`)}`
+      ) {
+        return json({ error: "invalid_client" }, 401);
+      }
+      const scope = form.get("scope") ?? "";
+      if (scope.split(" ").includes("forbidden")) return json({ error: "invalid_scope" }, 400);
+      return json({
+        access_token: random(),
+        token_type: "Bearer",
+        ...(settings.serviceTokenLifetime === undefined
+          ? {}
+          : { expires_in: settings.serviceTokenLifetime }),
+        ...(scope ? { scope } : {}),
+      });
+    }
     return json({ error: "unsupported_grant_type" }, 400);
   }
 
@@ -160,7 +181,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       case `GET ${ISSUER}/jwks`:
         return json({ keys: [jwk] });
       case `POST ${ISSUER}/token`:
-        return token(new URLSearchParams(body));
+        return token(new URLSearchParams(body), request.headers);
       case `POST ${ISSUER}/revoke`:
         refreshTokens.delete(new URLSearchParams(body).get("token") ?? "");
         return new Response(null, { status: 200 });

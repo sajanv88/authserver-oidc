@@ -14,6 +14,7 @@ import {
   type IdpOptions,
   resolveApiConfig,
   resolveConfig,
+  resolveServiceConfig,
 } from "./config.js";
 import {
   applySetCookies,
@@ -30,6 +31,13 @@ import { createKeys, verifyIdToken } from "./id-token.js";
 import { challengeFor, randomToken, sameString } from "./pkce.js";
 import { safePath } from "./return-path.js";
 import { Sealer } from "./sealed.js";
+import {
+  createServiceTokens,
+  type InterceptableClient,
+  type ServiceTokenOptions,
+  type ServiceTokens,
+  useServiceToken,
+} from "./service.js";
 import {
   FLOW_MAX_AGE,
   FLOW_PURPOSE,
@@ -97,6 +105,33 @@ export type Idp = {
   ): Promise<AccessToken>;
   /** The 401 or 403 for a refused token, with its WWW-Authenticate challenge (RFC 6750). */
   tokenErrorResponse(error: IdpError): Response;
+
+  /**
+   * This service's own access token (client credentials), to call another API as itself.
+   * Kept until a minute before it expires, per scopes and API; calls at the same time share
+   * one request. Needs a confidential client: `clientId` and `clientSecret`. Throws
+   * IdpError("service_token_failed") when the auth server refuses or doesn't answer.
+   *
+   * ```ts
+   * const token = await auth.serviceToken({ scopes: ["orders:read"], resource: "https://orders.example.com" });
+   * ```
+   */
+  serviceToken(options?: ServiceTokenOptions): Promise<string>;
+  /** Forgets a kept service token an API refused (401), so the next call asks for a new one. */
+  dropServiceToken(token: string): void;
+  /**
+   * Puts a service token on every request of a fast-http-client client; on a 401 it gets a new
+   * one and sends the request once more. Returns a function that undoes it.
+   *
+   * ```ts
+   * const orders = createHttp({ baseUrl: "https://orders.example.com" });
+   * auth.useServiceToken(orders, { scopes: ["orders:read"], resource: "https://orders.example.com" });
+   * ```
+   */
+  useServiceToken(
+    client: InterceptableClient,
+    options?: Omit<ServiceTokenOptions, "fresh">,
+  ): () => void;
 };
 
 /** What sign-in and token checks share: one HTTP client, discovery and key set per issuer. */
@@ -190,6 +225,7 @@ function report(options: IdpOptions, error: IdpError): void {
 export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
   let state: State | undefined;
   let apiState: ApiState | undefined;
+  let serviceTokens: ServiceTokens | undefined;
   const shared = new Map<string, Shared>();
   let resolvedOptions: IdpOptions | undefined;
 
@@ -226,6 +262,14 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     const config = resolveApiConfig(optionsOf());
     apiState = { ...sharedFor(config.issuer), config, introspected: new Map() };
     return apiState;
+  };
+
+  const serviceReady = (): ServiceTokens => {
+    if (serviceTokens) return serviceTokens;
+    const config = resolveServiceConfig(optionsOf());
+    const { http, discovery } = sharedFor(config.issuer);
+    serviceTokens = createServiceTokens({ http, discovery, config });
+    return serviceTokens;
   };
 
   const introspectCached = async (s: ApiState, discovery: Discovery, token: string) => {
@@ -585,6 +629,17 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
         status: refusal.status,
         headers: refusal.headers,
       });
+    },
+
+    serviceToken: async (options) => serviceReady().get(options),
+
+    dropServiceToken(token) {
+      serviceTokens?.drop(token);
+    },
+
+    useServiceToken(client, options) {
+      // Settings are checked now, not at the first request: a mistake shows at startup.
+      return useServiceToken(serviceReady(), client, options);
     },
 
     signInPath(returnTo) {
