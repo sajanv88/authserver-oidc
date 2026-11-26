@@ -19,7 +19,7 @@ const RawEnvSchema = v.object({
   NODE_ENV: v.optional(v.picklist(["development", "production", "test"]), "development"),
   /** The auth server: the OIDC issuer. */
   EXAMPLE_AUTH_SERVER_URL: OriginSchema,
-  /** This app's own origin; the redirect URI is <origin>/oidc/callback. */
+  /** This app's own origin; nextidp makes the redirect URI <origin>/oidc/callback. */
   EXAMPLE_APP_URL: OriginSchema,
   EXAMPLE_CLIENT_ID: v.pipe(v.string(), v.trim(), v.nonEmpty()),
   /** Set for a confidential client (client_secret_basic); empty for a public one. */
@@ -34,9 +34,6 @@ export type ExampleEnv = {
   isProduction: boolean;
   authServerUrl: string;
   appUrl: string;
-  redirectUri: string;
-  /** Where the auth server sends people back after signing them out: the home page. */
-  postLogoutRedirectUri: string;
   clientId: string;
   clientSecret: string | undefined;
   sessionSecret: string;
@@ -67,8 +64,6 @@ export function parseEnv(source: Record<string, string | undefined>): ExampleEnv
     isProduction: env.NODE_ENV === "production",
     authServerUrl: env.EXAMPLE_AUTH_SERVER_URL,
     appUrl: env.EXAMPLE_APP_URL,
-    redirectUri: `${env.EXAMPLE_APP_URL}/oidc/callback`,
-    postLogoutRedirectUri: `${env.EXAMPLE_APP_URL}/`,
     clientId: env.EXAMPLE_CLIENT_ID,
     clientSecret: env.EXAMPLE_CLIENT_SECRET === "" ? undefined : env.EXAMPLE_CLIENT_SECRET,
     sessionSecret: env.EXAMPLE_SESSION_SECRET,

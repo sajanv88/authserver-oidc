@@ -13,11 +13,12 @@ import {
   CardTitle,
 } from "@nuvui/react";
 import Link from "next/link";
-import { getAppSession, type SignInError } from "../server/routes";
+import { isSignInErrorCode, type SignInErrorCode } from "nextidp/next";
+import { auth } from "../server/auth";
 import { SignOutForm } from "./sign-out-form";
 import "./oidc-card.scss";
 
-const ERRORS: Record<SignInError, { title: string; text: string }> = {
+const ERRORS: Record<SignInErrorCode, { title: string; text: string }> = {
   access_denied: {
     title: "You chose Deny",
     text: "The app got nothing. Sign in again to allow it.",
@@ -44,14 +45,10 @@ const ERRORS: Record<SignInError, { title: string; text: string }> = {
   },
 };
 
-function isSignInError(value: unknown): value is SignInError {
-  return typeof value === "string" && value in ERRORS;
-}
-
 /** Sign in with OIDC: code + PKCE, then the ID token checked against the issuer's keys. */
 export async function OidcCard({ error }: { error?: string | undefined }) {
-  const session = await getAppSession();
-  const problem = isSignInError(error) ? ERRORS[error] : undefined;
+  const session = await auth.session();
+  const problem = isSignInErrorCode(error) ? ERRORS[error] : undefined;
   const who = session?.claims.email ?? session?.claims.sub;
   return (
     <Card>

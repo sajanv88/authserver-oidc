@@ -12,8 +12,8 @@ import {
   CardTitle,
 } from "@nuvui/react";
 import { redirect } from "next/navigation";
-import { getAppSession } from "../server/routes";
-import { userInfoFor } from "../server/userinfo";
+import { isIdpError } from "nextidp/next";
+import { auth } from "../server/auth";
 import { ClaimsTable } from "./claims-table";
 import { SignOutForm } from "./sign-out-form";
 import "./me-screen.scss";
@@ -24,8 +24,20 @@ const when = new Intl.DateTimeFormat("en", {
   timeZone: "UTC",
 });
 
+type UserInfo = { ok: true; claims: Record<string, unknown> } | { ok: false; status: number };
+
+/** /oauth2/userinfo for this access token: its claims, or the status it answered. */
+async function userInfoFor(accessToken: string): Promise<UserInfo> {
+  try {
+    return { ok: true, claims: await auth.userInfo(accessToken) };
+  } catch (error) {
+    if (isIdpError(error)) return { ok: false, status: error.status ?? 502 };
+    throw error;
+  }
+}
+
 export async function MeScreen({ refreshed }: { refreshed: boolean }) {
-  const session = await getAppSession();
+  const session = await auth.session();
   if (!session) redirect("/");
 
   const expired = session.accessTokenExpiresAt * 1000 <= Date.now();
@@ -62,11 +74,12 @@ export async function MeScreen({ refreshed }: { refreshed: boolean }) {
             </time>
           </span>
           <span>Refresh token</span>
-          <span>{session.refreshToken ? "Yes (offline_access)" : "None"}</span>
+          <span>{session.canRefresh ? "Yes (offline_access)" : "None"}</span>
         </CardContent>
         <CardFooter className="me-screen__actions">
-          {session.refreshToken ? (
+          {session.canRefresh ? (
             <form method="post" action="/oidc/refresh">
+              <input type="hidden" name="returnTo" value="/me?refreshed=1" />
               <Button type="submit">Refresh the tokens</Button>
             </form>
           ) : null}
