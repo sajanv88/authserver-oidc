@@ -31,6 +31,18 @@ and Node sign-in, service tokens and a session store. The heading becomes the ve
 - A refresh happens only while the response's headers can still be set, so a rotated refresh
   token is never lost.
 
+### Service tokens
+
+- `serviceToken({ scopes, resource })` in the core: a service's own access token (client
+  credentials, a confidential client), kept until a minute before it expires (half its life
+  if that's shorter), per scopes and API, with one request at a time.
+- `dropServiceToken(token)` forgets one an API refused. `useServiceToken(client, options)`
+  puts tokens on the requests of a fast-http-client client to the API's origin (that of
+  `resource`, or `origins`) and nowhere else, and on a 401 gets a new one and sends the
+  request once more.
+- A refusal is `IdpError` with the code `service_token_failed`, and isn't kept.
+- NestJS: inject `IDP` and call `serviceToken()`.
+
 ### Protecting an API
 
 - `verifyAccessToken()` and `verifyBearer()` in the core: a JWT access token checked against

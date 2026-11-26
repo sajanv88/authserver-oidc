@@ -184,6 +184,28 @@ export const GET = auth.withToken({ scopes: ["orders:read"] }, async (request, {
   Response.json(await ordersOf(token.subject)),
 );`}
       />
+
+      <Subheading id="nextidp-service">Calling an API as a service</Subheading>
+      <p className="article__text">
+        A service with a <strong>machine</strong> client (client ID and secret, linked to the APIs
+        it calls) gets tokens of its own: kept until a minute before they expire, per scopes and
+        API. With fast-http-client, <C>useServiceToken</C> puts them on every request, and gets a
+        new one when an API answers 401.
+      </p>
+      <Code
+        language="ts"
+        title="orders-client.ts"
+        label="Calling an API as a service"
+        code={`import { createHttp } from "fast-http-client";
+import { idp } from "nextidp";
+
+const auth = idp(); // IDP_ISSUER, IDP_CLIENT_ID, IDP_CLIENT_SECRET
+
+const orders = createHttp({ baseUrl: "https://orders.example.com" });
+auth.useServiceToken(orders, { scopes: ["orders:read"], resource: "https://orders.example.com" });
+
+// Or by hand: await auth.serviceToken({ scopes: ["orders:read"] })`}
+      />
     </Section>
   );
 }

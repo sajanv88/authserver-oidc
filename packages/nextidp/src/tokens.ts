@@ -93,6 +93,19 @@ export function refreshTokens(
   return tokenRequest(http, discovery, client, form, "refresh_failed");
 }
 
+/** A service's own access token (RFC 6749 4.4): no person, the client's own credentials. */
+export function clientCredentials(
+  http: Http,
+  discovery: Discovery,
+  client: Client,
+  input: { scope: string | undefined; resource: string | undefined },
+): Promise<TokenResponse> {
+  const form = new URLSearchParams({ grant_type: "client_credentials" });
+  if (input.scope) form.set("scope", input.scope);
+  if (input.resource) form.set("resource", input.resource);
+  return tokenRequest(http, discovery, client, form, "service_token_failed");
+}
+
 /** Revokes a refresh token at sign-out, when the server offers revocation. Never throws. */
 export async function revokeRefreshToken(
   http: Http,

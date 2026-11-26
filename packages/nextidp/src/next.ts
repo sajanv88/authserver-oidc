@@ -171,4 +171,9 @@ export {
   type TokenErrorCode,
 } from "./errors.js";
 export type { Idp, Refreshed } from "./idp.js";
+export type {
+  InterceptableClient,
+  ServiceTokenOptions,
+  UseServiceTokenOptions,
+} from "./service.js";
 export type { IdpUser, Session } from "./session.js";
