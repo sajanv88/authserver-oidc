@@ -158,7 +158,7 @@ export {
   type SignInErrorCode,
   type TokenErrorCode,
 } from "./errors.js";
-export type { Idp, Refreshed } from "./idp.js";
+export type { Idp, Refreshed, SignInPathOptions } from "./idp.js";
 export type { SessionOptions } from "./node-adapter.js";
 export type {
   InterceptableClient,

@@ -36,7 +36,7 @@ export default function ResetPassword({
 }
 
 ResetPassword.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   url: "http://auth.localtest.me:3000/api/auth/reset-password/preview?callbackURL=%2Freset-password",
   expiresInMinutes: 15,
 } satisfies ResetPasswordProps;

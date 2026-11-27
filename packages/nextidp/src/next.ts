@@ -72,9 +72,29 @@ function isProtected(protect: ProxyOptions["protect"], pathname: string): boolea
 export function idp(options?: IdpOptions | (() => IdpOptions)): NextIdp {
   const core = createIdp(options);
 
+  /** A GET of the login route from Next's client router (a `<Link>`, `router.push`, a prefetch). */
+  const isRouterFetchOfLogin = (request: Request) => {
+    if (request.method.toUpperCase() !== "GET" || !request.headers.has("rsc")) return false;
+    try {
+      return new URL(request.url).pathname === `${core.config().basePath}/login`;
+    } catch {
+      // A setting is wrong: the core answers, and says so.
+      return false;
+    }
+  };
+
   const handle = async (request: Request) => {
     // Never prerendered: every answer depends on this request.
     await connection();
+    // The router's fetch can't follow the redirect to the auth server (another origin), and
+    // would replace the flow cookie of a sign-in under way. A plain answer instead: the
+    // router then loads the URL as a whole page, which signs in as usual.
+    if (isRouterFetchOfLogin(request)) {
+      return new Response("Sign-in needs a full page load.", {
+        status: 200,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
     return core.handler(request);
   };
 
@@ -170,7 +190,7 @@ export {
   type SignInErrorCode,
   type TokenErrorCode,
 } from "./errors.js";
-export type { Idp, Refreshed } from "./idp.js";
+export type { Idp, Refreshed, SignInPathOptions } from "./idp.js";
 export type {
   InterceptableClient,
   ServiceTokenOptions,

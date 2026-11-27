@@ -25,6 +25,7 @@ export {
   createIdp as idp,
   type Idp,
   type Refreshed,
+  type SignInPathOptions,
 } from "./idp.js";
 export { safePath } from "./return-path.js";
 export type {

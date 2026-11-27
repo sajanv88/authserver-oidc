@@ -288,7 +288,7 @@ export type ServerEnv = {
   oauth: OAuthApiConfig;
   /** TWO_FACTOR_REQUIRED_FOR_ADMINS: every admin must have two-factor on. */
   twoFactorRequiredForAdmins: boolean;
-  /** The product's name: APP_NAME, or "Auth Server". */
+  /** The product's name: APP_NAME, or "Next-Identity Server". */
   appName: string;
   /** The sign-in pages' logo, or undefined for the default shield. */
   logoUrl: string | undefined;

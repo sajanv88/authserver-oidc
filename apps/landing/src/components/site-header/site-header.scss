@@ -1,14 +1,28 @@
 @use "abstracts" as a;
 
+// A rounded bar that floats over the page, held near the top while it scrolls. The bar is
+// nuvui's Navbar, made see-through inside this box, which draws the shape: the panels of the
+// navigation menu hang out of it, so the shape can't be the Navbar's own clipped background.
 .site-header {
-  --nuv-navbar-gap: #{a.space(2)};
+  // Over the page, as the Navbar's own sticky bar is.
+  position: sticky;
+  z-index: 20;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + #{a.space(3)});
+  box-sizing: border-box;
+  inline-size: min(100% - #{a.space(6)}, 76rem);
+  margin-block-start: a.space(3);
+  margin-inline: auto;
+  border: var(--nuv-border-width) solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-surface-foreground);
+  box-shadow: var(--shadow-md);
 
   @include a.breakpoint("md") {
-    --nuv-navbar-gap: #{a.space(6)};
-    --nuv-navbar-padding: #{a.space(8)};
+    inline-size: min(100% - #{a.space(12)}, 76rem);
   }
 
-  // Over the sticky bar (whose stacking order is 20), under anything that opens over both.
+  // Over the sticky bar, under anything that opens over both.
   &__progress {
     --nuv-scroll-progress-size: 2px;
 
@@ -16,6 +30,30 @@
     inset-block-start: 0;
     inset-inline: 0;
     z-index: 21;
+  }
+
+  &__bar {
+    --nuv-navbar-bg: transparent;
+    --nuv-navbar-border: transparent;
+    --nuv-navbar-fg: var(--color-surface-foreground);
+    --nuv-navbar-height: #{a.space(14)};
+    --nuv-navbar-gap: #{a.space(2)};
+    --nuv-navbar-padding: #{a.space(3)};
+
+    @include a.breakpoint("md") {
+      --nuv-navbar-gap: #{a.space(4)};
+      --nuv-navbar-padding: #{a.space(4)};
+    }
+  }
+
+  // The links and the actions share what the name leaves, half each, so the name stays in
+  // the middle. Below the lg breakpoint the links are in the panel, and the name is first.
+  &__side {
+    flex: 1 1 0;
+  }
+
+  &__actions {
+    justify-content: flex-end;
   }
 
   &__brand {
@@ -28,11 +66,27 @@
     font-weight: var(--font-weight-semibold);
     letter-spacing: var(--tracking-tight);
     text-decoration: none;
+    white-space: nowrap;
 
     @include a.focus-ring;
   }
 
-  // In the bar from the md breakpoint; below it, the panel has its own.
+  // A panel's links, each with a line about it.
+  &__panel {
+    display: grid;
+    gap: var(--spacing);
+    min-inline-size: 20rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__about {
+    color: var(--color-muted-foreground);
+    font-weight: var(--font-weight-normal);
+  }
+
+  // In the bar from the md breakpoint; below it, the panel has them.
   &__wide {
     display: none;
 
@@ -41,7 +95,47 @@
     }
   }
 
-  &__repo {
-    margin-block-start: a.space(4);
+  // The main button: in the bar from the sm breakpoint, in the panel below it.
+  &__start {
+    display: none;
+
+    @include a.breakpoint("sm") {
+      display: inline-flex;
+    }
+  }
+
+  &__panel-start {
+    @include a.breakpoint("sm") {
+      display: none;
+    }
+  }
+
+  // The panel a narrow screen opens: each group under its name.
+  &__menu {
+    display: grid;
+    gap: a.space(5);
+  }
+
+  &__group {
+    display: grid;
+    gap: var(--spacing);
+  }
+
+  &__group-name {
+    margin: 0;
+    padding-inline: a.space(3);
+    color: var(--color-muted-foreground);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  &__panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: a.space(2);
+    align-items: center;
+    margin-block-start: a.space(6);
   }
 }

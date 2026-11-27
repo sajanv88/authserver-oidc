@@ -42,7 +42,7 @@ export default function ExistingAccount({
 }
 
 ExistingAccount.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   loginUrl: "http://auth.localtest.me:3000/login",
   resetUrl: "http://auth.localtest.me:3000/forgot-password",
 } satisfies ExistingAccountProps;

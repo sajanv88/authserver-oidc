@@ -25,4 +25,4 @@ export default function AccountDeleted({ appName, logoUrl }: AccountDeletedProps
   );
 }
 
-AccountDeleted.PreviewProps = { appName: "Auth Server" } satisfies AccountDeletedProps;
+AccountDeleted.PreviewProps = { appName: "Next-Identity Server" } satisfies AccountDeletedProps;

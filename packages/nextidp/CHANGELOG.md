@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Sign-in
+
+- `GET <basePath>/login?prompt=…` passes `prompt` on to the auth server: `login`, `consent`
+  or `select_account`, or several separated by spaces. Any other value, `none` included, is
+  left out, and nothing else in the query is passed on. `signInPath(returnTo, { prompt })`
+  builds the link.
+- `reauthenticateAfterSignOut` (default `false`): a sign-out leaves a small marker cookie
+  (`<prefix>.signed-out`, `__Secure-` on https, on `basePath` only, 30 days), and the next
+  sign-in sends `prompt=login` and clears it, so a shared computer doesn't sign the next person
+  in as the last. A link with `reauthenticate=false` (a "Create account" link) opts out and
+  leaves the marker; a `prompt` in the link wins over it.
+- `userinfo` (default `false`): the email, `email_verified`, name and picture from the
+  userinfo endpoint, merged into `session.user` after sign-in and after a refresh that brings
+  a new ID token (kept otherwise), for auth servers that leave them out of the ID token.
+  Best effort: a failure, or an answer about another `sub`, goes to `onError` and the
+  sign-in goes ahead. `session.claims` stays the ID token's.
+
+### Next.js
+
+- `routes()` answers a fetch of the login route by Next's client router (a `<Link>`,
+  `router.push` or a prefetch: the `rsc` header) with a 200 "Sign-in needs a full page load."
+  and no cookie, instead of a redirect it can't follow. The router then loads it as a whole
+  page, and a sign-in under way keeps its flow cookie.
+
 ## 0.1.3
 
 ### Hono, and edge runtimes

@@ -29,6 +29,7 @@ const auth = idp(() => ({
   secret: env().SECRET,
   audience: env().AUDIENCE,
   store: memoryStore(),
+  userinfo: true,
   env: {},
 }));
 
@@ -44,6 +45,7 @@ const app = new Hono<IdpEnv>();
 app.all("/auth/*", auth.routes());
 app.use(auth.middleware());
 app.get("/", (c) => c.json({ user: c.get("session")?.user.id ?? null }));
+app.get("/me", auth.requireSession(), (c) => c.json(c.get("session")?.user));
 app.get("/dashboard", auth.requireSession(), (c) =>
   c.json({ user: c.get("session")?.user.id, accessToken: c.get("session")?.accessToken }),
 );

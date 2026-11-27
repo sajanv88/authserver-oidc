@@ -29,6 +29,6 @@ export default function AccountEnabled({ appName, logoUrl, loginUrl }: AccountEn
 }
 
 AccountEnabled.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   loginUrl: "http://auth.localtest.me:3000/login",
 } satisfies AccountEnabledProps;

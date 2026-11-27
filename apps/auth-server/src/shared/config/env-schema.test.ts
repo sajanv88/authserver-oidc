@@ -253,10 +253,10 @@ describe("parseEnv", () => {
     ]);
   });
 
-  it("calls the product Auth Server unless APP_NAME names it, on one line", () => {
+  it("calls the product Next-Identity Server unless APP_NAME names it, on one line", () => {
     for (const APP_NAME of [undefined, "", "   "]) {
       const result = parseEnv({ ...valid, APP_NAME });
-      expect(result.ok && result.env.appName).toBe("Auth Server");
+      expect(result.ok && result.env.appName).toBe("Next-Identity Server");
     }
     const named = parseEnv({ ...valid, APP_NAME: "  Acme ID  " });
     expect(named.ok && named.env.appName).toBe("Acme ID");

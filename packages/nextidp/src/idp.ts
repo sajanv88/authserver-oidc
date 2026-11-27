@@ -43,7 +43,9 @@ import {
 import {
   FLOW_MAX_AGE,
   FLOW_PURPOSE,
+  type Profile,
   parseFlow,
+  profileFrom,
   type Session,
   type StoredSession,
   toSession,
@@ -89,8 +91,13 @@ export type Idp = {
   refreshIfNeeded(source: CookieSource, options?: { leeway?: number }): Promise<Refreshed>;
   /** The userinfo endpoint's claims for an access token. */
   userInfo(accessToken: string): Promise<Record<string, unknown>>;
-  /** The path that starts a sign-in, returning to `returnTo` (a path of this app) after. */
-  signInPath(returnTo?: string): string;
+  /**
+   * The path that starts a sign-in, returning to `returnTo` (a path of this app) after.
+   * `prompt` asks the auth server for `login`, `consent` or `select_account` (others are left
+   * out); `reauthenticate: false` is for a "Create account" link, which mustn't ask for a
+   * password again after a sign-out (see `reauthenticateAfterSignOut`).
+   */
+  signInPath(returnTo?: string, options?: SignInPathOptions): string;
 
   /** For an API: the checked settings it needs (issuer and audience). */
   apiConfig(): ApiConfig;
@@ -133,6 +140,31 @@ export type Idp = {
    */
   useServiceToken(client: InterceptableClient, options?: UseServiceTokenOptions): () => void;
 };
+
+/** What `signInPath` can add to the sign-in link. */
+export type SignInPathOptions = {
+  /** `login`, `consent` or `select_account`, or several separated by spaces. */
+  prompt?: string | undefined;
+  /** false: no `prompt=login` from an earlier sign-out (see `reauthenticateAfterSignOut`). */
+  reauthenticate?: boolean | undefined;
+};
+
+/**
+ * The `prompt` values a sign-in link may ask for (OIDC Core 3.1.2.1). `none` isn't one: its
+ * errors (login_required, consent_required, interaction_required) would need handling here.
+ */
+const PROMPTS: ReadonlySet<string> = new Set(["login", "consent", "select_account"]);
+
+/** `prompt` when every value in it is allowed, each once; otherwise nothing at all. */
+function promptFrom(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const values = value.split(" ").filter(Boolean);
+  if (values.length === 0 || !values.every((each) => PROMPTS.has(each))) return undefined;
+  return [...new Set(values)].join(" ");
+}
+
+/** How long the marker of a sign-out lasts (reauthenticateAfterSignOut): 30 days. */
+const SIGNED_OUT_MAX_AGE = 30 * 24 * 60 * 60;
 
 /** What sign-in and token checks share: one HTTP client, discovery and key set per issuer. */
 type Shared = {
@@ -340,6 +372,7 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     tokens: TokenResponse,
     claims: Record<string, unknown>,
     previous?: StoredSession,
+    profile?: Profile,
   ): StoredSession => {
     const stored: StoredSession = {
       claims,
@@ -350,10 +383,38 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
     const refreshToken = tokens.refresh_token ?? previous?.refreshToken;
     const idToken = tokens.id_token ?? previous?.idToken;
     const scope = tokens.scope ?? previous?.scope;
+    // A new profile, else the one from before (userinfo failed, or no new ID token).
+    const kept = profile ?? previous?.profile;
     if (refreshToken) stored.refreshToken = refreshToken;
     if (idToken) stored.idToken = idToken;
     if (scope) stored.scope = scope;
+    if (kept) stored.profile = kept;
     return stored;
+  };
+
+  /**
+   * The person's email, name and picture from userinfo (the `userinfo` option). Best effort:
+   * a failure is reported and gives nothing, and so does an answer about anyone but `sub`
+   * (OIDC Core 5.3.4).
+   */
+  const profileFor = async (
+    s: State,
+    discovery: Discovery,
+    accessToken: string,
+    sub: unknown,
+  ): Promise<Profile | undefined> => {
+    if (!s.config.userinfo) return undefined;
+    try {
+      const answer = await fetchUserInfo(s.http, discovery, accessToken);
+      if (typeof sub !== "string" || answer.sub !== sub) {
+        fail(new IdpError("userinfo_failed", "The userinfo answer is for another subject."));
+        return undefined;
+      }
+      return profileFrom(answer);
+    } catch (error) {
+      fail(error);
+      return undefined;
+    }
   };
 
   /**
@@ -378,6 +439,7 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
         resource: s.config.resource,
       });
       let claims = stored.claims;
+      let profile: Profile | undefined;
       if (tokens.id_token) {
         // A new ID token must be for the same person (OIDC Core 12.2).
         const fresh = await verify(s, discovery, tokens.id_token);
@@ -385,8 +447,9 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
           throw new IdpError("refresh_failed", "The refreshed ID token is for someone else.");
         }
         claims = fresh;
+        profile = await profileFor(s, discovery, tokens.access_token, fresh.sub);
       }
-      return storedFrom(tokens, claims, stored);
+      return storedFrom(tokens, claims, stored, profile);
     })();
     s.refreshing.set(refreshToken, { result, until: now + REFRESH_SHARE_MS });
     result.catch(() => s.refreshing.delete(refreshToken));
@@ -407,8 +470,34 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
       : undefined;
   };
 
-  async function login(s: State, url: URL): Promise<Response> {
+  /**
+   * The `prompt` for this sign-in, and the Set-Cookie that clears the sign-out marker when
+   * it's used up. An allowed `prompt` in the query wins (and uses the marker up if it asks
+   * for `login`); `reauthenticate=false` leaves the marker for later; otherwise the marker
+   * means `prompt=login`, once.
+   */
+  function promptOf(s: State, request: Request, url: URL) {
+    const { signedOut } = s.config.cookies;
+    const jar = parseCookies(request.headers.get("cookie"));
+    const marked = jar.has(signedOut);
+    const clear = () => clearCookie(jar, signedOut, s.config.secure, s.config.basePath);
+    const asked = promptFrom(url.searchParams.get("prompt"));
+    if (asked) {
+      const usedUp = marked && asked.split(" ").includes("login");
+      return { prompt: asked, setCookies: usedUp ? clear() : [] };
+    }
+    if (url.searchParams.get("reauthenticate") === "false" || !marked) {
+      return { prompt: undefined, setCookies: [] };
+    }
+    return {
+      prompt: s.config.reauthenticateAfterSignOut ? "login" : undefined,
+      setCookies: clear(),
+    };
+  }
+
+  async function login(s: State, request: Request, url: URL): Promise<Response> {
     const returnTo = safePath(url.searchParams.get("returnTo")) ?? s.config.afterSignIn;
+    const { prompt, setCookies } = promptOf(s, request, url);
     let discovery: Discovery;
     try {
       discovery = await s.discovery();
@@ -428,17 +517,17 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
       code_challenge: await challengeFor(flow.verifier),
       code_challenge_method: "S256",
       ...(s.config.resource ? { resource: s.config.resource } : {}),
+      ...(prompt ? { prompt } : {}),
     }).toString();
     const sealed = await s.sealer.seal(flow, FLOW_PURPOSE, FLOW_MAX_AGE);
-    return redirect(
-      authorize.toString(),
-      302,
+    return redirect(authorize.toString(), 302, [
       // Lax: the cookie comes back on the top-level redirect from the auth server.
-      writeCookie(new Map(), s.config.cookies.flow, sealed, {
+      ...writeCookie(new Map(), s.config.cookies.flow, sealed, {
         secure: s.config.secure,
         maxAge: FLOW_MAX_AGE,
       }),
-    );
+      ...setCookies,
+    ]);
   }
 
   async function callback(s: State, request: Request, url: URL): Promise<Response> {
@@ -473,7 +562,8 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
         throw new IdpError("invalid_id_token", "No ID token came back: was openid asked for?");
       }
       const claims = await verify(s, discovery, tokens.id_token, flow.nonce);
-      const session = await s.backend.create(jar, storedFrom(tokens, claims));
+      const profile = await profileFor(s, discovery, tokens.access_token, claims.sub);
+      const session = await s.backend.create(jar, storedFrom(tokens, claims, undefined, profile));
       return redirect(new URL(flow.returnTo, s.config.appUrl).toString(), 302, [
         ...done,
         ...session,
@@ -494,7 +584,17 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
       choice === "true" ? true : choice === "false" ? false : s.config.signOutOfIdp;
     const jar = parseCookies(request.headers.get("cookie"));
     const stored = (await s.backend.load(jar))?.stored;
-    const cleared = await s.backend.remove(jar);
+    const cleared = [
+      ...(await s.backend.remove(jar)),
+      // The next sign-in asks for the password again (reauthenticateAfterSignOut).
+      ...(s.config.reauthenticateAfterSignOut
+        ? writeCookie(new Map(), s.config.cookies.signedOut, "1", {
+            secure: s.config.secure,
+            maxAge: SIGNED_OUT_MAX_AGE,
+            path: s.config.basePath,
+          })
+        : []),
+    ];
     const home = new URL(s.config.afterSignOut, s.config.appUrl).toString();
 
     let discovery: Discovery | undefined;
@@ -598,7 +698,7 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
           : Promise.resolve(plain(405, "Method not allowed", { allow: allowed }));
       switch (route) {
         case "/login":
-          return only("GET", () => login(s, url));
+          return only("GET", () => login(s, request, url));
         case "/callback":
           return only("GET", () => callback(s, request, url));
         case "/logout":
@@ -687,11 +787,16 @@ export function createIdp(options: IdpOptions | (() => IdpOptions) = {}): Idp {
       return useServiceToken(serviceReady(), client, options);
     },
 
-    signInPath(returnTo) {
+    signInPath(returnTo, options = {}) {
       const s = ready();
+      const query = new URLSearchParams();
       const safe = safePath(returnTo);
+      const prompt = promptFrom(options.prompt);
+      if (safe) query.set("returnTo", safe);
+      if (prompt) query.set("prompt", prompt);
+      if (options.reauthenticate === false) query.set("reauthenticate", "false");
       const login = `${s.config.basePath}/login`;
-      return safe ? `${login}?${new URLSearchParams({ returnTo: safe })}` : login;
+      return query.size > 0 ? `${login}?${query}` : login;
     },
   };
 }

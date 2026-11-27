@@ -23,7 +23,7 @@ export const testEnv: ServerEnv = {
   social: {},
   oauth: { resources: [], apiScopes: [] },
   twoFactorRequiredForAdmins: false,
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   logoUrl: undefined,
 };
 

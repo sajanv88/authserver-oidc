@@ -31,6 +31,6 @@ export default function AccountDisabled({ appName, logoUrl, until }: AccountDisa
 }
 
 AccountDisabled.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   until: "1 December 2026",
 } satisfies AccountDisabledProps;

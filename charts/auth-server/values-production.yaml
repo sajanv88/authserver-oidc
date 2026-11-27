@@ -81,7 +81,7 @@ config:
   # on the Users screens.
   TWO_FACTOR_REQUIRED_FOR_ADMINS: "false"
   # The product's name on every page, in titles, emails and authenticator apps (one line, up
-  # to 50 characters). Empty for "Auth Server".
+  # to 50 characters). Empty for "Next-Identity Server".
   APP_NAME: ""
   # Your logo instead of the shield, on every page (32 px, 28 px in the top bar) and as the
   # browser tab's icon: a full https URL; a square image looks best. Empty, or an image that

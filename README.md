@@ -1,4 +1,4 @@
-# Auth Server
+# Next-Identity Server
 
 **The identity server you run yourself.** OpenID Connect and OAuth 2.0 for your apps and APIs, on your own domain and your own database. People create one account and use it to sign in to every app you connect.
 
