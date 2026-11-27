@@ -1,6 +1,6 @@
 {
   "name": "nextidp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Sign people in to Next.js, Express, Hono and Node apps, and protect NestJS, Express, Hono and Next.js APIs, with authserver-oidc, in one call. Runs on Node and edge runtimes.",
   "keywords": [
     "oidc",
