@@ -30,7 +30,7 @@ export default function MagicLink({ appName, logoUrl, url, expiresInMinutes }: M
 }
 
 MagicLink.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   url: "http://auth.localtest.me:3000/api/auth/magic-link/verify?token=preview&callbackURL=%2F",
   expiresInMinutes: 5,
 } satisfies MagicLinkProps;

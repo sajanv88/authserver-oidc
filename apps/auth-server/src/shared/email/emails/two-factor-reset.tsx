@@ -51,7 +51,7 @@ export default function TwoFactorReset({
 }
 
 TwoFactorReset.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   settingsUrl: "http://auth.localtest.me:3000/account/security/two-factor",
   required: true,
 } satisfies TwoFactorResetProps;

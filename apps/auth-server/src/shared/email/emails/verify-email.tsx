@@ -30,7 +30,7 @@ export default function VerifyEmail({ appName, logoUrl, url, expiresInMinutes }:
 }
 
 VerifyEmail.PreviewProps = {
-  appName: "Auth Server",
+  appName: "Next-Identity Server",
   url: "http://auth.localtest.me:3000/api/auth/verify-email?token=preview&callbackURL=%2F",
   expiresInMinutes: 60,
 } satisfies VerifyEmailProps;
