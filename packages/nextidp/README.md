@@ -1,6 +1,6 @@
 # nextidp
 
-Sign people in to your Next.js, Express, Hono or Node app, and protect your APIs, with
+Sign people in to your Next.js, Express, Fastify, Hono or Node app, and protect your APIs, with
 [Next-Identity Server](https://github.com/sajanv88/next-identity-server), in one call. It does the
 OpenID Connect work for you:
 
@@ -12,7 +12,7 @@ OpenID Connect work for you:
 - refreshing tokens before they expire;
 - signing out, of your app or of the auth server too;
 - checking the access tokens your API is called with, and their scopes, in NestJS, Express,
-  Hono or a Next.js route handler ([below](#protecting-an-api));
+  Fastify, Hono or a Next.js route handler ([below](#protecting-an-api));
 - tokens for a service to call other APIs as itself ([below](#calling-an-api-as-a-service)).
 
 It works with any OpenID Connect provider that supports the code flow with PKCE, but it's
@@ -24,8 +24,8 @@ npm i nextidp
 
 ES module and CommonJS builds, with types. Node 24 or later, or an edge runtime
 (Cloudflare Workers, Vercel Edge, Deno, Bun: [below](#edge-runtimes)). Next.js 15 or 16 (App
-Router), Express (tested with 5) or anything else that takes Node middleware, Node's own
-HTTP server, Hono 4, and NestJS 11 or 12 for APIs.
+Router), Express (tested with 5) or anything else that takes Node middleware, Fastify 5,
+Node's own HTTP server, Hono 4, and NestJS 11 or 12 for APIs.
 
 ## 1. Register your app on the auth server
 
@@ -51,7 +51,8 @@ IDP_SECRET=…                               # ≥ 32 characters: openssl rand -
 
 ## 3. Wire it up
 
-In a Next.js app (for Express or Node's own server, see [below](#express-or-node)):
+In a Next.js app (for Express or Node's own server, see [below](#express-or-node); for
+Fastify, [Fastify](#fastify); for Hono, [Hono](#hono)):
 
 ```ts
 // src/auth.ts
@@ -162,6 +163,33 @@ createServer(async (req, res) => {
 Read the session before you start the response: a refresh sets a new cookie. Read twice in
 one request, it's refreshed once.
 
+## Fastify
+
+```ts
+import Fastify from "fastify";
+import { idp } from "nextidp/fastify";
+
+const auth = idp();
+const app = Fastify();
+
+// Before your routes: answers nextidp's routes, and reads the session (refreshing it before
+// it expires) for every other request, in every plugin and prefix of the app.
+await app.register(auth.fastify());
+
+app.get("/", async (request) => {
+  const session = auth.sessionOf(request); // null if signed out
+  return session ? `Hello, ${session.user.name}` : "Signed out";
+});
+
+// Signed out, a GET goes to sign in and comes back; anything else gets 401.
+app.get("/dashboard", { onRequest: auth.requireSession() }, async (request) => {
+  return { user: auth.sessionOf(request)?.user };
+});
+```
+
+The sign-out form needs no form parser: nextidp reads it before Fastify parses bodies. A
+refreshed session's cookie goes out through the reply, beside the cookies your route sets.
+
 ## Hono
 
 On any runtime Hono runs on:
@@ -197,7 +225,7 @@ A refreshed session's cookie is added to whatever response the handler makes, it
 
 The core uses only Web APIs (`fetch`, `Request`/`Response`, `crypto.subtle`), so it runs on
 Cloudflare Workers, Vercel Edge, Deno and Bun as well as Node: everything but `nextidp/node`,
-`nextidp/express` and `nextidp/nestjs`, which are for Node. Its tests run it in Cloudflare's
+`nextidp/express`, `nextidp/fastify` and `nextidp/nestjs`, which are for Node. Its tests run it in Cloudflare's
 own runtime, `workerd`, with no Node compatibility turned on.
 
 Where there's no `process.env` (Cloudflare Workers), pass the settings from the Worker's
@@ -399,6 +427,18 @@ app.get("/orders", auth.requireToken({ scopes: ["orders:read"] }), (req, res) =>
 });
 ```
 
+**Fastify** (no plugin needed for an API):
+
+```ts
+import { idp } from "nextidp/fastify";
+
+const auth = idp(); // IDP_ISSUER and IDP_AUDIENCE
+
+app.get("/orders", { onRequest: auth.requireToken({ scopes: ["orders:read"] }) }, async (request) =>
+  ordersOf(auth.tokenOf(request)?.subject),
+);
+```
+
 **A Next.js route handler:**
 
 ```ts
@@ -447,7 +487,7 @@ IDP_RESOURCE=https://orders.example.com   # optional: the API, when a call names
 ```
 
 ```ts
-import { idp } from "nextidp"; // or nextidp/express, nextidp/node, nextidp/next
+import { idp } from "nextidp"; // or nextidp/express, nextidp/fastify, nextidp/node, nextidp/next
 
 const auth = idp();
 
@@ -508,7 +548,7 @@ server can't end it, and signing out can't take back a copy of the cookie. Give 
 `store` and sessions live there instead, with only a sealed reference in the cookie:
 
 ```ts
-import { idp, memoryStore } from "nextidp/next"; // or nextidp/express, nextidp/node
+import { idp, memoryStore } from "nextidp/next"; // or nextidp/express, nextidp/fastify, nextidp/node
 
 export const auth = idp({ store: memoryStore() }); // one process only: use Redis to share
 ```

@@ -1,7 +1,7 @@
 {
   "name": "nextidp",
   "version": "0.1.4",
-  "description": "Sign people in to Next.js, Express, Hono and Node apps, and protect NestJS, Express, Hono and Next.js APIs, with Next-Identity Server, in one call. Runs on Node and edge runtimes.",
+  "description": "Sign people in to Next.js, Express, Fastify, Hono and Node apps, and protect NestJS, Express, Fastify, Hono and Next.js APIs, with Next-Identity Server, in one call. Runs on Node and edge runtimes.",
   "keywords": [
     "oidc",
     "openid-connect",
@@ -10,6 +10,7 @@
     "nextjs",
     "nestjs",
     "express",
+    "fastify",
     "hono",
     "cloudflare-workers",
     "edge",
@@ -33,6 +34,9 @@
       ],
       "express": [
         "./dist/cjs/express.d.ts"
+      ],
+      "fastify": [
+        "./dist/cjs/fastify.d.ts"
       ],
       "node": [
         "./dist/cjs/node.d.ts"
@@ -79,6 +83,16 @@
       "require": {
         "types": "./dist/cjs/express.d.ts",
         "default": "./dist/cjs/express.js"
+      }
+    },
+    "./fastify": {
+      "import": {
+        "types": "./dist/esm/fastify.d.ts",
+        "default": "./dist/esm/fastify.js"
+      },
+      "require": {
+        "types": "./dist/cjs/fastify.d.ts",
+        "default": "./dist/cjs/fastify.js"
       }
     },
     "./node": {
@@ -131,6 +145,7 @@
   "peerDependencies": {
     "@nestjs/common": "^11.0.0 || ^12.0.0",
     "@nestjs/core": "^11.0.0 || ^12.0.0",
+    "fastify": "^5.0.0",
     "hono": "^4.0.0",
     "next": "^15.0.0 || ^16.0.0"
   },
@@ -139,6 +154,9 @@
       "optional": true
     },
     "@nestjs/core": {
+      "optional": true
+    },
+    "fastify": {
       "optional": true
     },
     "hono": {
@@ -158,6 +176,7 @@
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "express": "catalog:",
+    "fastify": "catalog:",
     "hono": "catalog:",
     "miniflare": "catalog:",
     "next": "catalog:",
