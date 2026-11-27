@@ -1,6 +1,6 @@
 {
   "name": "nextidp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Sign people in to Next.js, Express, Fastify, Hono and Node apps, and protect NestJS, Express, Fastify, Hono and Next.js APIs, with Next-Identity Server, in one call. Runs on Node and edge runtimes.",
   "keywords": [
     "oidc",
