@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Hono, and edge runtimes
+
+- `nextidp/hono`: `routes()`, `middleware()` (the session as `c.get("session")`, refreshed
+  before it expires), `requireSession()` and `requireToken()` (the token as
+  `c.get("token")`), with the `IdpEnv` type for `new Hono<IdpEnv>()`. A refreshed cookie
+  reaches any response the handler makes, its own `Response` included.
+- Runs on edge runtimes (Cloudflare Workers, Vercel Edge, Deno, Bun): the tests bundle the
+  core and the Hono adapter for a platform without Node built-ins and run them in Cloudflare's
+  `workerd`, with no Node compatibility: sign-in, refresh, sign-out, back-channel logout,
+  API tokens and service tokens.
+
 ## 0.1.2
 
 The first release with code in it: sign-in for Next.js, Express and Node, API protection

@@ -139,6 +139,30 @@ app.get("/dashboard", auth.requireSession(), (req, res) => {
 });`}
       />
 
+      <Subheading id="nextidp-hono">Hono, and edge runtimes</Subheading>
+      <p className="article__text">
+        <C>nextidp/hono</C> works wherever Hono does. The core uses only Web APIs, so it runs on
+        Cloudflare Workers, Vercel Edge, Deno and Bun as well as Node; on Workers, pass the settings
+        from the bindings: <C>{"idp(() => ({ env: bindings }))"}</C>.
+      </p>
+      <Code
+        language="ts"
+        title="src/index.ts"
+        label="Signing people in to a Hono app"
+        code={`import { Hono } from "hono";
+import { idp, type IdpEnv } from "nextidp/hono";
+
+const auth = idp();
+const app = new Hono<IdpEnv>();
+
+app.all("/auth/*", auth.routes());
+app.use(auth.middleware()); // c.get("session"), refreshed before it expires
+
+app.get("/dashboard", auth.requireSession(), (c) =>
+  c.text(\`Hello, \${c.get("session")?.user.name}\`),
+);`}
+      />
+
       <Subheading id="nextidp-api">Protecting your API</Subheading>
       <p className="article__text">
         An API needs only <C>IDP_ISSUER</C> and <C>IDP_AUDIENCE</C>, its own URI exactly as in{" "}

@@ -1,6 +1,6 @@
 # nextidp
 
-Sign people in to your Next.js, Express or Node app, and protect your APIs, with
+Sign people in to your Next.js, Express, Hono or Node app, and protect your APIs, with
 [authserver-oidc](https://github.com/sajanv88/authserver-oidc), in one call. It does the
 OpenID Connect work for you:
 
@@ -11,8 +11,8 @@ OpenID Connect work for you:
   logout](#sessions-in-a-store-and-back-channel-logout));
 - refreshing tokens before they expire;
 - signing out, of your app or of the auth server too;
-- checking the access tokens your API is called with, and their scopes, in NestJS, Express
-  or a Next.js route handler ([below](#protecting-an-api));
+- checking the access tokens your API is called with, and their scopes, in NestJS, Express,
+  Hono or a Next.js route handler ([below](#protecting-an-api));
 - tokens for a service to call other APIs as itself ([below](#calling-an-api-as-a-service)).
 
 It works with any OpenID Connect provider that supports the code flow with PKCE, but it's
@@ -22,9 +22,10 @@ made for, and tested against, authserver-oidc.
 npm i nextidp
 ```
 
-ES module and CommonJS builds, with types. Node 24 or later. Next.js 15 or 16 (App
+ES module and CommonJS builds, with types. Node 24 or later, or an edge runtime
+(Cloudflare Workers, Vercel Edge, Deno, Bun: [below](#edge-runtimes)). Next.js 15 or 16 (App
 Router), Express (tested with 5) or anything else that takes Node middleware, Node's own
-HTTP server, and NestJS 11 or 12 for APIs.
+HTTP server, Hono 4, and NestJS 11 or 12 for APIs.
 
 ## 1. Register your app on the auth server
 
@@ -153,6 +154,73 @@ createServer(async (req, res) => {
 
 Read the session before you start the response: a refresh sets a new cookie. Read twice in
 one request, it's refreshed once.
+
+## Hono
+
+On any runtime Hono runs on:
+
+```ts
+import { Hono } from "hono";
+import { idp, type IdpEnv } from "nextidp/hono";
+
+const auth = idp();
+const app = new Hono<IdpEnv>();
+
+app.all("/auth/*", auth.routes()); // nextidp's routes
+app.use(auth.middleware());        // the session on every request, refreshed before it expires
+
+app.get("/", (c) => {
+  const session = c.get("session"); // null if signed out
+  return c.text(session ? `Hello, ${session.user.name}` : "Signed out");
+});
+
+// Signed out, a GET goes to sign in and comes back; anything else gets 401.
+app.get("/dashboard", auth.requireSession(), (c) => c.text(`Hello, ${c.get("session")?.user.name}`));
+
+// An API: 401 or 403 with the RFC 6750 challenge, 503 if the token can't be checked.
+app.get("/api/orders", auth.requireToken({ scopes: ["orders:read"] }), (c) =>
+  c.json(ordersOf(c.get("token").subject)),
+);
+```
+
+A refreshed session's cookie is added to whatever response the handler makes, its own
+`Response` included.
+
+## Edge runtimes
+
+The core uses only Web APIs (`fetch`, `Request`/`Response`, `crypto.subtle`), so it runs on
+Cloudflare Workers, Vercel Edge, Deno and Bun as well as Node: everything but `nextidp/node`,
+`nextidp/express` and `nextidp/nestjs`, which are for Node. Its tests run it in Cloudflare's
+own runtime, `workerd`, with no Node compatibility turned on.
+
+Where there's no `process.env` (Cloudflare Workers), pass the settings from the Worker's
+bindings, read on first use:
+
+```ts
+import { Hono } from "hono";
+import { idp, type IdpEnv } from "nextidp/hono";
+
+type Bindings = { IDP_ISSUER: string; IDP_CLIENT_ID: string; IDP_APP_URL: string; IDP_SECRET: string };
+
+let bindings: Bindings;
+const auth = idp(() => ({ env: bindings })); // the IDP_* names, from the bindings
+
+const app = new Hono<IdpEnv>();
+app.all("/auth/*", auth.routes());
+app.use(auth.middleware());
+
+export default {
+  fetch(request: Request, env: Bindings) {
+    bindings = env;
+    return app.fetch(request, env);
+  },
+};
+```
+
+Each isolate has its own memory, so `memoryStore()` there is per isolate. For sessions in a
+store, use one every isolate reaches: a database, or Durable Objects. Cloudflare KV works too,
+but it's eventually consistent: a back-channel logout can take a little while (up to about a
+minute) to reach every location.
 
 ## The routes
 
