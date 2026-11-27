@@ -55,7 +55,7 @@ export async function fakeIssuer(options: { endSession?: boolean; userinfo?: boo
     accessTokenLifetime: 600,
     /** How long a service token (client credentials) lasts. */
     serviceTokenLifetime: 600 as number | undefined,
-    /** false: ID tokens carry no email or name, as authserver-oidc's (they're in userinfo). */
+    /** false: ID tokens carry no email or name, as Next-Identity Server's (they're in userinfo). */
     profileInIdToken: true,
     /** What userinfo answers instead of its default, with this status. */
     userinfo: undefined as Record<string, unknown> | undefined,

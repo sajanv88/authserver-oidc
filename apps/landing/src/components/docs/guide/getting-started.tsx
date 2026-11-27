@@ -49,8 +49,8 @@ export function RunLocally() {
             language="sh"
             title="Terminal"
             label="Clone and install"
-            code={`git clone https://github.com/sajanv88/authserver-oidc.git
-cd authserver-oidc
+            code={`git clone https://github.com/sajanv88/next-identity-server.git
+cd next-identity-server
 pnpm install`}
           />
         </Step>

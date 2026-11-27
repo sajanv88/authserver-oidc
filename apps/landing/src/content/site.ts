@@ -10,7 +10,7 @@ export const OG_IMAGE = {
   alt: `${PRODUCT_NAME}: the identity server you run yourself. Self-hosted OpenID Connect and OAuth 2.0 on Next.js and Better Auth.`,
 };
 
-export const REPO_URL = "https://github.com/sajanv88/authserver-oidc";
+export const REPO_URL = "https://github.com/sajanv88/next-identity-server";
 
 export const repo = (path: string) => `${REPO_URL}/${path}`;
 

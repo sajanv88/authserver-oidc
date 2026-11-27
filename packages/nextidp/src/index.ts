@@ -1,4 +1,4 @@
-// nextidp: sign people in to an app with authserver-oidc (or any OpenID Connect provider
+// nextidp: sign people in to an app with Next-Identity Server (or any OpenID Connect provider
 // that supports the code flow with PKCE). This entry point has no framework in it: Web
 // Request and Response in, Response out. `nextidp/next` adds Next.js on top.
 

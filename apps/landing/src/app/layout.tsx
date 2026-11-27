@@ -18,7 +18,7 @@ const description =
   "A self-hosted OpenID Connect server for your own apps: sign-in, two-factor, consent and an admin for clients, on Next.js 16 and Better Auth, shipped as a Docker image and a Helm chart.";
 
 // Sites that show a link's preview need absolute URLs. The Pages workflow passes the site's
-// address, base path included (https://sajanv88.github.io/authserver-oidc).
+// address, base path included (https://sajanv88.github.io/next-identity-server).
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3002";
 const ogImage = {
   url: OG_IMAGE.path,

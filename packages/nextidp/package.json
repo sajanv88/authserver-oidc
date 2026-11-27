@@ -1,7 +1,7 @@
 {
   "name": "nextidp",
   "version": "0.1.4",
-  "description": "Sign people in to Next.js, Express, Hono and Node apps, and protect NestJS, Express, Hono and Next.js APIs, with authserver-oidc, in one call. Runs on Node and edge runtimes.",
+  "description": "Sign people in to Next.js, Express, Hono and Node apps, and protect NestJS, Express, Hono and Next.js APIs, with Next-Identity Server, in one call. Runs on Node and edge runtimes.",
   "keywords": [
     "oidc",
     "openid-connect",
@@ -16,11 +16,11 @@
     "jwt",
     "idp"
   ],
-  "homepage": "https://sajanv88.github.io/authserver-oidc/docs/#nextidp",
-  "bugs": "https://github.com/sajanv88/authserver-oidc/issues",
+  "homepage": "https://sajanv88.github.io/next-identity-server/docs/#nextidp",
+  "bugs": "https://github.com/sajanv88/next-identity-server/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sajanv88/authserver-oidc.git",
+    "url": "git+https://github.com/sajanv88/next-identity-server.git",
     "directory": "packages/nextidp"
   },
   "license": "MIT",
