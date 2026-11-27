@@ -13,7 +13,7 @@ try {
   const [tarball] = (await readdir(out)).filter((name) => name.endsWith(".tgz"));
   if (!tarball) throw new Error("pnpm pack made no tarball.");
   const packed = `"${join(out, tarball)}"`;
-  execSync(`attw ${packed} --entrypoints . ./express ./node ./hono ./nestjs`, {
+  execSync(`attw ${packed} --entrypoints . ./express ./fastify ./node ./hono ./nestjs`, {
     cwd: root,
     stdio: "inherit",
   });
