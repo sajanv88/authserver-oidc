@@ -54,13 +54,16 @@ catalog:
   # Landing page (apps/landing)
   "@nuvui/chat": 0.2.2
   shiki: 4.6.0
-  # nextidp's checks of what it publishes, and the NestJS and Express it's tested with (packages/nextidp)
+  # nextidp's checks of what it publishes, and the NestJS, Express and Hono it's tested with (packages/nextidp)
   "@arethetypeswrong/cli": 0.18.5
   "@nestjs/common": 12.6.0
   "@nestjs/core": 12.6.0
   "@nestjs/platform-express": 12.6.0
   "@types/express": 5.0.6
   express: 5.3.0
+  hono: 4.13.22
+  # Cloudflare's workerd, for running nextidp's edge tests in a real Workers runtime
+  miniflare: 4.20260730.0
   publint: 0.3.25
   reflect-metadata: 0.2.2
   rxjs: 7.8.2
@@ -73,10 +76,19 @@ catalogs:
     jose: ^6.2.18
     valibot: ^1.5.0
 
+# Miniflare (nextidp's edge tests only) pins versions of these with known advisories; its
+# latest stable release hasn't caught up. Patched versions, within the same majors.
+overrides:
+  "miniflare>undici": 7.30.2
+  "miniflare>sharp": 0.35.5
+
 # Install scripts are denied unless listed here (strictDepBuilds is on by default).
 # Review a package's script before setting it to true.
 allowBuilds:
   "@parcel/watcher": false
+  # Its install script only checks the binary, or downloads one if the platform package is
+  # missing; pnpm installs the platform package, so it isn't needed.
+  workerd: false
   esbuild: true
 
 # Supply chain: a version must be a day old before it can be installed, and a package

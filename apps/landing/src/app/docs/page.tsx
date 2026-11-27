@@ -37,6 +37,7 @@ const contents: TableOfContentsItem[] = [
   { id: "nextidp", title: "Apps and APIs: nextidp" },
   { id: "nextidp-routes", title: "Its routes", depth: 2 },
   { id: "nextidp-node", title: "Express and Node apps", depth: 2 },
+  { id: "nextidp-hono", title: "Hono, and edge runtimes", depth: 2 },
   { id: "nextidp-api", title: "Protecting your API", depth: 2 },
   { id: "nextidp-store", title: "Sessions in a store", depth: 2 },
   { id: "nextidp-service", title: "Calling an API as a service", depth: 2 },
