@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fastify
+
+- `nextidp/fastify`, for Fastify 5 (an optional peer dependency). `auth.fastify()` is a
+  plugin that answers nextidp's routes and reads the session for every request, refreshed
+  before it expires, in every plugin and prefix of the app; `auth.sessionOf(request)` gives
+  it. `auth.requireSession()` and `auth.requireToken({ scopes })` are hooks for a route's
+  `onRequest` (or `preHandler`), and `auth.tokenOf(request)` gives the checked token. As with
+  Hono, a token that can't be checked now gets 503. The sign-out form needs no form parser,
+  and a refreshed session's cookie goes out beside the route's own.
+
 ## 0.1.4
 
 ### Sign-in
