@@ -25,7 +25,7 @@ async function useIssuer(options: Parameters<typeof fakeIssuer>[0] = {}) {
 
 beforeEach(async () => {
   await useIssuer();
-  // As authserver-oidc does: the ID token has no email or name; userinfo has them.
+  // As Next-Identity Server does: the ID token has no email or name; userinfo has them.
   issuer.settings.profileInIdToken = false;
   issuer.settings.userinfo = {
     sub: "user-1",

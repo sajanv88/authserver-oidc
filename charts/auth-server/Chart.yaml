@@ -6,6 +6,6 @@ type: application
 # appVersion vX.Y.Z) when the chart is packaged. Don't edit them by hand.
 version: 0.0.0
 appVersion: "0.0.0"
-home: https://github.com/sajanv88/authserver-oidc
+home: https://github.com/sajanv88/next-identity-server
 sources:
-  - https://github.com/sajanv88/authserver-oidc
+  - https://github.com/sajanv88/next-identity-server

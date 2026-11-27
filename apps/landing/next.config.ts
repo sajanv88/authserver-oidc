@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// A static export, served by GitHub Pages from a project path (/authserver-oidc). The Pages
+// A static export, served by GitHub Pages from a project path (/next-identity-server). The Pages
 // workflow passes that path as PAGES_BASE_PATH; locally the site is at the root.
 const basePath = process.env.PAGES_BASE_PATH;
 

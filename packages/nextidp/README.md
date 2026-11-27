@@ -1,7 +1,7 @@
 # nextidp
 
 Sign people in to your Next.js, Express, Hono or Node app, and protect your APIs, with
-[authserver-oidc](https://github.com/sajanv88/authserver-oidc), in one call. It does the
+[Next-Identity Server](https://github.com/sajanv88/next-identity-server), in one call. It does the
 OpenID Connect work for you:
 
 - the authorization code flow with PKCE;
@@ -16,7 +16,7 @@ OpenID Connect work for you:
 - tokens for a service to call other APIs as itself ([below](#calling-an-api-as-a-service)).
 
 It works with any OpenID Connect provider that supports the code flow with PKCE, but it's
-made for, and tested against, authserver-oidc.
+made for, and tested against, Next-Identity Server.
 
 ```sh
 npm i nextidp
@@ -283,7 +283,7 @@ type Session = {
 The refresh token and the ID token stay inside the encrypted cookie: nothing in the browser
 can read them.
 
-`user` comes from the ID token's claims. Some auth servers (authserver-oidc among them) put
+`user` comes from the ID token's claims. Some auth servers (Next-Identity Server among them) put
 the email and the name in userinfo instead: with `userinfo: true`, nextidp asks userinfo after
 sign-in, and again when a refresh brings a new ID token, and fills `user`'s `email`,
 `emailVerified`, `name` and `picture` from it (only those, so the cookie stays small; an email

@@ -6,8 +6,8 @@ const STEPS = [
     title: "Clone and install",
     text: "Node.js 26 and pnpm. One install for the whole monorepo.",
     language: "sh",
-    code: `git clone https://github.com/sajanv88/authserver-oidc.git
-cd authserver-oidc
+    code: `git clone https://github.com/sajanv88/next-identity-server.git
+cd next-identity-server
 pnpm install`,
   },
   {

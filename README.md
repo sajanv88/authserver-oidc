@@ -2,14 +2,14 @@
 
 **The identity server you run yourself.** OpenID Connect and OAuth 2.0 for your apps and APIs, on your own domain and your own database. People create one account and use it to sign in to every app you connect.
 
-[![Release](https://img.shields.io/github/v/release/sajanv88/authserver-oidc?label=release)](https://github.com/sajanv88/authserver-oidc/releases/latest)
-[![Checks and unit tests](https://img.shields.io/github/actions/workflow/status/sajanv88/authserver-oidc/pr.yaml?event=pull_request&label=checks%20%2B%20unit%20tests)](https://github.com/sajanv88/authserver-oidc/actions/workflows/pr.yaml)
-[![End-to-end tests](https://img.shields.io/github/actions/workflow/status/sajanv88/authserver-oidc/e2e.yaml?branch=main&label=e2e%20tests)](https://github.com/sajanv88/authserver-oidc/actions/workflows/e2e.yaml)
-[![Image](https://img.shields.io/github/actions/workflow/status/sajanv88/authserver-oidc/main.yaml?branch=main&label=image)](https://github.com/sajanv88/authserver-oidc/actions/workflows/main.yaml)
-[![Docs](https://img.shields.io/github/actions/workflow/status/sajanv88/authserver-oidc/pages.yaml?branch=main&label=docs)](https://sajanv88.github.io/authserver-oidc/docs/)
-[![License: MIT](https://img.shields.io/github/license/sajanv88/authserver-oidc)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/sajanv88/next-identity-server?label=release)](https://github.com/sajanv88/next-identity-server/releases/latest)
+[![Checks and unit tests](https://img.shields.io/github/actions/workflow/status/sajanv88/next-identity-server/pr.yaml?event=pull_request&label=checks%20%2B%20unit%20tests)](https://github.com/sajanv88/next-identity-server/actions/workflows/pr.yaml)
+[![End-to-end tests](https://img.shields.io/github/actions/workflow/status/sajanv88/next-identity-server/e2e.yaml?branch=main&label=e2e%20tests)](https://github.com/sajanv88/next-identity-server/actions/workflows/e2e.yaml)
+[![Image](https://img.shields.io/github/actions/workflow/status/sajanv88/next-identity-server/main.yaml?branch=main&label=image)](https://github.com/sajanv88/next-identity-server/actions/workflows/main.yaml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/sajanv88/next-identity-server/pages.yaml?branch=main&label=docs)](https://sajanv88.github.io/next-identity-server/docs/)
+[![License: MIT](https://img.shields.io/github/license/sajanv88/next-identity-server)](LICENSE)
 
-**[Read the guide](https://sajanv88.github.io/authserver-oidc/docs/)**: from `docker compose up` to a Helm release, step by step, with screenshots: the first admin, social sign-in, scopes and APIs, PKCE and client secrets, security, SMTP and Kubernetes. · [Website](https://sajanv88.github.io/authserver-oidc/) · [Releases](https://github.com/sajanv88/authserver-oidc/releases)
+**[Read the guide](https://sajanv88.github.io/next-identity-server/docs/)**: from `docker compose up` to a Helm release, step by step, with screenshots: the first admin, social sign-in, scopes and APIs, PKCE and client secrets, security, SMTP and Kubernetes. · [Website](https://sajanv88.github.io/next-identity-server/) · [Releases](https://github.com/sajanv88/next-identity-server/releases)
 
 <p>
   <img src="apps/landing/src/content/docs/consent.webp" alt="The consent screen: Allow Acme CRM to use your account? with the scopes it asks for, an API scope among them, and Deny and Allow buttons." width="49%">
@@ -39,7 +39,7 @@ Built with Next.js 16, [Better Auth](https://www.better-auth.com), PostgreSQL 17
 You need Docker, Node.js 26 and pnpm 12.
 
 ```sh
-git clone https://github.com/sajanv88/authserver-oidc.git && cd authserver-oidc
+git clone https://github.com/sajanv88/next-identity-server.git && cd next-identity-server
 pnpm install
 cp .env.example .env      # set BETTER_AUTH_SECRET (openssl rand -base64 32) and SEED_ADMIN_PASSWORD
 docker compose up -d      # PostgreSQL 17, on 127.0.0.1 only
@@ -84,7 +84,7 @@ Every setting is an environment variable, checked at startup: a missing or wrong
 2. Point the app's OIDC library at the issuer. Everything else comes from `/.well-known/openid-configuration`.
 3. Use the authorization code flow with PKCE (S256), which every sign-in requires. Scopes: `openid`, `profile`, `email`, and `offline_access` for a refresh token.
 
-[apps/example-client](apps/example-client) is a small working example, and the [guide](https://sajanv88.github.io/authserver-oidc/docs/#pkce) walks through it by hand.
+[apps/example-client](apps/example-client) is a small working example, and the [guide](https://sajanv88.github.io/next-identity-server/docs/#pkce) walks through it by hand.
 
 | Endpoint | What it's for |
 | --- | --- |
@@ -111,7 +111,7 @@ Apps on the same parent domain can read the shared session cookie instead of usi
 
 ## Deploy
 
-The [guide](https://sajanv88.github.io/authserver-oidc/docs/#kubernetes) has every step; in short:
+The [guide](https://sajanv88.github.io/next-identity-server/docs/#kubernetes) has every step; in short:
 
 1. Create a Secret in your namespace with `BETTER_AUTH_SECRET`, `DATABASE_URL` and `SMTP_PASSWORD` (and each configured provider's or Turnstile's secret). The chart reads it, by the name in `existingSecret`, and never creates it.
 2. Write a values file with your domain, ingress and `config` (the settings above that aren't secrets). [values.yaml](charts/auth-server/values.yaml) explains each one, and [values-production.yaml](charts/auth-server/values-production.yaml) is a starting point.
@@ -134,7 +134,7 @@ Keep `BETTER_AUTH_SECRET` the same for everything that uses the database: it enc
 | A release `vX.Y.Z` | `ghcr.io/sajanv88/auth-server:vX.Y.Z` and `:latest`, the same image retagged, with provenance and an SBOM |
 | Its Helm chart | `oci://ghcr.io/sajanv88/charts/auth-server`, version `X.Y.Z` |
 
-Both are public, for linux/amd64 and linux/arm64. Each [GitHub Release](https://github.com/sajanv88/authserver-oidc/releases) carries the chart, the image digest and the SBOM.
+Both are public, for linux/amd64 and linux/arm64. Each [GitHub Release](https://github.com/sajanv88/next-identity-server/releases) carries the chart, the image digest and the SBOM.
 
 ## Tests
 
