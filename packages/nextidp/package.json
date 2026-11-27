@@ -1,7 +1,7 @@
 {
   "name": "nextidp",
   "version": "0.1.2",
-  "description": "Sign people in to Next.js, Express and Node apps, and protect NestJS, Express and Next.js APIs, with authserver-oidc, in one call.",
+  "description": "Sign people in to Next.js, Express, Hono and Node apps, and protect NestJS, Express, Hono and Next.js APIs, with authserver-oidc, in one call. Runs on Node and edge runtimes.",
   "keywords": [
     "oidc",
     "openid-connect",
@@ -10,6 +10,9 @@
     "nextjs",
     "nestjs",
     "express",
+    "hono",
+    "cloudflare-workers",
+    "edge",
     "jwt",
     "idp"
   ],
@@ -33,6 +36,9 @@
       ],
       "node": [
         "./dist/cjs/node.d.ts"
+      ],
+      "hono": [
+        "./dist/cjs/hono.d.ts"
       ],
       "nestjs": [
         "./dist/cjs/nestjs.d.ts"
@@ -85,6 +91,16 @@
         "default": "./dist/cjs/node.js"
       }
     },
+    "./hono": {
+      "import": {
+        "types": "./dist/esm/hono.d.ts",
+        "default": "./dist/esm/hono.js"
+      },
+      "require": {
+        "types": "./dist/cjs/hono.d.ts",
+        "default": "./dist/cjs/hono.js"
+      }
+    },
     "./nestjs": {
       "import": {
         "types": "./dist/esm/nestjs.d.ts",
@@ -115,6 +131,7 @@
   "peerDependencies": {
     "@nestjs/common": "^11.0.0 || ^12.0.0",
     "@nestjs/core": "^11.0.0 || ^12.0.0",
+    "hono": "^4.0.0",
     "next": "^15.0.0 || ^16.0.0"
   },
   "peerDependenciesMeta": {
@@ -122,6 +139,9 @@
       "optional": true
     },
     "@nestjs/core": {
+      "optional": true
+    },
+    "hono": {
       "optional": true
     },
     "next": {
@@ -138,6 +158,8 @@
     "@types/node": "catalog:",
     "esbuild": "catalog:",
     "express": "catalog:",
+    "hono": "catalog:",
+    "miniflare": "catalog:",
     "next": "catalog:",
     "publint": "catalog:",
     "react": "catalog:",
