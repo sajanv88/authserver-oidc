@@ -22,12 +22,17 @@ export function parseCookies(header: string | null | undefined): CookieJar {
   return jar;
 }
 
-export type CookieAttributes = { secure: boolean; maxAge: number };
+/** `path` defaults to `/`. */
+export type CookieAttributes = { secure: boolean; maxAge: number; path?: string };
 
-function serialize(name: string, value: string, { secure, maxAge }: CookieAttributes): string {
+function serialize(
+  name: string,
+  value: string,
+  { secure, maxAge, path = "/" }: CookieAttributes,
+): string {
   return [
     `${name}=${value}`,
-    "Path=/",
+    `Path=${path}`,
     `Max-Age=${maxAge}`,
     "HttpOnly",
     "SameSite=Lax",
@@ -88,9 +93,9 @@ export function writeCookie(
 }
 
 /** Set-Cookie headers that expire `name` and every chunk of it the request holds. */
-export function clearCookie(jar: CookieJar, name: string, secure: boolean): string[] {
+export function clearCookie(jar: CookieJar, name: string, secure: boolean, path = "/"): string[] {
   const names = new Set([name, ...chunkNames(jar, name)]);
-  return [...names].map((stale) => serialize(stale, "", { secure, maxAge: 0 }));
+  return [...names].map((stale) => serialize(stale, "", { secure, maxAge: 0, path }));
 }
 
 /**

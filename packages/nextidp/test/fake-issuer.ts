@@ -34,7 +34,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-export async function fakeIssuer(options: { endSession?: boolean } = {}) {
+export async function fakeIssuer(options: { endSession?: boolean; userinfo?: boolean } = {}) {
   const real = await generateKeyPair("RS256");
   const other = await generateKeyPair("RS256");
   const jwk = { ...(await exportJWK(real.publicKey)), kid: "k1", alg: "RS256", use: "sig" };
@@ -55,6 +55,11 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
     accessTokenLifetime: 600,
     /** How long a service token (client credentials) lasts. */
     serviceTokenLifetime: 600 as number | undefined,
+    /** false: ID tokens carry no email or name, as authserver-oidc's (they're in userinfo). */
+    profileInIdToken: true,
+    /** What userinfo answers instead of its default, with this status. */
+    userinfo: undefined as Record<string, unknown> | undefined,
+    userinfoStatus: 200,
   };
 
   const random = () => randomBytes(16).toString("base64url");
@@ -132,8 +137,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       scope: "openid profile email offline_access",
       id_token: await idToken({
         sub,
-        email: `${sub}@example.test`,
-        name: "Pat",
+        ...(settings.profileInIdToken ? { email: `${sub}@example.test`, name: "Pat" } : {}),
         ...(nonce ? { nonce } : {}),
       }),
     };
@@ -199,7 +203,7 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
           issuer: ISSUER,
           authorization_endpoint: `${ISSUER}/authorize`,
           token_endpoint: `${ISSUER}/token`,
-          userinfo_endpoint: `${ISSUER}/userinfo`,
+          ...(options.userinfo === false ? {} : { userinfo_endpoint: `${ISSUER}/userinfo` }),
           jwks_uri: `${ISSUER}/jwks`,
           revocation_endpoint: `${ISSUER}/revoke`,
           introspection_endpoint: `${ISSUER}/introspect`,
@@ -225,9 +229,11 @@ export async function fakeIssuer(options: { endSession?: boolean } = {}) {
       }
       case `GET ${ISSUER}/userinfo`: {
         const bearer = request.headers.get("authorization");
-        return bearer?.startsWith("Bearer ")
-          ? json({ sub: "user-1", email: "user-1@example.test" })
-          : json({ error: "invalid_token" }, 401);
+        if (!bearer?.startsWith("Bearer ")) return json({ error: "invalid_token" }, 401);
+        return json(
+          settings.userinfo ?? { sub: "user-1", email: "user-1@example.test" },
+          settings.userinfoStatus,
+        );
       }
       default:
         return json({ error: "not_found" }, 404);

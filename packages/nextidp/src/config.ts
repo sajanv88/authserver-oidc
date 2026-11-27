@@ -44,6 +44,21 @@ export type IdpOptions = {
   errorPath?: string | undefined;
   /** Sign out of the auth server too, by default. A form field can still choose. Default false. */
   signOutOfIdp?: boolean | undefined;
+  /**
+   * After someone signs out of this app, the next sign-in asks for their password again
+   * (`prompt=login`), even while their session at the auth server is still live: on a shared
+   * computer, the next person isn't signed in as them. A small cookie remembers the sign-out.
+   * A sign-in link opts out with `?reauthenticate=false` (a "Create account" link). Default
+   * false.
+   */
+  reauthenticateAfterSignOut?: boolean | undefined;
+  /**
+   * Also read the email, name and picture from the userinfo endpoint after sign-in (and after
+   * a refresh that brings a new ID token), for auth servers that leave them out of the ID
+   * token. Best effort: if it fails, the sign-in goes ahead with what the ID token had, and
+   * `onError` is told. Costs one more request. Default false.
+   */
+  userinfo?: boolean | undefined;
   /** How long the session cookie lasts, in seconds, renewed at every refresh. Default 7 days. */
   sessionMaxAge?: number | undefined;
   /** The start of this app's cookie names. Default `nextidp`. */
@@ -104,10 +119,13 @@ export type IdpConfig = {
   postLogoutRedirectUri: string;
   errorPath: string;
   signOutOfIdp: boolean;
+  reauthenticateAfterSignOut: boolean;
+  userinfo: boolean;
   sessionMaxAge: number;
-  /** https: cookies are Secure, with `__Host-` names. */
+  /** https: cookies are Secure, with `__Host-` names (`__Secure-` for `signedOut`). */
   secure: boolean;
-  cookies: { session: string; flow: string };
+  /** `signedOut` is the marker `reauthenticateAfterSignOut` sets, on `basePath` only. */
+  cookies: { session: string; flow: string; signedOut: string };
   store: SessionStore | undefined;
   /** Where the auth server sends logout tokens, with a store. */
   backchannelLogoutUri: string;
@@ -373,9 +391,16 @@ export function resolveConfig(options: IdpOptions): IdpConfig {
     postLogoutRedirectUri: `${appUrl}${afterSignOut}`,
     errorPath,
     signOutOfIdp: options.signOutOfIdp ?? false,
+    reauthenticateAfterSignOut: options.reauthenticateAfterSignOut ?? false,
+    userinfo: options.userinfo ?? false,
     sessionMaxAge,
     secure,
-    cookies: { session: name("session"), flow: name("flow") },
+    cookies: {
+      session: name("session"),
+      flow: name("flow"),
+      // Path=<basePath>, which a __Host- name doesn't allow: __Secure- keeps it https-only.
+      signedOut: `${secure ? "__Secure-" : ""}${prefix}.signed-out`,
+    },
     store,
     backchannelLogoutUri: `${appUrl}${basePath}/backchannel-logout`,
   };

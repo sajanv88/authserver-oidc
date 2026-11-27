@@ -99,6 +99,13 @@ export default async function Dashboard() {
 </form>
 ```
 
+Link to `/auth/login` with a plain `<a>`, as above. A `<Link>`, a `router.push` or a prefetch
+makes Next's client router fetch the route itself, and that fetch can't follow the redirect to
+the auth server (another origin). So `auth.routes()` answers such a fetch (it carries the
+`rsc` header) with a plain 200, "Sign-in needs a full page load.", and no cookie: the router
+then loads the address as a whole page, which signs in as usual, and a sign-in already under
+way keeps its cookie.
+
 Calling an API as the signed-in person:
 
 ```ts
@@ -228,12 +235,37 @@ All under `basePath` (default `/auth`):
 
 | Route | What it does |
 |---|---|
-| `GET /auth/login?returnTo=/path` | Starts a sign-in, and comes back to `returnTo` (paths of this app only). |
+| `GET /auth/login?returnTo=/path` | Starts a sign-in, and comes back to `returnTo` (paths of this app only). Takes `prompt` and `reauthenticate=false` too ([below](#asking-for-the-password-again)). |
 | `GET /auth/callback` | Finishes it: the redirect URI you registered. |
 | `POST /auth/logout` | Revokes the refresh token and ends this app's session. With `signOutOfIdp=true`, the auth server's too. |
 | `POST /auth/refresh` | New tokens now, then back to the form's `returnTo`. |
 
 The POST routes accept forms from this app's own pages only (they check `Origin`).
+
+### Asking for the password again
+
+`GET /auth/login?prompt=login` makes the auth server ask for the password even while its own
+session is still live; `consent` shows the consent screen again; `select_account` asks which
+account. Several go together, separated by spaces (`prompt=login consent`). Any other value
+(`none` included) is left out, and nothing else in the query reaches the auth server.
+
+Signing out of the app alone leaves the auth server's session live, so by default the next
+sign-in goes straight through: on a shared computer, as the person before. With
+`reauthenticateAfterSignOut: true`, signing out leaves a small cookie
+(`__Secure-nextidp.signed-out` on https, on `basePath` only, 30 days; its value means
+nothing) and the next sign-in sends `prompt=login`, once.
+
+A "Create account" link starts at `/auth/login` too, and `prompt=login` would show the
+sign-in form again once the account exists. Opt it out with `reauthenticate=false`: no
+`prompt`, and the cookie stays for the next real sign-in. A `prompt` in the link wins over the
+cookie.
+
+```tsx
+<a href="/auth/login?reauthenticate=false">Create account</a>
+<a href={auth.signInPath("/settings", { prompt: "consent" })}>Review permissions</a>
+```
+
+`auth.signInPath(returnTo, { prompt, reauthenticate })` builds these links.
 
 ## The session
 
@@ -250,6 +282,14 @@ type Session = {
 
 The refresh token and the ID token stay inside the encrypted cookie: nothing in the browser
 can read them.
+
+`user` comes from the ID token's claims. Some auth servers (authserver-oidc among them) put
+the email and the name in userinfo instead: with `userinfo: true`, nextidp asks userinfo after
+sign-in, and again when a refresh brings a new ID token, and fills `user`'s `email`,
+`emailVerified`, `name` and `picture` from it (only those, so the cookie stays small; an email
+comes with userinfo's own `email_verified` or none). If userinfo fails, or answers for another
+`sub`, the sign-in goes ahead with what the ID token had, and `onError` is told. `claims`
+stays the ID token's.
 
 ## All the settings
 
@@ -272,6 +312,8 @@ Pass them to `idp({...})`, or set the variable in brackets. A function works too
 | `afterSignOut` | `/` | Where sign-out lands: also the post-logout redirect URI. |
 | `errorPath` | `/` | Where a failed sign-in lands, with `?error=<code>`. |
 | `signOutOfIdp` | `false` | Sign out of the auth server too, unless the form says otherwise. |
+| `reauthenticateAfterSignOut` | `false` | After a sign-out, the next sign-in asks for the password again (`prompt=login`), unless its link says `reauthenticate=false` ([above](#asking-for-the-password-again)). |
+| `userinfo` | `false` | Fill the session's email, name and picture from userinfo: one more request at sign-in, and at each refresh that brings a new ID token ([above](#the-session)). |
 | `sessionMaxAge` | 7 days | Renewed at every refresh. |
 | `cookiePrefix` | `nextidp` | Cookies are `__Host-nextidp.session` on https. |
 | `store` | none: sessions live in the cookie | Keep sessions in a store instead ([below](#sessions-in-a-store-and-back-channel-logout)). |

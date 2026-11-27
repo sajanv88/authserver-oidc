@@ -22,6 +22,38 @@ export function parseFlow(payload: unknown): Flow | undefined {
   return parsed.success ? parsed.output : undefined;
 }
 
+/**
+ * What userinfo said about the person (the `userinfo` option): only these fields, so the
+ * cookie stays small. Kept apart from `claims`, which are the ID token's alone.
+ */
+const ProfileSchema = v.object({
+  email: v.optional(v.string()),
+  email_verified: v.optional(v.boolean()),
+  name: v.optional(v.string()),
+  picture: v.optional(v.string()),
+});
+export type Profile = v.InferOutput<typeof ProfileSchema>;
+
+/** A field longer than this is left out: a userinfo answer mustn't bloat the cookie. */
+const MAX_PROFILE_TEXT = 1024;
+
+function short(value: unknown): string | undefined {
+  return typeof value === "string" && value && value.length <= MAX_PROFILE_TEXT ? value : undefined;
+}
+
+/** The profile fields of a userinfo answer, and nothing else; undefined if it has none. */
+export function profileFrom(answer: Record<string, unknown>): Profile | undefined {
+  const profile: Profile = {};
+  const email = short(answer.email);
+  const name = short(answer.name);
+  const picture = short(answer.picture);
+  if (email) profile.email = email;
+  if (typeof answer.email_verified === "boolean") profile.email_verified = answer.email_verified;
+  if (name) profile.name = name;
+  if (picture) profile.picture = picture;
+  return Object.keys(profile).length > 0 ? profile : undefined;
+}
+
 const StoredSessionSchema = v.object({
   claims: v.record(v.string(), v.unknown()),
   accessToken: v.string(),
@@ -31,6 +63,8 @@ const StoredSessionSchema = v.object({
   /** As received: the hint when signing out of the auth server too. */
   idToken: v.optional(v.string()),
   scope: v.optional(v.string()),
+  /** From userinfo, when the `userinfo` option is on. */
+  profile: v.optional(ProfileSchema),
 });
 export type StoredSession = v.InferOutput<typeof StoredSessionSchema>;
 
@@ -39,7 +73,10 @@ export function parseStoredSession(payload: unknown): StoredSession | undefined 
   return parsed.success ? parsed.output : undefined;
 }
 
-/** The person signed in, from the ID token's standard claims. */
+/**
+ * The person signed in, from the ID token's standard claims, and from userinfo with the
+ * `userinfo` option (which wins where it has a value).
+ */
 export type IdpUser = {
   /** The `sub` claim: stable for this person at this auth server. */
   id: string;
@@ -70,12 +107,17 @@ function text(value: unknown): string | undefined {
 
 export function toSession(stored: StoredSession): Session {
   const claims = stored.claims as JWTPayload;
+  const profile = stored.profile;
   const user: IdpUser = { id: String(claims.sub ?? "") };
-  const email = text(claims.email);
-  const name = text(claims.name);
-  const picture = text(claims.picture);
+  // The email and whether it's verified come as a pair, from one source: never one address
+  // with the other's verification.
+  const fromProfile = Boolean(text(profile?.email));
+  const email = fromProfile ? text(profile?.email) : text(claims.email);
+  const emailVerified = fromProfile ? profile?.email_verified : claims.email_verified;
+  const name = text(profile?.name) ?? text(claims.name);
+  const picture = text(profile?.picture) ?? text(claims.picture);
   if (email) user.email = email;
-  if (typeof claims.email_verified === "boolean") user.emailVerified = claims.email_verified;
+  if (typeof emailVerified === "boolean") user.emailVerified = emailVerified;
   if (name) user.name = name;
   if (picture) user.picture = picture;
   return {

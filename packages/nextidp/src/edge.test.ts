@@ -129,6 +129,23 @@ describe("on an edge runtime (Cloudflare workerd, no Node compatibility)", () =>
     expect(await (await visit(browser, "/dashboard")).json()).toMatchObject({ user: "user-1" });
   });
 
+  it("adds the email and name from userinfo", async () => {
+    issuer.settings.profileInIdToken = false;
+    issuer.settings.userinfo = { sub: "user-1", email: "pat@example.test", name: "Pat Doe" };
+    try {
+      const browser = new Browser();
+      await signIn(browser);
+      expect(await (await visit(browser, "/me")).json()).toEqual({
+        id: "user-1",
+        email: "pat@example.test",
+        name: "Pat Doe",
+      });
+    } finally {
+      issuer.settings.profileInIdToken = true;
+      issuer.settings.userinfo = undefined;
+    }
+  });
+
   it("refreshes a token about to expire", async () => {
     issuer.settings.accessTokenLifetime = 30;
     try {
