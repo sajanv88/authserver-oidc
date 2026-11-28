@@ -15,7 +15,8 @@ export function ProductionImage() {
         Each release is an image for amd64 and arm64, public on GitHub's registry:{" "}
         <C>ghcr.io/sajanv88/auth-server:v{VERSION}</C>. It runs as an unprivileged user, works with
         a read-only root filesystem, and answers <C>GET /api/health</C> without touching the
-        database, for probes.
+        database, for liveness, and <C>GET /api/ready</C> only while the database answers, for
+        readiness.
       </p>
       <Steps>
         <Step title="Write its settings">
