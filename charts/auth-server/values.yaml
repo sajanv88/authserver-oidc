@@ -140,11 +140,18 @@ config:
   SSO_CLIENT_ID: ""
   # The APIs apps may get access tokens for (RFC 8707 resource indicators), comma separated,
   # https: a token asked for with resource=<one of them> is a JWT whose `aud` is that API.
-  # Clients are linked to them by `pnpm clients:provision` (or not at all).
+  # Clients are linked to them by `pnpm clients:provision` (or not at all). An API's tokens
+  # can last less than the server's, after a space: "https://api.example.com access=5m refresh=8h".
   OAUTH_RESOURCES: ""
   # Scopes for those APIs (crm, booking…), offered beside openid, profile, email and
   # offline_access, separated by commas or spaces.
   OAUTH_API_SCOPES: ""
+  # How long tokens last, as a duration (90s, 15m, 8h, 30d). Access tokens (a service's too)
+  # and ID tokens: 1 minute to 24 hours. Refresh tokens: 1 hour to 365 days, and longer than
+  # access tokens.
+  ACCESS_TOKEN_LIFETIME: "10m"
+  ID_TOKEN_LIFETIME: "10m"
+  REFRESH_TOKEN_LIFETIME: "30d"
   # "true": every admin must have two-factor authentication on. An admin without it is sent
   # to set it up first, before any other page or app. Admins can also require it of anyone
   # on the Users screens.

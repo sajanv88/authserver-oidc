@@ -4,6 +4,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAuth } from "./auth-config";
 import { withRootJwksUri } from "./discovery";
 import { machineClientDefaults, oidcClientDefaults } from "./oidc-client-defaults";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "./test-harness";
@@ -588,7 +589,9 @@ describe("APIs: resources, API scopes, client credentials, back-channel logout",
   let machine: { client_id: string; client_secret?: string | undefined };
 
   beforeAll(async () => {
-    h = await createHarness({ oauth: { resources: [api], apiScopes: ["crm", "booking"] } });
+    h = await createHarness({
+      oauth: { resources: [api], resourceLifetimes: {}, apiScopes: ["crm", "booking"] },
+    });
     const admin = await verifiedUser(h, "admin@example.com", ip);
     await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
     const adminHeaders = cookieHeaders(admin.jar);
@@ -803,6 +806,163 @@ describe("APIs: resources, API scopes, client credentials, back-channel logout",
     });
     if (sid !== undefined) expect(payload.sid).toBe(sid);
     expect(payload.nonce).toBeUndefined();
+  });
+});
+
+describe("token lifetimes: the server's settings, and an API's own", () => {
+  const api = "https://api.localtest.me";
+  const shortApi = "https://payments.localtest.me";
+  const ip = "203.0.113.65";
+  const lifetimes = { accessToken: 300, idToken: 120, refreshToken: 2 * 3600 };
+  const oauth = {
+    resources: [api, shortApi],
+    resourceLifetimes: { [shortApi]: { accessToken: 60, refreshToken: 3600 } },
+    apiScopes: ["crm"],
+  };
+  type Credentials = { client_id: string; client_secret?: string | undefined };
+  let h: Harness;
+  let user: Awaited<ReturnType<typeof verifiedUser>>;
+  let web: Credentials;
+  let machine: Credentials;
+
+  beforeAll(async () => {
+    h = await createHarness({ tokenLifetimes: lifetimes, oauth });
+    const admin = await verifiedUser(h, "admin@example.com", ip);
+    await h.sql("update users set role = 'admin' where email = $1", ["admin@example.com"]);
+    const headers = cookieHeaders(admin.jar);
+    user = await verifiedUser(h, "lifetimes@example.com", "203.0.113.66");
+    web = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: {
+        ...oidcClientDefaults(),
+        client_name: "Web",
+        redirect_uris: [redirectUri],
+        token_endpoint_auth_method: "client_secret_basic",
+        skip_consent: true,
+      },
+    });
+    machine = await h.auth.api.adminCreateOAuthClient({
+      headers,
+      body: {
+        ...machineClientDefaults(["crm"]),
+        client_name: "Jobs",
+        resources: [api, shortApi],
+      },
+    });
+  });
+
+  function token(
+    auth: Harness["auth"],
+    credentials: Credentials,
+    form: Record<string, string>,
+  ): Promise<Response> {
+    const basic = Buffer.from(
+      `${credentials.client_id}:${credentials.client_secret ?? ""}`,
+    ).toString("base64");
+    return auth.handler(
+      new Request(`${BASE_URL}/api/auth/oauth2/token`, {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${basic}`,
+          "content-type": "application/x-www-form-urlencoded",
+          "x-forwarded-for": "198.51.100.65",
+        },
+        body: new URLSearchParams(form).toString(),
+      }),
+    );
+  }
+
+  /** A JWT's lifetime as it says: exp - iat. */
+  function lifetimeOf(jwt: unknown): number {
+    const [, body = ""] = String(jwt).split(".");
+    const claims = JSON.parse(Buffer.from(body, "base64url").toString()) as {
+      exp: number;
+      iat: number;
+    };
+    return claims.exp - claims.iat;
+  }
+
+  it("signs people in with the configured access, ID and refresh token lifetimes", async () => {
+    const verifier = randomBytes(32).toString("base64url");
+    const authorize = await user.request(
+      "GET",
+      `/api/auth/oauth2/authorize?${authorizeQuery(web.client_id, { verifier })}`,
+    );
+    const code = new URL(authorize.headers.get("location") ?? "", BASE_URL).searchParams.get(
+      "code",
+    );
+    const started = Math.floor(Date.now() / 1000);
+    const response = await token(h.auth, web, {
+      grant_type: "authorization_code",
+      code: code ?? "",
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    expect(response.status).toBe(200);
+    const body = await json(response);
+    expect(body.expires_in).toBe(lifetimes.accessToken);
+    expect(lifetimeOf(body.id_token)).toBe(lifetimes.idToken);
+    expect(body.refresh_token).toEqual(expect.any(String));
+    const { rows } = await h.sql(
+      "select extract(epoch from expires_at)::int as expires from oauth_refresh_tokens order by created_at desc limit 1",
+    );
+    const expires = (rows[0] as { expires: number }).expires;
+    expect(expires - started).toBeGreaterThanOrEqual(lifetimes.refreshToken - 5);
+    expect(expires - started).toBeLessThanOrEqual(lifetimes.refreshToken + 5);
+  });
+
+  it("gives a service's tokens the server's lifetime, or an API's shorter one", async () => {
+    const plain = await json(
+      await token(h.auth, machine, { grant_type: "client_credentials", scope: "crm" }),
+    );
+    expect(plain.expires_in).toBe(lifetimes.accessToken);
+
+    const forApi = await json(
+      await token(h.auth, machine, {
+        grant_type: "client_credentials",
+        scope: "crm",
+        resource: api,
+      }),
+    );
+    expect(forApi.expires_in).toBe(lifetimes.accessToken);
+    expect(lifetimeOf(forApi.access_token)).toBe(lifetimes.accessToken);
+
+    const forShortApi = await json(
+      await token(h.auth, machine, {
+        grant_type: "client_credentials",
+        scope: "crm",
+        resource: shortApi,
+      }),
+    );
+    expect(forShortApi.expires_in).toBe(60);
+    expect(lifetimeOf(forShortApi.access_token)).toBe(60);
+  });
+
+  it("writes an API's lifetimes on start, and takes them back out when the setting does", async () => {
+    const policy = async () =>
+      (
+        await h.sql(
+          "select access_token_ttl, refresh_token_ttl from oauth_resources where identifier = $1",
+          [shortApi],
+        )
+      ).rows[0];
+    expect(await policy()).toEqual({ access_token_ttl: 60, refresh_token_ttl: 3600 });
+
+    // The same database, restarted without the API's own lifetimes.
+    const restarted = createAuth({
+      env: { ...h.env, oauth: { ...oauth, resourceLifetimes: {} } },
+      database: h.database,
+      sendEmail: h.sendEmail,
+    });
+    const response = await json(
+      await token(restarted, machine, {
+        grant_type: "client_credentials",
+        scope: "crm",
+        resource: shortApi,
+      }),
+    );
+    expect(response.expires_in).toBe(lifetimes.accessToken);
+    expect(await policy()).toEqual({ access_token_ttl: null, refresh_token_ttl: null });
   });
 });
 

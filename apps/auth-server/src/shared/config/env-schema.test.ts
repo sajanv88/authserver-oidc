@@ -201,7 +201,11 @@ describe("parseEnv", () => {
 
   it("offers no APIs unless OAUTH_RESOURCES and OAUTH_API_SCOPES name some", () => {
     const off = parseEnv(valid);
-    expect(off.ok && off.env.oauth).toEqual({ resources: [], apiScopes: [] });
+    expect(off.ok && off.env.oauth).toEqual({
+      resources: [],
+      resourceLifetimes: {},
+      apiScopes: [],
+    });
 
     const on = parseEnv({
       ...valid,
@@ -210,8 +214,117 @@ describe("parseEnv", () => {
     });
     expect(on.ok && on.env.oauth).toEqual({
       resources: ["https://api.example.com", "http://api.localtest.me:4000/v1"],
+      resourceLifetimes: {},
       apiScopes: ["crm", "booking", "invoicing:read"],
     });
+  });
+
+  it("gives tokens their default lifetimes, or the ones set, as durations", () => {
+    const defaults = parseEnv(valid);
+    expect(defaults.ok && defaults.env.tokenLifetimes).toEqual({
+      accessToken: 600,
+      idToken: 600,
+      refreshToken: 30 * 86400,
+    });
+    const empty = parseEnv({
+      ...valid,
+      ACCESS_TOKEN_LIFETIME: "",
+      ID_TOKEN_LIFETIME: " ",
+      REFRESH_TOKEN_LIFETIME: "",
+    });
+    expect(empty.ok && empty.env.tokenLifetimes).toEqual(
+      defaults.ok && defaults.env.tokenLifetimes,
+    );
+    const set = parseEnv({
+      ...valid,
+      ACCESS_TOKEN_LIFETIME: "90",
+      ID_TOKEN_LIFETIME: "1h",
+      REFRESH_TOKEN_LIFETIME: " 7d ",
+    });
+    expect(set.ok && set.env.tokenLifetimes).toEqual({
+      accessToken: 90,
+      idToken: 3600,
+      refreshToken: 7 * 86400,
+    });
+    expect(
+      parseEnv({ ...valid, ACCESS_TOKEN_LIFETIME: "5m" }).ok &&
+        parseEnv({ ...valid, ACCESS_TOKEN_LIFETIME: "300s" }),
+    ).toMatchObject({ env: { tokenLifetimes: { accessToken: 300 } } });
+  });
+
+  it("refuses token lifetimes out of bounds, not durations, or a refresh token no longer than access", () => {
+    const access =
+      "ACCESS_TOKEN_LIFETIME must be a duration between 1 minute and 1 day, such as 10m";
+    for (const value of ["59", "25h", "10 minutes", "-5m", "1.5h", "10w"]) {
+      expect(errorsFor({ ...valid, ACCESS_TOKEN_LIFETIME: value })).toEqual([access]);
+    }
+    expect(errorsFor({ ...valid, ID_TOKEN_LIFETIME: "2d" })).toEqual([
+      "ID_TOKEN_LIFETIME must be a duration between 1 minute and 1 day, such as 10m",
+    ]);
+    expect(errorsFor({ ...valid, REFRESH_TOKEN_LIFETIME: "30m" })).toEqual([
+      "REFRESH_TOKEN_LIFETIME must be a duration between 1 hour and 365 days, such as 30d",
+    ]);
+    expect(errorsFor({ ...valid, REFRESH_TOKEN_LIFETIME: "366d" })).toEqual([
+      "REFRESH_TOKEN_LIFETIME must be a duration between 1 hour and 365 days, such as 30d",
+    ]);
+    expect(
+      errorsFor({ ...valid, ACCESS_TOKEN_LIFETIME: "2h", REFRESH_TOKEN_LIFETIME: "2h" }),
+    ).toEqual(["REFRESH_TOKEN_LIFETIME must be longer than ACCESS_TOKEN_LIFETIME"]);
+  });
+
+  it("takes an API's own, shorter lifetimes after its URI", () => {
+    const result = parseEnv({
+      ...valid,
+      OAUTH_RESOURCES:
+        "https://crm.example.com access=5m refresh=8h, https://booking.example.com, https://pay.example.com  refresh=1d",
+    });
+    expect(result.ok && result.env.oauth).toMatchObject({
+      resources: [
+        "https://crm.example.com",
+        "https://booking.example.com",
+        "https://pay.example.com",
+      ],
+      resourceLifetimes: {
+        "https://crm.example.com": { accessToken: 300, refreshToken: 8 * 3600 },
+        "https://pay.example.com": { refreshToken: 86400 },
+      },
+    });
+  });
+
+  it("refuses an API's lifetimes that are malformed, out of bounds, or longer than the server's", () => {
+    const malformed =
+      "OAUTH_RESOURCES.0 takes its lifetimes after a space, once each, as access=5m or refresh=8h";
+    for (const entry of [
+      "https://api.example.com access",
+      "https://api.example.com ttl=5m",
+      "https://api.example.com access=soon",
+      "https://api.example.com access=5m access=6m",
+    ]) {
+      expect(errorsFor({ ...valid, OAUTH_RESOURCES: entry })).toEqual([malformed]);
+    }
+    expect(errorsFor({ ...valid, OAUTH_RESOURCES: "https://api.example.com access=30s" })).toEqual([
+      "OAUTH_RESOURCES.0 has an access lifetime between 1 minute and 1 day, and a refresh lifetime between 1 hour and 365 days",
+    ]);
+    expect(errorsFor({ ...valid, OAUTH_RESOURCES: "https://api.example.com access=1h" })).toEqual([
+      "OAUTH_RESOURCES access lifetimes must not be longer than ACCESS_TOKEN_LIFETIME",
+    ]);
+    expect(errorsFor({ ...valid, OAUTH_RESOURCES: "https://api.example.com refresh=60d" })).toEqual(
+      ["OAUTH_RESOURCES refresh lifetimes must not be longer than REFRESH_TOKEN_LIFETIME"],
+    );
+    expect(
+      errorsFor({
+        ...valid,
+        ACCESS_TOKEN_LIFETIME: "1h",
+        OAUTH_RESOURCES: "https://api.example.com access=1h",
+      }),
+    ).toEqual([]);
+    // Still one resource per identifier, lifetimes or not.
+    expect(
+      errorsFor({
+        ...valid,
+        OAUTH_RESOURCES: "https://api.example.com access=5m, https://api.example.com",
+      }),
+    ).toEqual(["OAUTH_RESOURCES must not list a resource twice"]);
   });
 
   it("refuses resources that aren't plain absolute URIs, and http ones in production", () => {

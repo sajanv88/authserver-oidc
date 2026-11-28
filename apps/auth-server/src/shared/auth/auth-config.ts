@@ -38,12 +38,25 @@ export const LIFETIMES = {
   // authenticator and decide. Codes are single-use and PKCE-bound, and RFC 6749 caps them at
   // 10 minutes.
   authorizationCode: 10 * 60,
-  accessToken: 10 * 60,
-  idToken: 10 * 60,
-  refreshToken: 30 * 24 * 60 * 60,
+  // Tokens' lifetimes are settings: env().tokenLifetimes (ACCESS_TOKEN_LIFETIME, …).
 } as const;
 
 export const OIDC_SCOPES = ["openid", "profile", "email", "offline_access"];
+
+/**
+ * The plugin's rows for the APIs: each with its own lifetimes, or none (the server's). The
+ * plugin can only shorten a token for an API, never lengthen it (env-schema checks that).
+ */
+export function resourceSeeds(oauth: OAuthApiConfig) {
+  return oauth.resources.map((identifier) => {
+    const { accessToken, refreshToken } = oauth.resourceLifetimes[identifier] ?? {};
+    return {
+      identifier,
+      ...(accessToken === undefined ? {} : { accessTokenTtl: accessToken }),
+      ...(refreshToken === undefined ? {} : { refreshTokenTtl: refreshToken }),
+    };
+  });
+}
 
 /** Every scope a client may ask for: the OpenID Connect ones, then the APIs' (OAUTH_API_SCOPES). */
 export function offeredScopes(oauth: OAuthApiConfig): string[] {
@@ -314,10 +327,10 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         // people in; client credentials for services that call an API as themselves, within
         // the scopes an admin gave the client. No implicit, no device flow.
         grantTypes: ["authorization_code", "client_credentials", "refresh_token"],
-        accessTokenExpiresIn: LIFETIMES.accessToken,
-        m2mAccessTokenExpiresIn: LIFETIMES.accessToken,
-        idTokenExpiresIn: LIFETIMES.idToken,
-        refreshTokenExpiresIn: LIFETIMES.refreshToken,
+        accessTokenExpiresIn: env.tokenLifetimes.accessToken,
+        m2mAccessTokenExpiresIn: env.tokenLifetimes.accessToken,
+        idTokenExpiresIn: env.tokenLifetimes.idToken,
+        refreshTokenExpiresIn: env.tokenLifetimes.refreshToken,
         codeExpiresIn: LIFETIMES.authorizationCode,
         allowDynamicClientRegistration: false,
         allowUnauthenticatedClientRegistration: false,
@@ -332,8 +345,11 @@ export function createAuth({ env, database, sendEmail }: AuthDeps) {
         // The APIs (RFC 8707). A token asked for with `resource` is a JWT whose `aud` is that
         // API, and only clients an admin linked to the API may ask (enforcePerClientResources).
         // Without `resource`, an access token stays opaque: for /userinfo and introspection.
-        // Rows are inserted on start, never overwritten: a removed URI stays in the database.
-        resources: env.oauth.resources,
+        // An API can have shorter lifetimes of its own (OAUTH_RESOURCES' access= and refresh=).
+        // Its row is written on every start ("overwrite"), so a lifetime taken out of the
+        // setting goes back to the server's; a removed URI stays in the database.
+        resources: resourceSeeds(env.oauth),
+        resourceSeedMode: "overwrite",
         enforcePerClientResources: true,
         resourcePrivileges: ({ user }) => isAdmin(user),
         // Only admins create, update, rotate and delete clients, and they share them.
