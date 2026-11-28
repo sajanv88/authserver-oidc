@@ -2,7 +2,10 @@ import { sql } from "drizzle-orm";
 import type { Executor } from "../executor";
 
 // Whether the database answers, for the readiness probe. One `select 1`, given a time limit, so
-// a database that hangs makes the pod unready instead of piling probes up on the pool.
+// a database that hangs makes the pod unready. The time limit only stops the wait: the query
+// itself runs on until the driver gives up. So there's at most one at a time per database: a
+// call while one is still running, past its own time limit or not, waits on that one, and
+// probes never pile hung queries up on the pool.
 
 export const PING_TIMEOUT_MS = 2000;
 
@@ -15,6 +18,9 @@ export type DatabasePing =
   | { ok: false; reason: "timeout" }
   | { ok: false; reason: "failed"; code?: string };
 
+/** The ping running against each database, until it settles. */
+const running = new WeakMap<Executor, Promise<DatabasePing>>();
+
 export async function pingDatabase(
   db: Executor,
   timeoutMs: number = PING_TIMEOUT_MS,
@@ -23,15 +29,22 @@ export async function pingDatabase(
   const timeout = new Promise<DatabasePing>((resolve) => {
     timer = setTimeout(() => resolve({ ok: false, reason: "timeout" }), timeoutMs);
   });
-  const ping = db.execute(sql`select 1`).then(
-    (): DatabasePing => ({ ok: true }),
-    (error: unknown): DatabasePing => {
-      const code = errorCode(error);
-      return code === undefined
-        ? { ok: false, reason: "failed" }
-        : { ok: false, reason: "failed", code };
-    },
-  );
+  let ping = running.get(db);
+  if (!ping) {
+    ping = db
+      .execute(sql`select 1`)
+      .then(
+        (): DatabasePing => ({ ok: true }),
+        (error: unknown): DatabasePing => {
+          const code = errorCode(error);
+          return code === undefined
+            ? { ok: false, reason: "failed" }
+            : { ok: false, reason: "failed", code };
+        },
+      )
+      .finally(() => running.delete(db));
+    running.set(db, ping);
+  }
   try {
     return await Promise.race([ping, timeout]);
   } finally {

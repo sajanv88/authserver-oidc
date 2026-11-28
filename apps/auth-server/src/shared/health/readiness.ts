@@ -8,11 +8,35 @@ import type { DatabasePing } from "@repo/db";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-export async function readiness(ping: () => Promise<DatabasePing>): Promise<Response> {
-  const result = await ping();
-  if (result.ok) return Response.json({ status: "ok" }, { headers: NO_STORE });
-  const detail =
-    result.reason === "failed" && result.code ? `failed (${result.code})` : result.reason;
-  console.warn(`readiness: the database didn't answer: ${detail}`);
-  return Response.json({ status: "unavailable" }, { status: 503, headers: NO_STORE });
+/** How long an answer is reused: anyone can call the endpoint, so not every call asks. */
+export const READINESS_REUSE_MS = 1000;
+
+/**
+ * The probe's handler. The database is asked at most once a second per process, whatever the
+ * number of callers; calls in between get the last answer.
+ */
+export function createReadiness(
+  ping: () => Promise<DatabasePing>,
+  options: { reuseMs?: number; now?: () => number } = {},
+): () => Promise<Response> {
+  const reuseMs = options.reuseMs ?? READINESS_REUSE_MS;
+  const now = options.now ?? Date.now;
+  let last: { result: Promise<DatabasePing>; at: number } | undefined;
+  return async () => {
+    if (!last || now() - last.at >= reuseMs) {
+      const result = ping().then((answer) => {
+        if (!answer.ok) {
+          const detail =
+            answer.reason === "failed" && answer.code ? `failed (${answer.code})` : answer.reason;
+          console.warn(`readiness: the database didn't answer: ${detail}`);
+        }
+        return answer;
+      });
+      last = { result, at: now() };
+    }
+    const answer = await last.result;
+    return answer.ok
+      ? Response.json({ status: "ok" }, { headers: NO_STORE })
+      : Response.json({ status: "unavailable" }, { status: 503, headers: NO_STORE });
+  };
 }

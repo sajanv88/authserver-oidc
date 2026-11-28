@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Executor } from "../executor";
 import { createTestDb } from "../testing/pglite";
 import { pingDatabase } from "./health";
@@ -38,5 +38,29 @@ describe("pingDatabase", () => {
     const started = Date.now();
     expect(await pingDatabase(hangs, 50)).toEqual({ ok: false, reason: "timeout" });
     expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it("runs one query at a time, even past the time limit: later calls wait on it", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const execute = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const slow = executor(execute);
+    const together = await Promise.all([pingDatabase(slow, 20), pingDatabase(slow, 20)]);
+    expect(together).toEqual([
+      { ok: false, reason: "timeout" },
+      { ok: false, reason: "timeout" },
+    ]);
+    // Still hung: a new call starts no second query.
+    expect(await pingDatabase(slow, 20)).toEqual({ ok: false, reason: "timeout" });
+    expect(execute).toHaveBeenCalledTimes(1);
+    // Once it answers, the next call asks again.
+    finish(undefined);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(await pingDatabase(slow, 20)).toEqual({ ok: false, reason: "timeout" });
+    expect(execute).toHaveBeenCalledTimes(2);
   });
 });
