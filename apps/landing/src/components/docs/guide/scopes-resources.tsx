@@ -88,6 +88,12 @@ OAUTH_API_SCOPES=crm,booking`}
             https in production. They're added to the database when the server starts; removing one
             from the list doesn't delete it.
           </p>
+          <p className="article__text">
+            Tokens last 10 minutes, and refresh tokens 30 days, unless you set{" "}
+            <C>ACCESS_TOKEN_LIFETIME</C>, <C>ID_TOKEN_LIFETIME</C> and <C>REFRESH_TOKEN_LIFETIME</C>{" "}
+            (<C>15m</C>, <C>8h</C>, <C>30d</C>). One API's tokens can last less, after a space:{" "}
+            <C>https://pay.example.com access=5m refresh=8h</C>.
+          </p>
         </Step>
         <Step title="Link each app to the APIs it may call">
           <p className="article__text">

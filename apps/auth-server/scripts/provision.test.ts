@@ -8,7 +8,7 @@ type Harness = Awaited<ReturnType<typeof createHarness>>;
 
 const api = "https://api.localtest.me";
 const adminApi = "https://admin-api.localtest.me";
-const oauth = { resources: [api, adminApi], apiScopes: ["crm", "booking"] };
+const oauth = { resources: [api, adminApi], resourceLifetimes: {}, apiScopes: ["crm", "booking"] };
 const adminEmail = "ops@localtest.me";
 
 function file(clients: unknown[]): ProvisionFile {

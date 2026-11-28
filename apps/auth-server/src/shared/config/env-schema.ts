@@ -68,6 +68,70 @@ const CookieDomainSchema = v.pipe(
   ),
 );
 
+const MINUTE = 60;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const UNITS: Record<string, number> = { s: 1, m: MINUTE, h: HOUR, d: DAY };
+
+/** A duration as `90` or `90s` (seconds), `15m`, `8h` or `30d`: its seconds, or undefined. */
+export function durationSeconds(value: string): number | undefined {
+  const match = /^(\d{1,9})([smhd])?$/.exec(value.trim());
+  if (!match) return undefined;
+  return Number(match[1]) * (UNITS[match[2] ?? "s"] ?? 1);
+}
+
+/** How a bound reads in a message: whole days, hours or minutes where it can. */
+function spoken(seconds: number): string {
+  for (const [unit, size] of [
+    ["day", DAY],
+    ["hour", HOUR],
+    ["minute", MINUTE],
+  ] as const) {
+    if (seconds % size === 0) {
+      const count = seconds / size;
+      return `${count} ${unit}${count === 1 ? "" : "s"}`;
+    }
+  }
+  return `${seconds} seconds`;
+}
+
+/** The bounds of each token lifetime, in seconds, and the default. */
+export const TOKEN_LIFETIME_BOUNDS = {
+  accessToken: { min: MINUTE, max: DAY, fallback: "10m" },
+  idToken: { min: MINUTE, max: DAY, fallback: "10m" },
+  refreshToken: { min: HOUR, max: 365 * DAY, fallback: "30d" },
+} as const;
+
+type Bounds = { min: number; max: number };
+
+const inBounds = (seconds: number | undefined, { min, max }: Bounds) =>
+  seconds !== undefined && seconds >= min && seconds <= max;
+
+const boundsMessage = ({ min, max }: Bounds, example: string) =>
+  `must be a duration between ${spoken(min)} and ${spoken(max)}, such as ${example}`;
+
+/** A token lifetime setting: a duration within its bounds, or the default when it's empty. */
+function lifetime(bounds: Bounds & { fallback: string }) {
+  return v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(
+        v.pipe(
+          v.string(),
+          v.check(
+            (value) => inBounds(durationSeconds(value), bounds),
+            boundsMessage(bounds, bounds.fallback),
+          ),
+          v.transform((value) => durationSeconds(value) ?? 0),
+        ),
+        bounds.fallback,
+      ),
+    ),
+    bounds.fallback,
+  );
+}
+
 /**
  * A protected resource's identifier (RFC 8707 2): an absolute http(s) URI, no fragment, no
  * query, no credentials. Kept exactly as written: it's the `aud` the API checks.
@@ -83,6 +147,58 @@ const ResourceSchema = v.pipe(
       url.password === ""
     );
   }, "must be absolute URIs such as https://api.example.com, without ? or #"),
+);
+
+/** One API's own lifetimes, shorter than the server's: `access=5m`, `refresh=8h`. */
+export type ResourceLifetimes = { accessToken?: number; refreshToken?: number };
+
+export type ResourceConfig = { identifier: string; lifetimes: ResourceLifetimes };
+
+const LIFETIME_OPTION = /^(access|refresh)=(.+)$/;
+
+function resourceLifetimes(options: string[]): ResourceLifetimes | undefined {
+  const lifetimes: ResourceLifetimes = {};
+  for (const option of options) {
+    const match = LIFETIME_OPTION.exec(option);
+    const seconds = match?.[2] === undefined ? undefined : durationSeconds(match[2]);
+    if (!match || seconds === undefined) return undefined;
+    const key = match[1] === "access" ? "accessToken" : "refreshToken";
+    if (lifetimes[key] !== undefined) return undefined;
+    lifetimes[key] = seconds;
+  }
+  return lifetimes;
+}
+
+const words = (entry: string) => entry.trim().split(/\s+/);
+
+/**
+ * An OAUTH_RESOURCES entry: the identifier, then optionally its own lifetimes after a space,
+ * `https://api.example.com access=5m refresh=8h`.
+ */
+const ResourceEntrySchema = v.pipe(
+  v.string(),
+  v.check(
+    (entry) => v.is(ResourceSchema, words(entry)[0]),
+    "must be absolute URIs such as https://api.example.com, without ? or #",
+  ),
+  v.check(
+    (entry) => resourceLifetimes(words(entry).slice(1)) !== undefined,
+    "takes its lifetimes after a space, once each, as access=5m or refresh=8h",
+  ),
+  v.check(
+    (entry) => {
+      const { accessToken, refreshToken } = resourceLifetimes(words(entry).slice(1)) ?? {};
+      return (
+        (accessToken === undefined || inBounds(accessToken, TOKEN_LIFETIME_BOUNDS.accessToken)) &&
+        (refreshToken === undefined || inBounds(refreshToken, TOKEN_LIFETIME_BOUNDS.refreshToken))
+      );
+    },
+    `has an access lifetime between ${spoken(MINUTE)} and ${spoken(DAY)}, and a refresh lifetime between ${spoken(HOUR)} and ${spoken(365 * DAY)}`,
+  ),
+  v.transform((entry): ResourceConfig => {
+    const [identifier = "", ...options] = words(entry);
+    return { identifier, lifetimes: resourceLifetimes(options) ?? {} };
+  }),
 );
 
 /** The OpenID Connect scopes the server always offers; an API scope can't reuse one. */
@@ -184,8 +300,10 @@ const RawEnvSchema = v.object({
   SSO_CLIENT_SECRET: optionalText,
   // The APIs this server issues access tokens for (RFC 8707 resource indicators), comma
   // separated. A token asked for with resource=<one of them> is a JWT whose `aud` is that API.
+  // An entry can make that API's tokens last less than the server's: `<uri> access=5m
+  // refresh=8h`.
   OAUTH_RESOURCES: v.optional(
-    v.pipe(v.string(), v.transform(commaList), v.array(ResourceSchema)),
+    v.pipe(v.string(), v.transform(commaList), v.array(ResourceEntrySchema)),
     "",
   ),
   // Scopes for those APIs (crm, booking…), offered beside the OpenID Connect ones.
@@ -193,6 +311,12 @@ const RawEnvSchema = v.object({
     v.pipe(v.string(), v.transform(scopeList), v.array(ApiScopeSchema)),
     "",
   ),
+  // How long tokens last: a duration such as 90s, 15m, 8h or 30d. Access tokens (a service's
+  // too) and ID tokens 1 minute to 24 hours, 10 minutes by default; refresh tokens 1 hour to
+  // 365 days, 30 days by default, and longer than access tokens.
+  ACCESS_TOKEN_LIFETIME: lifetime(TOKEN_LIFETIME_BOUNDS.accessToken),
+  ID_TOKEN_LIFETIME: lifetime(TOKEN_LIFETIME_BOUNDS.idToken),
+  REFRESH_TOKEN_LIFETIME: lifetime(TOKEN_LIFETIME_BOUNDS.refreshToken),
   // Every admin must have two-factor on: an admin without it is sent to set it up before
   // anything else, including an app's sign-in. "true" or "false" (the default).
   TWO_FACTOR_REQUIRED_FOR_ADMINS: v.optional(
@@ -266,9 +390,13 @@ export type EmailConfig =
 export type OAuthApiConfig = {
   /** RFC 8707 resource identifiers: each a possible `aud` of an access token. */
   resources: string[];
+  /** The APIs whose tokens last less than the server's, by identifier. */
+  resourceLifetimes: Record<string, ResourceLifetimes>;
   /** API scopes, offered beside openid, profile, email and offline_access. */
   apiScopes: string[];
 };
+
+export type TokenLifetimes = { accessToken: number; idToken: number; refreshToken: number };
 
 export type ServerEnv = {
   nodeEnv: RawEnv["NODE_ENV"];
@@ -286,6 +414,8 @@ export type ServerEnv = {
   turnstile: TurnstileConfig | undefined;
   social: SocialConfig;
   oauth: OAuthApiConfig;
+  /** How long tokens last, in seconds (ACCESS_TOKEN_LIFETIME, ID_TOKEN_LIFETIME, …). */
+  tokenLifetimes: TokenLifetimes;
   /** TWO_FACTOR_REQUIRED_FOR_ADMINS: every admin must have two-factor on. */
   twoFactorRequiredForAdmins: boolean;
   /** The product's name: APP_NAME, or "Next-Identity Server". */
@@ -377,11 +507,27 @@ const EnvSchema = v.pipe(
     if (production && env.SSO_DISCOVERY_URL && !env.SSO_DISCOVERY_URL.startsWith("https://")) {
       issue("SSO_DISCOVERY_URL", "must be https in production");
     }
-    if (production && env.OAUTH_RESOURCES.some((resource) => !resource.startsWith("https://"))) {
+    const identifiers = env.OAUTH_RESOURCES.map((resource) => resource.identifier);
+    if (production && identifiers.some((identifier) => !identifier.startsWith("https://"))) {
       issue("OAUTH_RESOURCES", "must all be https in production");
     }
-    if (new Set(env.OAUTH_RESOURCES).size !== env.OAUTH_RESOURCES.length) {
+    if (new Set(identifiers).size !== identifiers.length) {
       issue("OAUTH_RESOURCES", "must not list a resource twice");
+    }
+    if (env.REFRESH_TOKEN_LIFETIME <= env.ACCESS_TOKEN_LIFETIME) {
+      issue("REFRESH_TOKEN_LIFETIME", "must be longer than ACCESS_TOKEN_LIFETIME");
+    }
+    // The OAuth plugin only ever shortens a token for an API; a longer one would be ignored.
+    for (const { lifetimes } of env.OAUTH_RESOURCES) {
+      if ((lifetimes.accessToken ?? 0) > env.ACCESS_TOKEN_LIFETIME) {
+        issue("OAUTH_RESOURCES", "access lifetimes must not be longer than ACCESS_TOKEN_LIFETIME");
+      }
+      if ((lifetimes.refreshToken ?? 0) > env.REFRESH_TOKEN_LIFETIME) {
+        issue(
+          "OAUTH_RESOURCES",
+          "refresh lifetimes must not be longer than REFRESH_TOKEN_LIFETIME",
+        );
+      }
     }
     if (new Set(env.OAUTH_API_SCOPES).size !== env.OAUTH_API_SCOPES.length) {
       issue("OAUTH_API_SCOPES", "must not list a scope twice");
@@ -416,7 +562,21 @@ const EnvSchema = v.pipe(
           ? { siteKey: env.TURNSTILE_SITE_KEY, secretKey: env.TURNSTILE_SECRET_KEY }
           : undefined,
       social: socialConfig(env),
-      oauth: { resources: env.OAUTH_RESOURCES, apiScopes: env.OAUTH_API_SCOPES },
+      oauth: {
+        resources: env.OAUTH_RESOURCES.map((resource) => resource.identifier),
+        resourceLifetimes: Object.fromEntries(
+          env.OAUTH_RESOURCES.filter(
+            ({ lifetimes }) =>
+              lifetimes.accessToken !== undefined || lifetimes.refreshToken !== undefined,
+          ).map(({ identifier, lifetimes }) => [identifier, lifetimes]),
+        ),
+        apiScopes: env.OAUTH_API_SCOPES,
+      },
+      tokenLifetimes: {
+        accessToken: env.ACCESS_TOKEN_LIFETIME,
+        idToken: env.ID_TOKEN_LIFETIME,
+        refreshToken: env.REFRESH_TOKEN_LIFETIME,
+      },
       twoFactorRequiredForAdmins: env.TWO_FACTOR_REQUIRED_FOR_ADMINS ?? false,
       appName: env.APP_NAME ?? DEFAULT_APP_NAME,
       logoUrl: env.LOGO_URL,
