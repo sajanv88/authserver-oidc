@@ -3,6 +3,7 @@ import { parseEnv, type ServerEnv } from "./env-schema";
 
 export type {
   EmailConfig,
+  LegalLinks,
   OAuthApiConfig,
   ServerEnv,
   SocialConfig,

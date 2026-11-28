@@ -404,4 +404,42 @@ describe("parseEnv", () => {
       "LOGO_URL must be https in production",
     ]);
   });
+
+  it("links a privacy policy and terms of service only when they're set, as full URLs", () => {
+    const none = parseEnv({ ...valid, PRIVACY_POLICY_URL: "", TERMS_OF_SERVICE_URL: " " });
+    expect(none.ok && none.env.legal).toEqual({
+      privacyPolicyUrl: undefined,
+      termsOfServiceUrl: undefined,
+    });
+    const set = parseEnv({
+      ...valid,
+      PRIVACY_POLICY_URL: " https://example.com/privacy ",
+      TERMS_OF_SERVICE_URL: "https://example.com/terms",
+    });
+    expect(set.ok && set.env.legal).toEqual({
+      privacyPolicyUrl: "https://example.com/privacy",
+      termsOfServiceUrl: "https://example.com/terms",
+    });
+    const onlyTerms = parseEnv({ ...valid, TERMS_OF_SERVICE_URL: "https://example.com/terms" });
+    expect(onlyTerms.ok && onlyTerms.env.legal.privacyPolicyUrl).toBeUndefined();
+
+    for (const url of ["/privacy", "javascript:alert(1)", "https://user:pw@example.com/x"]) {
+      expect(errorsFor({ ...valid, PRIVACY_POLICY_URL: url })).toEqual([
+        "PRIVACY_POLICY_URL must be a full http(s) URL, such as https://example.com/privacy",
+      ]);
+      expect(errorsFor({ ...valid, TERMS_OF_SERVICE_URL: url })).toEqual([
+        "TERMS_OF_SERVICE_URL must be a full http(s) URL, such as https://example.com/terms",
+      ]);
+    }
+    expect(
+      errorsFor({
+        ...production,
+        PRIVACY_POLICY_URL: "http://example.com/privacy",
+        TERMS_OF_SERVICE_URL: "http://example.com/terms",
+      }),
+    ).toEqual([
+      "PRIVACY_POLICY_URL must be https in production",
+      "TERMS_OF_SERVICE_URL must be https in production",
+    ]);
+  });
 });

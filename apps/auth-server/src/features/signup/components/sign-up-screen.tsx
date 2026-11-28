@@ -18,6 +18,7 @@ export function SignUpScreen({
     <AuthCard
       title="Create an account"
       description="One account for every app that signs you in here."
+      legalAction="By creating an account"
       footer={
         <p>
           Already have an account?{" "}

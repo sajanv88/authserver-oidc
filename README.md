@@ -73,6 +73,7 @@ Every setting is an environment variable, checked at startup: a missing or wrong
 | `SMTP_PASSWORD` | **secret** | The SMTP password or API token. |
 | `TWO_FACTOR_REQUIRED_FOR_ADMINS` | config | Optional: `true` makes every admin set up two-factor before anything else. Admins can require it of anyone on **/admin/users**. |
 | `APP_NAME`, `LOGO_URL` | config | Optional: your product's name and a square logo (https), on every page and in the emails. |
+| `PRIVACY_POLICY_URL`, `TERMS_OF_SERVICE_URL` | config | Optional: your privacy policy and terms of service (https), linked under the sign-in and sign-up forms. Each shows only when it's set. |
 | `OAUTH_RESOURCES`, `OAUTH_API_SCOPES` | config | Optional: your APIs (e.g. `https://api.example.com`) and their scopes (e.g. `crm,booking`). An API's tokens can last less than the server's: `https://api.example.com access=5m refresh=8h`. |
 | `ACCESS_TOKEN_LIFETIME`, `ID_TOKEN_LIFETIME`, `REFRESH_TOKEN_LIFETIME` | config | Optional: how long tokens last, as `15m`, `8h` or `30d`. Access and ID tokens 10 minutes by default (1 minute to 24 hours), refresh tokens 30 days (1 hour to 365 days). |
 | `GOOGLE_*`, `MICROSOFT_*`, `GITHUB_*`, `SSO_*` | config, **secret** | Optional: each sign-in provider is on when its client ID (config) and its `*_CLIENT_SECRET` (secret) are both set. |

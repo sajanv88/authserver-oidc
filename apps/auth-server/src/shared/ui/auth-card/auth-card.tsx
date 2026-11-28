@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { env } from "@/shared/config/env";
 import { BrandMark } from "@/shared/ui/brand-mark/brand-mark";
+import { LegalNotice } from "@/shared/ui/legal-notice/legal-notice";
 import { AuthBackdrop } from "./auth-backdrop";
 import "./auth-card.scss";
 
@@ -19,10 +20,16 @@ type AuthCardProps = {
   children: ReactNode;
   /** Links under the form, such as "New here? Create an account". */
   footer?: ReactNode;
+  /**
+   * What agreeing to the terms is called on this page ("By signing in"), for the privacy
+   * policy and terms of service under the card. Without it, or without either address
+   * configured, there's nothing under the card.
+   */
+  legalAction?: string;
 };
 
-export function AuthCard({ title, description, children, footer }: AuthCardProps) {
-  const { appName, logoUrl } = env();
+export function AuthCard({ title, description, children, footer, legalAction }: AuthCardProps) {
+  const { appName, logoUrl, legal } = env();
   return (
     <main className="auth-card" id="content">
       <AuthBackdrop>
@@ -41,6 +48,7 @@ export function AuthCard({ title, description, children, footer }: AuthCardProps
             <CardContent>{children}</CardContent>
             {footer ? <CardFooter className="auth-card__footer">{footer}</CardFooter> : null}
           </Card>
+          {legalAction ? <LegalNotice action={legalAction} {...legal} /> : null}
         </div>
       </AuthBackdrop>
     </main>
