@@ -1,0 +1,26 @@
+{
+  "name": "auth-server-loadtest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Load-testing toolkit for the auth server: a user seed and k6 scripts. Not part of the pnpm workspace.",
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "seed": "tsx --env-file-if-exists=.env.loadtest seed.ts",
+    "seed:clean": "tsx --env-file-if-exists=.env.loadtest seed.ts --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-auth": "1.7.27",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}

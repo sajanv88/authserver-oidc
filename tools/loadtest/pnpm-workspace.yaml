@@ -1,0 +1,11 @@
+# Settings only, no packages: this file makes tools/loadtest its own pnpm root, so `pnpm
+# install` here never touches the repo's workspace or its lockfile. The repo's
+# pnpm-workspace.yaml doesn't list this folder, and must not.
+
+# tsx runs on esbuild, whose install script checks its binary.
+allowBuilds:
+  esbuild: true
+
+# The repo's supply-chain rules: a version must be a day old, and keep its provenance.
+minimumReleaseAge: 1440
+trustPolicy: no-downgrade

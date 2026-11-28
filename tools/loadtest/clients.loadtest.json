@@ -1,0 +1,15 @@
+{
+  "clients": [
+    {
+      "type": "web",
+      "name": "Load test web",
+      "redirectUris": ["https://loadtest-app.example/oidc/callback"],
+      "firstParty": false
+    },
+    {
+      "type": "machine",
+      "name": "Load test service",
+      "scopes": ["loadtest"]
+    }
+  ]
+}
