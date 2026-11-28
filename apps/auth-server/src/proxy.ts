@@ -76,7 +76,7 @@ function withDeletions(response: NextResponse, deletions: string[]): NextRespons
 export const config = {
   matcher: [
     {
-      // Documents only: not route handlers (/api/auth and /api/health included), static
+      // Documents only: not route handlers (/api/auth, /api/health and /api/ready included), static
       // files, image optimisation, or prefetches.
       source:
         "/((?!api/|_next/static|_next/image|favicon.ico|favicon.svg|robots.txt|sitemap.xml).*)",

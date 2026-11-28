@@ -22,7 +22,7 @@ const FACTS = [
   {
     Icon: ActivityIcon,
     title: "Ready for traffic",
-    text: "Probes on /api/health, autoscaling, a disruption budget, pods spread across nodes, and OpenTelemetry.",
+    text: "Liveness and readiness probes, autoscaling, a disruption budget, pods spread across nodes, and OpenTelemetry.",
   },
 ];
 

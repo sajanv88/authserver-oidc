@@ -71,7 +71,9 @@ resources:
   limits:
     memory: 512Mi
 
-# All three probes hit /api/health, which never touches a dependency.
+# Startup and liveness hit /api/health, which never touches a dependency, so a database outage
+# never restarts pods. Readiness hits /api/ready, which answers 503 while the database doesn't
+# (a `select 1`, 2 seconds at most), so a pod that can't reach it gets no traffic.
 probes:
   startup:
     httpGet: { path: /api/health, port: http }
@@ -83,7 +85,7 @@ probes:
     timeoutSeconds: 3
     failureThreshold: 3
   readiness:
-    httpGet: { path: /api/health, port: http }
+    httpGet: { path: /api/ready, port: http }
     periodSeconds: 5
     timeoutSeconds: 3
     failureThreshold: 2
