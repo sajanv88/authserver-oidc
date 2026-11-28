@@ -25,6 +25,7 @@ export {
   type UserSummary,
   userStatus,
 } from "./queries/admin-users";
+export { type DatabasePing, PING_TIMEOUT_MS, pingDatabase } from "./queries/health";
 export {
   countOAuthClients,
   findOAuthClientsByName,
