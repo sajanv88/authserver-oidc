@@ -4,12 +4,14 @@
 // nonce Better Auth sent, and userinfo. Google, Microsoft and GitHub go through the same
 // /sign-in/social and /callback/:id endpoints.
 import { createHash, randomBytes } from "node:crypto";
+import { verifyOAuthQueryParams } from "@better-auth/oauth-provider";
 import { exportJWK, generateKeyPair, type JWK, SignJWT } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authorizeUrlFrom } from "./oidc-query";
 import { SSO_PROVIDER_ID } from "./social-providers";
-import { TWO_FACTOR_REQUIRED_ERROR } from "./social-two-factor-guard";
-import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "./test-harness";
+import { refusalDestination, TWO_FACTOR_REQUIRED_ERROR } from "./social-two-factor-guard";
+import { APP_ORIGIN, BASE_URL, createHarness, linkIn, testEnv } from "./test-harness";
+import { totp } from "./test-totp";
 
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 type Browser = ReturnType<Harness["browser"]>;
@@ -94,14 +96,22 @@ describe("signing in with another account", () => {
     return h.browser(`198.51.100.${nextIp++}`);
   }
 
-  /** The button's server action, then the provider sending the browser back with a code. */
-  async function signInWithProvider(browser: Browser, oauthQuery?: string) {
+  /**
+   * The button's server action, then the provider sending the browser back with a code.
+   * `errorCallbackURL` is what `socialTargets` gives: the login page with what it was opened
+   * with; `null` leaves it out.
+   */
+  async function signInWithProvider(
+    browser: Browser,
+    oauthQuery?: string,
+    errorCallbackURL: string | null = "/login",
+  ) {
     const start = await browser.caller()({
       path: "/sign-in/social",
       body: {
         provider: SSO_PROVIDER_ID,
         callbackURL: "/account/security",
-        errorCallbackURL: "/login",
+        ...(errorCallbackURL === null ? {} : { errorCallbackURL }),
         disableRedirect: true,
       },
       oauthQuery,
@@ -128,6 +138,75 @@ describe("signing in with another account", () => {
       [email],
     );
     return rows[0] as { id: string; email_verified: boolean } | undefined;
+  }
+
+  /** An account with a password and two-factor on, as EnableDialog turns it on: its TOTP URI. */
+  async function twoFactorUser(email: string): Promise<string> {
+    const owner = freshBrowser();
+    await owner.request("POST", "/api/auth/sign-up/email", {
+      json: { email, password, name: "Tess" },
+    });
+    await owner.request("GET", linkIn(h.emails.at(-1)));
+    const enable = (await (
+      await owner.request("POST", "/api/auth/two-factor/enable", { json: { password } })
+    ).json()) as { totpURI: string };
+    const confirm = await owner.request("POST", "/api/auth/two-factor/verify-totp", {
+      json: { code: totp(enable.totpURI) },
+    });
+    expect(confirm.status).toBe(200);
+    return enable.totpURI;
+  }
+
+  let app: Promise<{ clientId: string; redirectUri: string }> | undefined;
+  /** A public client for an app, made once by an admin. */
+  function exampleApp() {
+    app ??= (async () => {
+      const admin = freshBrowser();
+      await admin.request("POST", "/api/auth/sign-up/email", {
+        json: { email: "root@example.com", password, name: "Root" },
+      });
+      await admin.request("GET", linkIn(h.emails.at(-1)));
+      await h.sql("update users set role = 'admin' where email = $1", ["root@example.com"]);
+      await admin.request("POST", "/api/auth/sign-in/email", {
+        json: { email: "root@example.com", password },
+      });
+      const cookie = [...admin.jar].map(([name, value]) => `${name}=${value}`).join("; ");
+      const redirectUri = `${APP_ORIGIN}/oidc/callback`;
+      const client = await h.auth.api.adminCreateOAuthClient({
+        body: {
+          client_name: "Example app",
+          redirect_uris: [redirectUri],
+          token_endpoint_auth_method: "none",
+          grant_types: ["authorization_code"],
+          response_types: ["code"],
+          require_pkce: true,
+        },
+        headers: new Headers({ cookie }),
+      });
+      return { clientId: client.client_id, redirectUri };
+    })();
+    return app;
+  }
+
+  /** The app sends the browser to authorize; the server sends it on to /login, signed. */
+  async function authorizeAsApp(browser: Browser) {
+    const { clientId, redirectUri } = await exampleApp();
+    const verifier = randomBytes(32).toString("base64url");
+    const query = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "openid email",
+      state: "app-state",
+      nonce: "app-nonce",
+      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    const authorize = await browser.request("GET", `/api/auth/oauth2/authorize?${query}`);
+    const login = new URL(authorize.headers.get("location") ?? "", BASE_URL);
+    expect(login.pathname).toBe("/login");
+    expect(authorizeUrlFrom(login.searchParams)).toBeTruthy();
+    return { login, verifier, clientId, redirectUri };
   }
 
   async function accountsOf(email: string) {
@@ -236,6 +315,97 @@ describe("signing in with another account", () => {
     ]);
   });
 
+  it("after the refusal, in an app's flow, the password and the code go back to the app", async () => {
+    const email = "tess@example.com";
+    const totpURI = await twoFactorUser(email);
+    const browser = freshBrowser();
+    const { login, verifier, clientId, redirectUri } = await authorizeAsApp(browser);
+    const signed = login.search.slice(1);
+
+    // The social button carries the signed query in both directions (socialTargets).
+    person = { sub: "p-6", email, email_verified: true, name: "Tess" };
+    const { location } = await signInWithProvider(browser, signed, `/login?${signed}`);
+    const back = new URL(location, BASE_URL);
+    expect(back.pathname).toBe("/login");
+    expect(back.searchParams.get("error")).toBe(TWO_FACTOR_REQUIRED_ERROR);
+    expect(sessionCookie(browser)).toBe(false);
+
+    // The login page takes `error` off; what's left is still the app's signed request.
+    back.searchParams.delete("error");
+    const carried = back.search.slice(1);
+    expect(await verifyOAuthQueryParams(carried, testEnv.betterAuthSecret)).toBe(true);
+    expect(back.searchParams.get("client_id")).toBe(clientId);
+
+    // The password, then the code, as the login and two-factor pages post them.
+    const first = await browser.request("POST", "/api/auth/sign-in/email", {
+      json: { email, password, oauth_query: carried },
+    });
+    expect(await first.json()).toMatchObject({ twoFactorRedirect: true });
+    const verify = await browser.request("POST", "/api/auth/two-factor/verify-totp", {
+      json: { code: totp(totpURI), oauth_query: carried },
+    });
+    const verified = (await verify.json()) as { url?: string };
+    const consentUrl = new URL(verified.url ?? "", BASE_URL);
+    expect(consentUrl.pathname).toBe("/consent");
+
+    const consent = await browser.request("POST", "/api/auth/oauth2/consent", {
+      json: { accept: true, oauth_query: consentUrl.search.slice(1) },
+    });
+    const callback = new URL(String(((await consent.json()) as { url?: string }).url));
+    expect(`${callback.origin}${callback.pathname}`).toBe(redirectUri);
+    expect(callback.searchParams.get("state")).toBe("app-state");
+    const code = callback.searchParams.get("code") ?? "";
+    expect(code).not.toBe("");
+
+    const tokens = await browser.request("POST", "/api/auth/oauth2/token", {
+      form: {
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        code_verifier: verifier,
+      },
+    });
+    expect(tokens.status).toBe(200);
+    expect(await tokens.json()).toMatchObject({ access_token: expect.any(String) });
+  });
+
+  it("the refusal keeps a returnTo, and is the bare login page without one", async () => {
+    const email = "tess@example.com";
+    person = { sub: "p-6", email, email_verified: true, name: "Tess" };
+    const returnTo = new URLSearchParams({ returnTo: "/admin/users" }).toString();
+    const kept = await signInWithProvider(freshBrowser(), undefined, `/login?${returnTo}`);
+    expect(kept.location).toBe(`/login?${returnTo}&error=${TWO_FACTOR_REQUIRED_ERROR}`);
+
+    // No errorCallbackURL: Better Auth's default, onAPIError's (the login page, absolute).
+    const bare = await signInWithProvider(freshBrowser(), undefined, null);
+    expect(bare.location).toBe(`/login?error=${TWO_FACTOR_REQUIRED_ERROR}`);
+  });
+
+  it("the refusal goes only to this server's login page", () => {
+    const to = (errorURL: unknown) =>
+      refusalDestination(errorURL, "/login", `${BASE_URL}/api/auth`);
+    const bare = `/login?error=${TWO_FACTOR_REQUIRED_ERROR}`;
+    expect(to(undefined)).toBe(bare);
+    expect(to(`${BASE_URL}/login`)).toBe(bare);
+    expect(to("/login?returnTo=%2Fadmin")).toBe(
+      `/login?returnTo=%2Fadmin&error=${TWO_FACTOR_REQUIRED_ERROR}`,
+    );
+    // Another error Better Auth or someone put there is replaced, not doubled.
+    expect(to("/login?error=x&error_description=y")).toBe(bare);
+    for (const elsewhere of [
+      "/consent?client_id=a",
+      "/api/auth/error",
+      "https://evil.example/login?client_id=a",
+      "//evil.example/login",
+      "/\\evil.example/login",
+      "javascript:alert(1)",
+      "not a url at all",
+    ]) {
+      expect(to(elsewhere)).toBe(bare);
+    }
+  });
+
   it("refuses a sign-in from a provider's ID token posted to /sign-in/social", async () => {
     person = { sub: "p-1", email: "grace@example.com", email_verified: true, name: "Grace" };
     const token = await new SignJWT({ ...person })
@@ -256,46 +426,8 @@ describe("signing in with another account", () => {
   });
 
   it("goes on with an app's authorization request after the provider", async () => {
-    const admin = freshBrowser();
-    await admin.request("POST", "/api/auth/sign-up/email", {
-      json: { email: "root@example.com", password, name: "Root" },
-    });
-    await admin.request("GET", linkIn(h.emails.at(-1)));
-    await h.sql("update users set role = 'admin' where email = $1", ["root@example.com"]);
-    await admin.request("POST", "/api/auth/sign-in/email", {
-      json: { email: "root@example.com", password },
-    });
-    const cookie = [...admin.jar].map(([name, value]) => `${name}=${value}`).join("; ");
-    const redirectUri = `${APP_ORIGIN}/oidc/callback`;
-    const client = await h.auth.api.adminCreateOAuthClient({
-      body: {
-        client_name: "Example app",
-        redirect_uris: [redirectUri],
-        token_endpoint_auth_method: "none",
-        grant_types: ["authorization_code"],
-        response_types: ["code"],
-        require_pkce: true,
-      },
-      headers: new Headers({ cookie }),
-    });
-
-    // The app sends a stranger to authorize; the server sends them on to /login, signed.
     const browser = freshBrowser();
-    const verifier = randomBytes(32).toString("base64url");
-    const query = new URLSearchParams({
-      response_type: "code",
-      client_id: client.client_id,
-      redirect_uri: redirectUri,
-      scope: "openid email",
-      state: "app-state",
-      nonce: "app-nonce",
-      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
-      code_challenge_method: "S256",
-    });
-    const authorize = await browser.request("GET", `/api/auth/oauth2/authorize?${query}`);
-    const login = new URL(authorize.headers.get("location") ?? "", BASE_URL);
-    expect(login.pathname).toBe("/login");
-    expect(authorizeUrlFrom(login.searchParams)).toBeTruthy();
+    const { login } = await authorizeAsApp(browser);
 
     person = { sub: "p-5", email: "app-user@example.com", email_verified: true, name: "App" };
     const { location } = await signInWithProvider(browser, login.search.slice(1));
