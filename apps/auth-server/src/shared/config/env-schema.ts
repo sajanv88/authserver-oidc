@@ -213,6 +213,31 @@ const ApiScopeSchema = v.pipe(
 /** Scope names, separated by commas or spaces. */
 const scopeList = (value: string) => value.split(/[\s,]+/).filter((item) => item.length > 0);
 
+/** A full http(s) URL without credentials, or undefined when it's missing or empty. */
+function publicUrl(example: string) {
+  return v.optional(
+    v.pipe(
+      v.unknown(),
+      v.transform(emptyToUndefined),
+      v.optional(
+        v.pipe(
+          v.string(),
+          v.trim(),
+          v.check((value) => {
+            if (!URL.canParse(value)) return false;
+            const url = new URL(value);
+            return (
+              (url.protocol === "https:" || url.protocol === "http:") &&
+              url.username === "" &&
+              url.password === ""
+            );
+          }, `must be a full http(s) URL, such as ${example}`),
+        ),
+      ),
+    ),
+  );
+}
+
 const RawEnvSchema = v.object({
   NODE_ENV: v.optional(v.picklist(["development", "production", "test"]), "production"),
   DATABASE_URL: v.pipe(
@@ -345,27 +370,11 @@ const RawEnvSchema = v.object({
   ),
   // The logo in place of the shield, on every page: an image anywhere (its origin is
   // added to the CSP's img-src). A square image looks best.
-  LOGO_URL: v.optional(
-    v.pipe(
-      v.unknown(),
-      v.transform(emptyToUndefined),
-      v.optional(
-        v.pipe(
-          v.string(),
-          v.trim(),
-          v.check((value) => {
-            if (!URL.canParse(value)) return false;
-            const url = new URL(value);
-            return (
-              (url.protocol === "https:" || url.protocol === "http:") &&
-              url.username === "" &&
-              url.password === ""
-            );
-          }, "must be a full http(s) URL, such as https://cdn.example.com/logo.svg"),
-        ),
-      ),
-    ),
-  ),
+  LOGO_URL: publicUrl("https://cdn.example.com/logo.svg"),
+  // Your privacy policy and terms of service, linked under the sign-in and sign-up forms. Each
+  // is shown only when it's set.
+  PRIVACY_POLICY_URL: publicUrl("https://example.com/privacy"),
+  TERMS_OF_SERVICE_URL: publicUrl("https://example.com/terms"),
 });
 
 type RawEnv = v.InferOutput<typeof RawEnvSchema>;
@@ -422,6 +431,13 @@ export type ServerEnv = {
   appName: string;
   /** The sign-in pages' logo, or undefined for the default shield. */
   logoUrl: string | undefined;
+  /** Linked under the sign-in and sign-up forms, each only when it's set. */
+  legal: LegalLinks;
+};
+
+export type LegalLinks = {
+  privacyPolicyUrl: string | undefined;
+  termsOfServiceUrl: string | undefined;
 };
 
 const CLIENT_PAIRS = [
@@ -532,8 +548,10 @@ const EnvSchema = v.pipe(
     if (new Set(env.OAUTH_API_SCOPES).size !== env.OAUTH_API_SCOPES.length) {
       issue("OAUTH_API_SCOPES", "must not list a scope twice");
     }
-    if (production && env.LOGO_URL && !env.LOGO_URL.startsWith("https://")) {
-      issue("LOGO_URL", "must be https in production");
+    for (const key of ["LOGO_URL", "PRIVACY_POLICY_URL", "TERMS_OF_SERVICE_URL"] as const) {
+      if (production && env[key] && !env[key].startsWith("https://")) {
+        issue(key, "must be https in production");
+      }
     }
   }),
   v.transform(
@@ -580,6 +598,10 @@ const EnvSchema = v.pipe(
       twoFactorRequiredForAdmins: env.TWO_FACTOR_REQUIRED_FOR_ADMINS ?? false,
       appName: env.APP_NAME ?? DEFAULT_APP_NAME,
       logoUrl: env.LOGO_URL,
+      legal: {
+        privacyPolicyUrl: env.PRIVACY_POLICY_URL,
+        termsOfServiceUrl: env.TERMS_OF_SERVICE_URL,
+      },
     }),
   ),
 );

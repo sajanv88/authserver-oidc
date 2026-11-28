@@ -166,6 +166,10 @@ config:
   # fails to load, shows the shield. Its origin is allowed in the CSP.
   # Emails show it too, unless it's an SVG (Gmail and Outlook don't).
   LOGO_URL: ""
+  # Your privacy policy and terms of service, as full https URLs, linked under the sign-in
+  # and sign-up forms (in a new tab). Each is shown only when it's set.
+  PRIVACY_POLICY_URL: ""
+  TERMS_OF_SERVICE_URL: ""
   # Connections per pod; replicas × this must stay under the database's limit.
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server

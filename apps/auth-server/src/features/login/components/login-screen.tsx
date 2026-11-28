@@ -18,6 +18,7 @@ export function LoginScreen({
     <AuthCard
       title="Sign in"
       description={`Use your ${appName} account.`}
+      legalAction="By signing in"
       footer={
         <>
           <p>

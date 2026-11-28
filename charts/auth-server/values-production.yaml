@@ -94,6 +94,10 @@ config:
   # browser tab's icon: a full https URL; a square image looks best. Empty, or an image that
   # fails to load, shows the shield. Its origin is allowed in the CSP.
   LOGO_URL: ""
+  # Your privacy policy and terms of service, as full https URLs, linked under the sign-in
+  # and sign-up forms (in a new tab). Each is shown only when it's set.
+  PRIVACY_POLICY_URL: ""
+  TERMS_OF_SERVICE_URL: ""
   DATABASE_POOL_MAX: "10"
   OTEL_SERVICE_NAME: auth-server
   # Traces (every request, each sign-in, sign-up, reset and admin step, Better Auth's endpoints

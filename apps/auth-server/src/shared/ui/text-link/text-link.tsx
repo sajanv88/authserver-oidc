@@ -1,3 +1,4 @@
+import { VisuallyHidden } from "@nuvui/react";
 import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -17,6 +18,19 @@ export function TextLink({ href, children }: TextLinkProps) {
     <Link className="text-link" href={href}>
       {children}
     </Link>
+  );
+}
+
+/**
+ * A link to another site inside a line of text, drawn like a TextLink. It opens in a new tab,
+ * so whatever was typed on this page is still there, and says so to a screen reader.
+ */
+export function ExternalTextLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a className="text-link" href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+      <VisuallyHidden> (opens in a new tab)</VisuallyHidden>
+    </a>
   );
 }
 

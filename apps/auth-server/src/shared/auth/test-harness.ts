@@ -26,6 +26,7 @@ export const testEnv: ServerEnv = {
   twoFactorRequiredForAdmins: false,
   appName: "Next-Identity Server",
   logoUrl: undefined,
+  legal: { privacyPolicyUrl: undefined, termsOfServiceUrl: undefined },
 };
 
 /** `overrides` change the configuration, e.g. `{ turnstile: … }` to turn the captcha on. */

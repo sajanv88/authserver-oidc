@@ -1,0 +1,10 @@
+// Under the card, on the page's moving gradient: small, but in the foreground color like the
+// name above the card, so it keeps its contrast wherever the gradient is.
+.legal-notice {
+  margin: 0;
+  color: var(--color-foreground);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  text-align: center;
+  text-wrap: pretty;
+}
