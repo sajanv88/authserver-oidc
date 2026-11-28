@@ -1,10 +1,11 @@
 // The two-factor feature against the real auth configuration (PGlite), over HTTP. Codes come
-// from a separate RFC 6238 implementation, as an authenticator app would compute them from the
-// QR code's otpauth:// URI, so this also checks that real apps work.
-import { createHash, createHmac, randomBytes } from "node:crypto";
+// from a separate RFC 6238 implementation (shared/auth/test-totp.ts), as an authenticator app
+// would compute them from the QR code's otpauth:// URI, so this also checks that real apps work.
+import { createHash, randomBytes } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { AUTH_PAGES } from "@/shared/auth/auth-pages";
 import { APP_ORIGIN, BASE_URL, createHarness, linkIn } from "@/shared/auth/test-harness";
+import { totp } from "@/shared/auth/test-totp";
 import { parseForm } from "@/shared/validation/field-errors";
 import { setupKeyFrom } from "./components/two-factor-settings/setup-key";
 import { VerifyBackupCodeSchema, VerifyTotpSchema } from "./schemas/two-factor";
@@ -22,23 +23,6 @@ type Browser = ReturnType<Harness["browser"]>;
 
 const password = "correct horse battery staple";
 const redirectUri = `${APP_ORIGIN}/oidc/callback`;
-
-/** The current code for an otpauth:// URI (RFC 6238, SHA-1, as the URI says). */
-function totp(uri: string, at = Date.now()): string {
-  const url = new URL(uri);
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const bits = [...(url.searchParams.get("secret") ?? "").toUpperCase()]
-    .map((char) => alphabet.indexOf(char).toString(2).padStart(5, "0"))
-    .join("");
-  const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((byte) => Number.parseInt(byte, 2)));
-  const period = Number(url.searchParams.get("period") ?? 30);
-  const digits = Number(url.searchParams.get("digits") ?? 6);
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / period)));
-  const hmac = createHmac("sha1", key).update(counter).digest();
-  const offset = (hmac.at(-1) ?? 0) & 0xf;
-  return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 10 ** digits).padStart(digits, "0");
-}
 
 describe("two-factor form rules and setup key", () => {
   it("takes six digits, or a backup code with its dash and case", () => {
