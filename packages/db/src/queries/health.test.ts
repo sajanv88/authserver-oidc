@@ -63,4 +63,15 @@ describe("pingDatabase", () => {
     expect(await pingDatabase(slow, 20)).toEqual({ ok: false, reason: "timeout" });
     expect(execute).toHaveBeenCalledTimes(2);
   });
+
+  it("shares a query that never settles for a while only, then asks again", async () => {
+    const execute = vi.fn(() => new Promise(() => {}));
+    const stuck = executor(execute);
+    expect(await pingDatabase(stuck, 10, 50)).toEqual({ ok: false, reason: "timeout" });
+    expect(await pingDatabase(stuck, 10, 50)).toEqual({ ok: false, reason: "timeout" });
+    expect(execute).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(await pingDatabase(stuck, 10, 50)).toEqual({ ok: false, reason: "timeout" });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
 });

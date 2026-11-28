@@ -5,9 +5,12 @@ import type { Executor } from "../executor";
 // a database that hangs makes the pod unready. The time limit only stops the wait: the query
 // itself runs on until the driver gives up. So there's at most one at a time per database: a
 // call while one is still running, past its own time limit or not, waits on that one, and
-// probes never pile hung queries up on the pool.
+// probes never pile hung queries up on the pool. A query that never settles is shared for
+// PING_SHARE_MS at most, then a new one starts: once the database is back, the pod is ready
+// again, and a hung database costs one connection every 30 seconds, not one per probe.
 
 export const PING_TIMEOUT_MS = 2000;
+export const PING_SHARE_MS = 30_000;
 
 export type DatabasePing =
   | { ok: true }
@@ -18,20 +21,21 @@ export type DatabasePing =
   | { ok: false; reason: "timeout" }
   | { ok: false; reason: "failed"; code?: string };
 
-/** The ping running against each database, until it settles. */
-const running = new WeakMap<Executor, Promise<DatabasePing>>();
+/** The ping running against each database, until it settles, and when it started. */
+const running = new WeakMap<Executor, { ping: Promise<DatabasePing>; startedAt: number }>();
 
 export async function pingDatabase(
   db: Executor,
   timeoutMs: number = PING_TIMEOUT_MS,
+  shareMs: number = PING_SHARE_MS,
 ): Promise<DatabasePing> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<DatabasePing>((resolve) => {
     timer = setTimeout(() => resolve({ ok: false, reason: "timeout" }), timeoutMs);
   });
-  let ping = running.get(db);
-  if (!ping) {
-    ping = db
+  let entry = running.get(db);
+  if (!entry || Date.now() - entry.startedAt >= shareMs) {
+    const ping = db
       .execute(sql`select 1`)
       .then(
         (): DatabasePing => ({ ok: true }),
@@ -42,11 +46,15 @@ export async function pingDatabase(
             : { ok: false, reason: "failed", code };
         },
       )
-      .finally(() => running.delete(db));
-    running.set(db, ping);
+      .finally(() => {
+        if (running.get(db) === started) running.delete(db);
+      });
+    const started = { ping, startedAt: Date.now() };
+    running.set(db, started);
+    entry = started;
   }
   try {
-    return await Promise.race([ping, timeout]);
+    return await Promise.race([entry.ping, timeout]);
   } finally {
     clearTimeout(timer);
   }
